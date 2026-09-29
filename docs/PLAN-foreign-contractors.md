@@ -151,7 +151,8 @@ regime hazard multiplier, secondary-sanction term, propagation through `affiliat
    affinity), India-type (JV, needs multi-parent sanction logic). They are hidden until unlocked, so they do not add to the initial 8.
 8. **Naming (decided):** fully fictional by default (vendors, countries, modules, R&D projects, tutorial copy); real names are an
    optional skin behind a settings toggle. Sanction and scandal wording stays generic in both modes.
-9. Still open: new protocol tags (`NORDIC_OPEN`, `SINO_DIGITAL`); approval of the alias set below.
+9. **Alias set (approved)** as listed in §9. **Extra protocol tags (decided: skip for v1):** Nordvik and Dahai reuse the existing four tags
+   (`NORDIC_OPEN`, `SINO_DIGITAL` stay a future refinement if playtesting shows the four are too coarse). Aliases and roster remain open to refinement.
 
 ## 9. Curated roster (decided 2026-09-29)
 
