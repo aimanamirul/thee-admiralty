@@ -6,7 +6,8 @@ import type { HierarchyKind, NamingTradition, Tempo } from '../types/fleet';
 import type { HullClassId } from '../types/hull';
 import type { Roe, WorldDraft } from '../types/world';
 import { evaluateLoadout, procurability } from './designEngine';
-import { vendorBlocksOrders } from './diplomacyEngine';
+import { lobbyVendor, vendorBlocksOrders } from './diplomacyEngine';
+import type { VendorId } from '../types/diplomacy';
 import { allTaskForces, createShip, nextShipId } from './fleetEngine';
 import { bridgeSet, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP } from './researchEngine';
 import { syncConstructionFreezes } from './diplomacyEngine';
@@ -208,4 +209,9 @@ export function moveShip(world: WorldDraft, shipId: string, squadronId: string):
 export function setAutoSpares(world: WorldDraft, on: boolean): CommandResult {
   world.policy.autoSpares = on;
   return done(on ? 'Auto-procurement ON' : 'Auto-procurement OFF');
+}
+
+export function lobbyVendorCmd(world: WorldDraft, vendorId: VendorId, ministryId: string): CommandResult {
+  const r = lobbyVendor(world, vendorId, ministryId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

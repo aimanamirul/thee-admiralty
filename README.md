@@ -10,6 +10,8 @@ npm run typecheck
 npm run build
 npm run verify:map     # determinism / connectivity / tier checks for all archetypes (add -- --ascii to draw them)
 npx tsx scripts/verifySim.ts 730 [seed] [CHOKEPOINT|CORRIDOR|RIMLAND] [--surge]   # headless soak test of the sim
+npm run verify:tutorial   # headless bot plays every briefing lesson and checks its gate
+node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the file header)
 ```
 
 ## Status & docs
@@ -21,6 +23,8 @@ current state and next task, then the plans: [tutorial](docs/PLAN-tutorial.md), 
 UI: Share Tech Mono font; use **A− / A+** in the top bar to scale the whole interface (saved in the browser).
 
 ## Playing
+
+The title screen offers the **Admiral's Briefing** (a guided two-sector scenario, ~15 minutes, replayable from the top bar) or **Free play**.
 
 | Control | Action |
 |---|---|
@@ -43,12 +47,14 @@ friction** (slower CMS reaction, sensor tracking lag) until R&D completes a **pr
 ```
 app/                page (client-only cockpit), layout, CRT theme
 components/map/     TacticalMap (canvas loop, pan/zoom, picking), CRTOverlay
+components/tutorial/ TutorialCard, TutorialSpotlight, Term (glossary tooltips); components/TitleScreen
 components/ui/      CommandBar, SectorPanel, OrderOfBattle, ShipDesignerModal, RDBureauPanel, DiplomacyLedger, EventFeed
 lib/generator/      prng, noise, distance (EDT), marchingSquares, seedMap (archetypes + bathymetry), sectors, nameGenerator, geo
-lib/sim/            designEngine, fleetEngine, combatSim, researchEngine, diplomacyEngine, worldEngine, navigation, scenario, commands
+lib/sim/            tutorialScenario, designEngine, fleetEngine, combatSim, researchEngine, diplomacyEngine, worldEngine, navigation, scenario, commands
+lib/tutorial/       lessons (pure data + gates), glossary
 lib/types/          map, equipment, hull, diplomacy, fleet, world
 lib/data/catalog.ts vendors, hulls, modules, R&D projects, starter designs
-store/              useFleetStore — clones the world, runs a pure engine/command, commits, logs events
+store/              useFleetStore — clones the world, runs a pure engine/command, commits, logs events; useTutorialStore — lesson state machine + UI flags
 scripts/            verifyMap.ts, verifySim.ts
 ```
 

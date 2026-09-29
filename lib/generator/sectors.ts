@@ -426,3 +426,37 @@ function traceBorders(sectorGrid: Int16Array, w: number, h: number): Polyline[] 
   }
   return stitchSegments(segs).map((l) => chaikin(l, 2));
 }
+
+/**
+ * Build sector descriptions and border polylines for a caller-supplied sector grid (ids 0..n-1, -1 on land).
+ * Used by hand-authored scenarios that partition the water themselves.
+ */
+export function sectorsFromGrid(args: {
+  sectorGrid: Int16Array;
+  w: number;
+  h: number;
+  clearance: Float32Array;
+  elevation: Float32Array;
+  straits?: boolean[];
+}): { sectors: Sector[]; borders: Polyline[] } {
+  const { sectorGrid, w, h, clearance, elevation } = args;
+  const n = w * h;
+  let count = 0;
+  let maxClear = 0;
+  for (let i = 0; i < n; i++) {
+    if (sectorGrid[i] >= count) count = sectorGrid[i] + 1;
+    if (sectorGrid[i] >= 0 && clearance[i] > maxClear) maxClear = clearance[i];
+  }
+  const nb4 = (i: number, out: number[]) => {
+    out.length = 0;
+    const x = i % w;
+    if (x > 0) out.push(i - 1);
+    if (x < w - 1) out.push(i + 1);
+    if (i >= w) out.push(i - w);
+    if (i < n - w) out.push(i + w);
+  };
+  const sectors = describeSectors({
+    sectorGrid, count, straitOld: args.straits ?? Array(count).fill(false), w, h, clearance, elevation, maxClear, nb4,
+  });
+  return { sectors, borders: traceBorders(sectorGrid, w, h) };
+}

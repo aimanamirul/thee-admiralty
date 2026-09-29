@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "verify:map": "tsx scripts/verifyMap.ts"
+    "verify:map": "tsx scripts/verifyMap.ts",
+    "verify:sim": "tsx scripts/verifySim.ts",
+    "verify:tutorial": "tsx scripts/verifyTutorial.ts"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

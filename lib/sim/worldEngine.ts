@@ -73,6 +73,7 @@ function progressConstruction(world: WorldDraft): void {
 }
 
 function updateSectors(world: WorldDraft, rng: Rng): void {
+  if (world.scripted) return;
   const map = world.map;
   const diag = Math.hypot(map.width, map.height);
   const covered = new Set<number>();
@@ -121,7 +122,7 @@ function tickContacts(world: WorldDraft, rng: Rng, bridges: Bridges): void {
   for (const sec of map.sectors) {
     const st = world.sectors[sec.id];
     const p = 0.004 + 0.05 * (st.threat / 100) ** 2;
-    if (world.contacts.length < 14 && rng.chance(p)) {
+    if (!world.scripted && world.contacts.length < 14 && rng.chance(p)) {
       const c = spawnContact(world, rng, sec.id);
       if (c) world.contacts.push(c);
     }
@@ -145,10 +146,13 @@ function tickContacts(world: WorldDraft, rng: Rng, bridges: Bridges): void {
 
   const survivors: Contact[] = [];
   for (const c of world.contacts) {
-    // Drift within the sector.
-    c.heading += rng.gaussian() * 0.25;
-    const nx = c.position.x + Math.cos(c.heading) * 1.5;
-    const ny = c.position.y + Math.sin(c.heading) * 1.5;
+    // Drift within the sector (scripted contacts head straight for their target).
+    const chased = c.pursue ? tfs.find((t) => t.id === c.pursue) : undefined;
+    if (chased) c.heading = Math.atan2(chased.position.y - c.position.y, chased.position.x - c.position.x);
+    else c.heading += rng.gaussian() * 0.25;
+    const step = chased ? 2 : 1.5;
+    const nx = c.position.x + Math.cos(c.heading) * step;
+    const ny = c.position.y + Math.sin(c.heading) * step;
     const cell = Math.round(ny) * w + Math.round(nx);
     if (nx >= 0 && ny >= 0 && nx < w && ny < map.height && map.sectorGrid[cell] === c.sectorId) c.position = { x: nx, y: ny };
     else c.heading = rng.range(0, Math.PI * 2);

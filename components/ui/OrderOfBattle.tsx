@@ -8,6 +8,8 @@ import { OP_STATE_LABEL, PATROL_LIMIT_DAYS, stateCounts, taskForceShipIds } from
 import { bridgeSet } from '@/lib/sim/researchEngine';
 import type { HierarchyKind, OpState, Ship, TaskForce } from '@/lib/types/fleet';
 import { useFleetStore } from '@/store/useFleetStore';
+import { Term } from '@/components/tutorial/Term';
+import { useUiFlag } from '@/store/useTutorialStore';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
 
 const STATE_TONE: Record<OpState, 'emerald' | 'cyan' | 'amber'> = { ACTIVE_PATROL: 'emerald', TRANSIT_WORKUP: 'cyan', MAINTENANCE_DOCK: 'amber' };
@@ -68,7 +70,7 @@ function ThirdsGauge({ ships }: { ships: Ship[] }) {
   ];
   const patrolShare = c.ACTIVE_PATROL / total;
   return (
-    <Section title="Rule of thirds" right={<span className={patrolShare > 0.5 ? 'text-warn' : 'text-slate-500'}>{patrolShare > 0.5 ? 'OVER-DEPLOYED' : 'TARGET ⅓ · ⅓ · ⅓'}</span>}>
+    <Section anchor="thirds" title={<Term k="THIRDS">Rule of thirds</Term>} right={<span className={patrolShare > 0.5 ? 'text-warn' : 'text-slate-500'}>{patrolShare > 0.5 ? 'OVER-DEPLOYED' : 'TARGET ⅓ · ⅓ · ⅓'}</span>}>
       <div className="relative flex h-4 w-full overflow-hidden border border-navy">
         {seg.map((s) => (
           <div key={s.k} className={`${s.bg} flex items-center justify-center text-[0.75rem] text-void`} style={{ width: `${(c[s.k] / total) * 100}%` }}>
@@ -211,7 +213,7 @@ function ShipRow({ ship }: { ship: Ship }) {
   const hull = HULLS[ship.hullId];
   const failed = ship.modules.filter((m) => m.failed).length;
   return (
-    <li className={`border ${selected ? 'border-phosphor/70' : 'border-navy'} ${ship.isPartsHulk ? 'opacity-70' : ''}`}>
+    <li data-tutorial={`ship-${ship.id}`} className={`border ${selected ? 'border-phosphor/70' : 'border-navy'} ${ship.isPartsHulk ? 'opacity-70' : ''}`}>
       <div role="button" tabIndex={0} onClick={() => select(selected ? null : ship.id)} onKeyDown={(e) => e.key === 'Enter' && select(selected ? null : ship.id)} className="flex cursor-pointer items-center gap-1.5 px-1.5 py-1 hover:bg-phosphor/5">
         {selected ? <ChevronDown className="h-3 w-3 shrink-0 text-phosphor" /> : <ChevronRight className="h-3 w-3 shrink-0 text-slate-600" />}
         <span className="w-10 shrink-0 text-[0.8125rem] text-slate-500">{ship.pennant}</span>
@@ -246,7 +248,7 @@ function TaskForceNode({ tf }: { tf: TaskForce }) {
   const list = taskForceShipIds(tf).map((id) => ships[id]).filter(Boolean);
   const counts = stateCounts(list);
   return (
-    <div className={`border ${selected ? 'border-phosphor shadow-glow' : 'border-navy'}`}>
+    <div data-tutorial={`tf-${tf.id}`} className={`border ${selected ? 'border-phosphor shadow-glow' : 'border-navy'}`}>
       <div className="flex items-center gap-1 bg-phosphor/5 px-1.5 py-1">
         <button aria-label={open ? 'Collapse' : 'Expand'} onClick={() => setOpen(!open)} className="text-phosphor">
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -274,6 +276,7 @@ function TaskForceNode({ tf }: { tf: TaskForce }) {
                 </option>
               ))}
             </select>
+            <span className="text-[0.8125rem] uppercase tracking-widest text-slate-500"><Term k="TEMPO">Tempo</Term></span>
             <Btn tone={tf.tempo === 'ROTATE_THIRDS' ? 'cyan' : 'dim'} onClick={() => setTempo(tf.id, 'ROTATE_THIRDS')} title="Automatic Rule of Thirds rotation">Rotate ⅓</Btn>
             <Btn tone={tf.tempo === 'SURGE' ? 'red' : 'dim'} onClick={() => setTempo(tf.id, 'SURGE')} title="Suspend rotation: max presence, breakdowns follow">Surge</Btn>
           </div>
@@ -311,7 +314,7 @@ function SparesYard() {
   const done = useMemo(() => new Set(research.completed), [research.completed]);
   const total = Object.values(spares).reduce((a, b) => a + b, 0);
   return (
-    <Section title="Spares & cannibalisation" tone="amber" right={<button onClick={() => setOpen(!open)} className="text-[0.8125rem] text-amber-radar">{open ? 'HIDE' : `SHOW · ${total} IN STOCK`}</button>}>
+    <Section anchor="spares" title={<Term k="HULK">Spares & cannibalisation</Term>} tone="amber" right={<button onClick={() => setOpen(!open)} className="text-[0.8125rem] text-amber-radar">{open ? 'HIDE' : `SHOW · ${total} IN STOCK`}</button>}>
       <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-slate-400">
         <input type="checkbox" checked={auto} onChange={(e) => setAutoSpares(e.target.checked)} />
         Standing order: rush-buy spares for stalled docks (60% cost, blocked by sanctions)
@@ -348,7 +351,7 @@ function Organise() {
   const parents = kind === 'TASKFORCE' ? fleets.map((f) => ({ id: f.id, label: f.name })) : kind === 'SQUADRON' ? fleets.flatMap((f) => f.taskForces.map((t) => ({ id: t.id, label: t.name }))) : [];
   const pid = parents.find((p) => p.id === parent)?.id ?? parents[0]?.id ?? '';
   return (
-    <Section title="Organise & commission names">
+    <Section anchor="organise" title="Organise & commission names">
       <form
         className="flex flex-wrap items-center gap-1"
         onSubmit={(e) => {
@@ -384,9 +387,12 @@ export default function OrderOfBattle() {
   const ships = useFleetStore((s) => s.ships);
   const stats = useFleetStore((s) => s.stats);
   const list = useMemo(() => Object.values(ships), [ships]);
+  const showThirds = useUiFlag('THIRDS');
+  const showSpares = useUiFlag('SPARES');
+  const showOrganise = useUiFlag('ORGANISE');
   return (
     <div className="space-y-2">
-      <ThirdsGauge ships={list} />
+      {showThirds && <ThirdsGauge ships={list} />}
       <Section title="Order of battle" right={<span className="text-slate-500">{list.length} hulls · {stats.hostilesDestroyed} kills · {stats.shipsLost} lost</span>}>
         <div className="space-y-2">
           {fleets.map((f) => (
@@ -404,8 +410,8 @@ export default function OrderOfBattle() {
           ))}
         </div>
       </Section>
-      <SparesYard />
-      <Organise />
+      {showSpares && <SparesYard />}
+      {showOrganise && <Organise />}
     </div>
   );
 }

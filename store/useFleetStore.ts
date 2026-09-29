@@ -39,6 +39,7 @@ interface WorldSlice {
   research: ResearchState;
   contacts: Contact[];
   tension: number;
+  scripted: boolean;
   policy: { autoSpares: boolean };
   stats: WorldDraft['stats'];
 }
@@ -57,6 +58,8 @@ interface UiSlice {
   toast: { text: string; ok: boolean; id: number } | null;
   /** Root font-size multiplier; every rem-based UI size and canvas label follows it. */
   uiScale: number;
+  /** Design the designer opens with (set by the tutorial); null = first saved design. */
+  designerPreset: ShipDesign | null;
 }
 
 interface Actions {
@@ -73,6 +76,11 @@ interface Actions {
   deleteDesign: (id: string) => void;
   dismissToast: () => void;
   setUiScale: (v: number) => void;
+  /** Replace the whole world (tutorial scenario, loaded games). Resets selection, clock and ledger. */
+  loadWorld: (w: WorldDraft) => void;
+  /** Apply an arbitrary edit to the world through the normal command path (scripted events). */
+  mutate: (fn: (w: WorldDraft) => void) => void;
+  setDesignerPreset: (d: ShipDesign | null) => void;
   // commands (each returns the engine's verdict)
   orderShip: (a: { designName: string; hullId: ShipDesign['hullId']; moduleIds: string[]; squadronId: string; tradition: NamingTradition; customName?: string }) => CommandResult;
   buySpares: (moduleId: string, qty: number) => CommandResult;
@@ -103,7 +111,7 @@ const pickWorld = (s: GameState): WorldDraft => {
   // The map is large and immutable during play: share it, clone everything else.
   const mutable = structuredClone({
     resources: s.resources, ships: s.ships, fleets: s.fleets, spares: s.spares, sectors: s.sectors, vendors: s.vendors,
-    sanctions: s.sanctions, research: s.research, contacts: s.contacts, tension: s.tension, policy: s.policy, stats: s.stats,
+    sanctions: s.sanctions, research: s.research, contacts: s.contacts, tension: s.tension, scripted: s.scripted, policy: s.policy, stats: s.stats,
   });
   return { seed: s.seed, tick: s.tick, map: s.map, events: [], ...mutable };
 };
@@ -111,7 +119,7 @@ const pickWorld = (s: GameState): WorldDraft => {
 const worldPatch = (w: WorldDraft): WorldSlice => ({
   seed: w.seed, tick: w.tick, map: w.map, resources: w.resources, ships: w.ships, fleets: w.fleets, spares: w.spares,
   sectors: w.sectors, vendors: w.vendors, sanctions: w.sanctions, research: w.research, contacts: w.contacts,
-  tension: w.tension, policy: w.policy, stats: w.stats,
+  tension: w.tension, scripted: w.scripted, policy: w.policy, stats: w.stats,
 });
 
 function appendLog(log: GameEvent[], seq: number, tick: number, pending: WorldDraft['events']) {
@@ -154,6 +162,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     designs: STARTER_DESIGNS,
     toast: null,
     uiScale: 1,
+    designerPreset: null,
 
     step: (days = 1) => {
       const s = get();
@@ -180,6 +189,29 @@ export const useFleetStore = create<GameState>((set, get) => {
         selectedShipId: null,
         toast: null,
       }),
+    loadWorld: (w) => {
+      const { log, logSeq } = appendLog([], 0, w.tick, w.events);
+      w.events = [];
+      set({
+        ...worldPatch(w),
+        log,
+        logSeq,
+        running: false,
+        speed: 1,
+        selectedSectorId: null,
+        selectedTaskForceId: null,
+        selectedShipId: null,
+        designerOpen: false,
+        toast: null,
+      });
+    },
+    mutate: (fn) => {
+      run((w) => {
+        fn(w);
+        return { ok: true };
+      });
+    },
+    setDesignerPreset: (designerPreset) => set({ designerPreset }),
     setTab: (tab) => set({ tab }),
     selectSector: (id) => set(id === null ? { selectedSectorId: null } : { selectedSectorId: id, tab: 'SECTOR' }),
     selectTaskForce: (id) => set(id === null ? { selectedTaskForceId: null } : { selectedTaskForceId: id, tab: 'FLEET' }),

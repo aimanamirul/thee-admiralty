@@ -5,6 +5,7 @@ import { HULLS } from '@/lib/data/catalog';
 import { allTaskForces, taskForceShipIds } from '@/lib/sim/fleetEngine';
 import type { Roe } from '@/lib/types/world';
 import { useFleetStore } from '@/store/useFleetStore';
+import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
 
 const ROES: { id: Roe; label: string; hint: string }[] = [
@@ -76,11 +77,16 @@ export default function SectorPanel() {
           <Chip tone="cyan">{sec.kind}</Chip>
           {sec.touchesEdge && <Chip tone="dim">OPEN OCEAN ACCESS</Chip>}
           {sec.abyssalFraction > 0.4 && <Chip tone="emerald">ABYSSAL — SUB / CARRIER WATERS</Chip>}
-          {sec.littoralFraction > 0.25 && <Chip tone="amber">LITTORAL — MISSILE BOAT HEAVEN</Chip>}
+          {sec.littoralFraction > 0.25 && <Chip tone="amber"><Term k="LITTORAL">LITTORAL</Term> — MISSILE BOAT HEAVEN</Chip>}
         </div>
-        <div className="mb-1 text-[0.8125rem] uppercase tracking-widest text-slate-500">Threat level</div>
+        <div className="mb-1 text-[0.8125rem] uppercase tracking-widest text-slate-500">
+          <Term k="THREAT">Threat level</Term>
+        </div>
         <Meter value={st.threat} tone={threatTone(st.threat)} label={st.threat.toFixed(0)} />
-        <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">Rules of engagement</div>
+        <div data-tutorial="roe">
+        <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">
+          <Term k="ROE">Rules of engagement</Term>
+        </div>
         <div className="mt-1 flex gap-1">
           {ROES.map((r) => (
             <Btn key={r.id} tone={st.roe === r.id ? (r.id === 'WEAPONS_FREE' ? 'red' : r.id === 'HOLD_FIRE' ? 'amber' : 'cyan') : 'dim'} onClick={() => setRoe(selected, r.id)} className="flex-1">
@@ -89,6 +95,7 @@ export default function SectorPanel() {
           ))}
         </div>
         <p className="mt-1 text-[0.8125rem] text-slate-500">{roe.hint}</p>
+        </div>
       </Section>
 
       <Section title="Bathymetry & telemetry">

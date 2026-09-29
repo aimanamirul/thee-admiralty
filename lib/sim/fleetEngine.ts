@@ -245,7 +245,7 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
           const draftM = HULLS[ship.hullId].draftM;
           const draftMult = draftM >= DEEP_DRAFT_M ? 2.5 : draftM >= 4.2 ? 0.8 : 0.1;
           const groundP = 0.004 * (sector?.littoralFraction ?? 0) * draftMult * stress;
-          if (rng.chance(groundP)) {
+          if (!world.scripted && rng.chance(groundP)) {
             const dmg = rng.range(4, 14);
             ship.integrity -= dmg;
             world.events.push({ severity: 'WARNING', text: `${label}: GROUNDING on shoal in ${sector?.label ?? 'sector'} — hull −${dmg.toFixed(0)}%` });
@@ -257,7 +257,7 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
             const rel = MODULE_BY_ID[m.moduleId]?.reliability ?? 0.9;
             m.condition = clamp(m.condition - 0.004 * stress, 0, 1);
             const p = (1 - rel) * 0.015 * (1 + (over / 10) ** 1.5) * (1 + (100 - ship.integrity) / 100) * (1.6 - m.condition);
-            if (rng.chance(p)) {
+            if (!world.scripted && rng.chance(p)) {
               m.failed = true;
               const hit = m.slot === 'POWERPLANT' ? 15 : m.slot === 'CMS' ? 12 : 6;
               ship.readiness -= hit;

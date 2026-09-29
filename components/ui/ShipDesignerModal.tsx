@@ -10,6 +10,8 @@ import { SLOT_ORDER, type ModuleSlot } from '@/lib/types/equipment';
 import type { NamingTradition } from '@/lib/types/fleet';
 import type { HullClassId, ShipDesign } from '@/lib/types/hull';
 import { useFleetStore } from '@/store/useFleetStore';
+import TutorialCard from '@/components/tutorial/TutorialCard';
+import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
 
 type Sel = Record<ModuleSlot, string[]>;
@@ -39,9 +41,11 @@ export default function ShipDesignerModal() {
   const budget = useFleetStore((s) => s.resources.budget);
   const { setDesignerOpen, saveDesign, deleteDesign, orderShip } = useFleetStore.getState();
 
-  const [hullId, setHullId] = useState<HullClassId>(designs[0]?.hullId ?? 'FRIGATE');
-  const [name, setName] = useState(designs[0]?.name ?? 'New design');
-  const [sel, setSel] = useState<Sel>(() => (designs[0] ? selFromDesign(designs[0]) : emptySel('FRIGATE')));
+  // The briefing can open the designer on a preset (e.g. one that overloads its power grid).
+  const start = useFleetStore.getState().designerPreset ?? designs[0];
+  const [hullId, setHullId] = useState<HullClassId>(start?.hullId ?? 'FRIGATE');
+  const [name, setName] = useState(start?.name ?? 'New design');
+  const [sel, setSel] = useState<Sel>(() => (start ? selFromDesign(start) : emptySel('FRIGATE')));
   const [tradition, setTradition] = useState<NamingTradition>('VIRTUES');
   const [custom, setCustom] = useState('');
   const squadrons = useMemo(() => fleets.flatMap((f) => f.taskForces.flatMap((t) => t.squadrons.map((s) => ({ id: s.id, label: `${t.name} / ${s.name}` })))), [fleets]);
@@ -86,6 +90,9 @@ export default function ShipDesignerModal() {
         </header>
 
         <div className="grid min-h-0 flex-1 gap-2 overflow-y-auto p-2 lg:grid-cols-[1fr_400px]">
+          <div className="lg:col-span-2 empty:hidden">
+            <TutorialCard compact />
+          </div>
           <div className="space-y-2">
             <Section title="Hull base">
               <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
@@ -172,7 +179,7 @@ export default function ShipDesignerModal() {
               </div>
             </Section>
 
-            <Section title="Protocol compatibility" tone="amber">
+            <Section title={<Term k="FRICTION">Protocol compatibility</Term>} tone="amber">
               <div className="mb-1 text-[0.8125rem] text-slate-500">CMS bus: <span className="text-emerald-accent">{cms ? PROTO(cms.protocol) : 'NONE'}</span></div>
               {ev.frictions.length === 0 && <div className="text-[0.875rem] text-emerald-accent">No mismatched modules.</div>}
               {ev.frictions.map((f) => (

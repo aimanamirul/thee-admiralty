@@ -2,10 +2,10 @@
 /** Tiny terminal-styled UI kit shared by the panels. */
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-export function Section({ title, right, children, tone = 'cyan' }: { title: string; right?: ReactNode; children: ReactNode; tone?: 'cyan' | 'amber' | 'red' | 'emerald' }) {
+export function Section({ title, right, children, tone = 'cyan', anchor }: { title: ReactNode; right?: ReactNode; children: ReactNode; tone?: 'cyan' | 'amber' | 'red' | 'emerald'; anchor?: string }) {
   const t = { cyan: 'text-phosphor border-phosphor/40', amber: 'text-amber-radar border-amber-radar/40', red: 'text-warn border-warn/40', emerald: 'text-emerald-accent border-emerald-accent/40' }[tone];
   return (
-    <section className="border border-navy bg-panel/80">
+    <section data-tutorial={anchor} className="border border-navy bg-panel/80">
       <header className={`flex items-center justify-between border-b px-2 py-1 text-[0.8125rem] uppercase tracking-[0.2em] ${t}`}>
         <span>▍{title}</span>
         {right}

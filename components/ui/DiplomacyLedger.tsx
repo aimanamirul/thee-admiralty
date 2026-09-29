@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { MINISTRIES, MODULES, VENDOR_SHORT } from '@/lib/data/catalog';
 import { standingTier, type Vendor } from '@/lib/types/diplomacy';
 import { useFleetStore } from '@/store/useFleetStore';
+import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section } from './kit';
 
 function statusChip(v: Vendor, tick: number) {
@@ -30,7 +31,7 @@ export default function DiplomacyLedger() {
 
   return (
     <div className="space-y-2">
-      <Section title="Geopolitical climate" tone="amber" right={<span className="text-amber-radar">PC {pc.toFixed(1)}</span>}>
+      <Section title={<Term k="TENSION">Geopolitical climate</Term>} tone="amber" right={<span className="text-amber-radar">PC {pc.toFixed(1)}</span>}>
         <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
         <p className="mt-1 text-[0.8125rem] text-slate-500">Tension raises the chance a vendor state revokes licences, freezes exports or embargoes spares. Ministerial lobbying builds standing; at 65+ a pending sanction is averted outright.</p>
       </Section>
@@ -39,9 +40,9 @@ export default function DiplomacyLedger() {
         const tier = standingTier(v.standing);
         const risk = v.id === 'DOMESTIC_YARDS' ? 0 : ((tension / 100) ** 2 * v.volatility * 0.03 * (1 - v.standing / 130)) * 30 * 100;
         return (
-          <Section key={v.id} title={`${v.name} · ${v.country}`} tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'} right={statusChip(v, tick)}>
+          <Section key={v.id} anchor={`vendor-${v.id}`} title={`${v.name} · ${v.country}`} tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'} right={statusChip(v, tick)}>
             <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500">
-              <span>STANDING</span>
+              <span><Term k="STANDING">STANDING</Term></span>
               <div className="relative flex-1">
                 <Meter value={v.standing} tone="cyan" label={v.standing.toFixed(0)} />
                 {[25, 50, 75].map((t) => (

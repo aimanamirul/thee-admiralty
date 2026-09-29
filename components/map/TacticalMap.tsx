@@ -9,7 +9,9 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtLat, fmtLon, geoOrigin, tileToLat, tileToLon, type GeoOrigin } from '@/lib/generator/geo';
 import { ENGAGE_RANGE, IDENTIFY_RANGE } from '@/lib/sim/worldEngine';
 import { tierOf, type MapData, type Polyline } from '@/lib/types/map';
+import { LESSONS } from '@/lib/tutorial/lessons';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 
 const C = {
   void: '#050811',
@@ -126,6 +128,7 @@ export default function TacticalMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true });
   const [toggles, setToggles] = useState<Toggles>(togglesRef.current);
+  const showLayers = useUiFlag('LAYERS');
   const [fps, setFps] = useState(0);
 
   useEffect(() => {
@@ -148,6 +151,7 @@ export default function TacticalMap() {
     const cursor = { x: -1, y: -1, inside: false };
     const display = new Map<string, { x: number; y: number; h: number }>();
     let raf = 0;
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     let ui = 1;
     let fontFamily = 'monospace';
     let frames = 0;
@@ -510,6 +514,28 @@ export default function TacticalMap() {
         if (view.scale > view.fit * 1.2) label(`${c.name} · ${c.widthTiles}T`, p.x, p.y - r - 9, C.amber, 'center', 9);
       }
 
+      // Briefing objective: pulsing ring on the target sector.
+      {
+        const tut = useTutorialStore.getState();
+        const target = tut.active && !tut.completing && !tut.graduated && tut.lessonIndex >= 0 ? LESSONS[tut.lessonIndex].target : undefined;
+        if (target !== undefined && map.sectors[target]) {
+          const a = map.sectors[target].anchor;
+          const p = toScreen(a.x, a.y);
+          const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now / 300);
+          ctx.save();
+          ctx.strokeStyle = C.amber;
+          ctx.shadowColor = C.amber;
+          ctx.shadowBlur = 10 * dpr;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 24 + 8 * pulse, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+          label('OBJECTIVE', p.x, p.y - 42, C.amber, 'center', 11);
+        }
+      }
+
       // Home port.
       {
         const p = toScreen(map.homePort.x, map.homePort.y);
@@ -682,7 +708,7 @@ export default function TacticalMap() {
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-void">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
       <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
-        <div className="pointer-events-auto flex gap-1">
+        {showLayers && <div className="pointer-events-auto flex gap-1">
           {(['grid', 'bathy', 'sectors', 'threat'] as const).map((k) => (
             <button
               key={k}
@@ -692,7 +718,7 @@ export default function TacticalMap() {
               {k}
             </button>
           ))}
-        </div>
+        </div>}
         <div className="text-phosphor/50">{fps} FPS · WHEEL ZOOM · DRAG PAN · DBL-CLICK FIT · RMB = ORDER TF TO SECTOR</div>
       </div>
     </div>

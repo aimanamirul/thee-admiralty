@@ -7,6 +7,7 @@ import { frictionSeverity } from '@/lib/sim/designEngine';
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RESEARCH_SLOTS, RP_THROUGHPUT_PER_PROJECT } from '@/lib/sim/researchEngine';
 import { bridgeKey, PROTOCOLS } from '@/lib/types/equipment';
 import { useFleetStore } from '@/store/useFleetStore';
+import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section } from './kit';
 
 const SHORT: Record<string, string> = { TACTICOS_ETHERNET: 'TACTICOS', NATO_LINK16: 'LINK-16', EASTERN_ANALOG: 'E.ANALOG', DOMESTIC_OPEN: 'OPEN BUS' };
@@ -86,7 +87,7 @@ export default function RDBureauPanel() {
         </div>
       </Section>
 
-      <Section title="Protocol friction matrix" tone="amber">
+      <Section title={<Term k="FRICTION">Protocol friction matrix</Term>} tone="amber">
         <BridgeMatrix />
         <p className="mt-1 text-[0.8125rem] text-slate-500">Unbridged pairs add integration friction: slower CMS reaction and sensor tracking lag. A completed bridge removes it fleet-wide, permanently.</p>
       </Section>

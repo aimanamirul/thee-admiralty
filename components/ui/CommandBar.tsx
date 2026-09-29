@@ -1,18 +1,23 @@
 'use client';
 
-import { Coins, FastForward, FlaskConical, Factory, Landmark, Pause, Play, Radar, StepForward, Wrench } from 'lucide-react';
+import { Coins, FastForward, GraduationCap, FlaskConical, Factory, Landmark, Pause, Play, Radar, StepForward, Wrench } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { computeFinance } from '@/lib/sim/worldEngine';
 import { ARCHETYPE_LABEL, type MapArchetype } from '@/lib/types/map';
 import { useFleetStore, type SimSpeed } from '@/store/useFleetStore';
+import type { UiFlag } from '@/lib/tutorial/lessons';
+import { useTutorialLocked, useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
+import { Term } from '@/components/tutorial/Term';
 import { Btn, fmtM, Meter } from './kit';
 
 const START = Date.UTC(2026, 0, 1);
 const dateOf = (tick: number) => new Date(START + tick * 86400000).toISOString().slice(0, 10);
 
-function Readout({ icon, label, value, sub, tone = 'text-phosphor' }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string }) {
+function Readout({ icon, label, value, sub, tone = 'text-phosphor', flag, anchor }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string; flag: UiFlag; anchor: string }) {
+  const visible = useUiFlag(flag);
+  if (!visible) return null;
   return (
-    <div className="flex items-center gap-2 border-l border-navy px-3">
+    <div data-tutorial={anchor} className="flex items-center gap-2 border-l border-navy px-3">
       <span className={tone}>{icon}</span>
       <div className="leading-tight">
         <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">{label}</div>
@@ -39,6 +44,12 @@ export default function CommandBar() {
   const building = useMemo(() => Object.values(ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length, [ships]);
   const [seedInput, setSeedInput] = useState(seed);
   const [arch, setArch] = useState<MapArchetype | 'AUTO'>('AUTO');
+  const showTension = useUiFlag('READOUT_TENSION');
+  const showDate = useUiFlag('DATE');
+  const showClock = useUiFlag('CLOCK');
+  const showDesign = useUiFlag('DESIGN_BTN');
+  const locked = useTutorialLocked();
+  const beginTutorial = useTutorialStore((s) => s.begin);
 
   return (
     <header className="flex flex-wrap items-center gap-y-1 border-b border-phosphor/30 bg-panel px-2 py-1">
@@ -52,21 +63,25 @@ export default function CommandBar() {
         </div>
       </div>
 
-      <Readout icon={<Coins className="h-4 w-4" />} label="Budget" value={fmtM(res.budget)} sub={`${fin.net >= 0 ? '+' : ''}${fin.net.toFixed(1)}M/day`} tone={res.budget < 0 ? 'text-warn' : 'text-phosphor'} />
-      <Readout icon={<Factory className="h-4 w-4" />} label="Industry" value={`${building}/${res.industrialCapacity}`} sub="slipways busy" />
-      <Readout icon={<FlaskConical className="h-4 w-4" />} label="Research" value={`${res.researchPoints.toFixed(0)} RP`} tone="text-emerald-accent" />
-      <Readout icon={<Landmark className="h-4 w-4" />} label="Pol. Capital" value={res.politicalCapital.toFixed(1)} tone="text-amber-radar" />
-      <div className="flex w-28 flex-col justify-center border-l border-navy px-3">
-        <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">Tension</div>
-        <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
-      </div>
+      <Readout icon={<Coins className="h-4 w-4" />} flag="READOUT_BUDGET" anchor="readout-budget" label="Budget" value={fmtM(res.budget)} sub={`${fin.net >= 0 ? '+' : ''}${fin.net.toFixed(1)}M/day`} tone={res.budget < 0 ? 'text-warn' : 'text-phosphor'} />
+      <Readout icon={<Factory className="h-4 w-4" />} flag="READOUT_INDUSTRY" anchor="readout-industry" label="Industry" value={`${building}/${res.industrialCapacity}`} sub="slipways busy" />
+      <Readout icon={<FlaskConical className="h-4 w-4" />} flag="READOUT_RP" anchor="readout-rp" label="Research" value={`${res.researchPoints.toFixed(0)} RP`} tone="text-emerald-accent" />
+      <Readout icon={<Landmark className="h-4 w-4" />} flag="READOUT_PC" anchor="readout-pc" label="Pol. Capital" value={res.politicalCapital.toFixed(1)} tone="text-amber-radar" />
+      {showTension && (
+        <div data-tutorial="readout-tension" className="flex w-28 flex-col justify-center border-l border-navy px-3">
+          <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500"><Term k="TENSION">Tension</Term></div>
+          <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
+        </div>
+      )}
 
       <div className="ml-auto flex items-center gap-2">
-        <div className="text-right leading-tight">
-          <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">DAY {tick}</div>
-          <div className="text-xs tabular-nums text-phosphor">{dateOf(tick)}</div>
-        </div>
-        <div className="flex items-center gap-1">
+        {showDate && (
+          <div className="text-right leading-tight">
+            <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">DAY {tick}</div>
+            <div className="text-xs tabular-nums text-phosphor">{dateOf(tick)}</div>
+          </div>
+        )}
+        {showClock && <div data-tutorial="clock" className="flex items-center gap-1">
           <Btn onClick={() => setRunning(!running)} aria-label={running ? 'Pause' : 'Run'} tone={running ? 'amber' : 'emerald'}>
             {running ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
           </Btn>
@@ -79,17 +94,25 @@ export default function CommandBar() {
               {s}x
             </Btn>
           ))}
-        </div>
+        </div>}
         <div className="flex items-center gap-1" title="UI scale">
           <Btn tone="dim" aria-label="Smaller UI" onClick={() => setUiScale(uiScale - 0.1)}>A−</Btn>
           <span className="w-9 text-center text-xs tabular-nums text-slate-500">{Math.round(uiScale * 100)}%</span>
           <Btn tone="dim" aria-label="Larger UI" onClick={() => setUiScale(uiScale + 0.1)}>A+</Btn>
         </div>
-        <Btn tone="emerald" onClick={() => setDesignerOpen(true)}>
-          <Wrench className="mr-1 inline h-3 w-3" />
-          Design bureau
-        </Btn>
-        <form
+        {showDesign && (
+          <Btn data-tutorial="design-btn" tone="emerald" onClick={() => setDesignerOpen(true)}>
+            <Wrench className="mr-1 inline h-3 w-3" />
+            Design bureau
+          </Btn>
+        )}
+        {!locked && (
+          <Btn tone="dim" title="Replay the Admiral's Briefing (replaces the current game)" onClick={() => window.confirm("Restart the Admiral's Briefing? The current game will be replaced.") && beginTutorial()}>
+            <GraduationCap className="mr-1 inline h-3 w-3" />
+            Briefing
+          </Btn>
+        )}
+        {!locked && <form
           className="flex items-center gap-1"
           onSubmit={(e) => {
             e.preventDefault();
@@ -108,7 +131,7 @@ export default function CommandBar() {
           <Btn type="submit" tone="amber">
             Generate
           </Btn>
-        </form>
+        </form>}
       </div>
     </header>
   );

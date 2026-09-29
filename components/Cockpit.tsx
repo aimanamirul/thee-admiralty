@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import CRTOverlay from '@/components/map/CRTOverlay';
 import TacticalMap from '@/components/map/TacticalMap';
 import CommandBar from '@/components/ui/CommandBar';
@@ -10,14 +10,24 @@ import OrderOfBattle from '@/components/ui/OrderOfBattle';
 import RDBureauPanel from '@/components/ui/RDBureauPanel';
 import SectorPanel from '@/components/ui/SectorPanel';
 import ShipDesignerModal from '@/components/ui/ShipDesignerModal';
+import TitleScreen from '@/components/TitleScreen';
+import TutorialCard from '@/components/tutorial/TutorialCard';
+import TutorialSpotlight from '@/components/tutorial/TutorialSpotlight';
+import type { UiFlag } from '@/lib/tutorial/lessons';
 import { useFleetStore, type PanelTab } from '@/store/useFleetStore';
+import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 
-const TABS: { id: PanelTab; label: string }[] = [
-  { id: 'FLEET', label: 'Order of battle' },
-  { id: 'SECTOR', label: 'Sector' },
-  { id: 'RND', label: 'R&D bureau' },
-  { id: 'DIPLO', label: 'Diplomacy' },
+const TABS: { id: PanelTab; label: string; flag: UiFlag }[] = [
+  { id: 'FLEET', label: 'Order of battle', flag: 'TAB_FLEET' },
+  { id: 'SECTOR', label: 'Sector', flag: 'TAB_SECTOR' },
+  { id: 'RND', label: 'R&D bureau', flag: 'TAB_RND' },
+  { id: 'DIPLO', label: 'Diplomacy', flag: 'TAB_DIPLO' },
 ];
+
+/** Re-checks the current lesson's objective whenever the game state changes. */
+function useTutorialEvaluate() {
+  useEffect(() => useFleetStore.subscribe(() => useTutorialStore.getState().evaluate()), []);
+}
 
 /** Applies the UI scale to the root font-size and remembers it between sessions. */
 function useUiScale() {
@@ -66,9 +76,20 @@ function Toast() {
 export default function Cockpit() {
   useSimClock();
   useUiScale();
+  useTutorialEvaluate();
   const tab = useFleetStore((s) => s.tab);
   const setTab = useFleetStore((s) => s.setTab);
   const designerOpen = useFleetStore((s) => s.designerOpen);
+  const showPanel = useUiFlag('PANEL');
+  const showTicker = useUiFlag('TICKER');
+  const shown: Record<PanelTab, boolean> = {
+    FLEET: useUiFlag('TAB_FLEET'),
+    SECTOR: useUiFlag('TAB_SECTOR'),
+    RND: useUiFlag('TAB_RND'),
+    DIPLO: useUiFlag('TAB_DIPLO'),
+  };
+  const activeTab: PanelTab | null = shown[tab] ? tab : TABS.find((t) => shown[t.id])?.id ?? null;
+  const [screen, setScreen] = useState<'title' | 'game'>('title');
 
   return (
     <main className="flex h-screen flex-col bg-void">
@@ -79,36 +100,44 @@ export default function Cockpit() {
             <TacticalMap />
             <CRTOverlay />
           </div>
-          <div className="h-48 shrink-0 lg:h-56">
-            <EventFeed />
-          </div>
+          <TutorialCard />
+          {showTicker && (
+            <div data-tutorial="ticker" className="h-48 shrink-0 lg:h-56">
+              <EventFeed />
+            </div>
+          )}
         </div>
-        <aside className="flex h-[46vh] shrink-0 flex-col border-t border-phosphor/30 bg-panel lg:h-auto lg:w-[34rem] lg:border-l lg:border-t-0">
-          <nav className="flex border-b border-navy" role="tablist">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex-1 border-r border-navy px-1 py-1.5 text-[0.8125rem] uppercase tracking-widest transition last:border-r-0 ${
-                  tab === t.id ? 'bg-phosphor/10 text-phosphor shadow-glow' : 'text-slate-500 hover:text-phosphor'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2">
-            {tab === 'FLEET' && <OrderOfBattle />}
-            {tab === 'SECTOR' && <SectorPanel />}
-            {tab === 'RND' && <RDBureauPanel />}
-            {tab === 'DIPLO' && <DiplomacyLedger />}
-          </div>
-        </aside>
+        {showPanel && (
+          <aside data-tutorial="panel" className="flex h-[46vh] shrink-0 flex-col border-t border-phosphor/30 bg-panel lg:h-auto lg:w-[34rem] lg:border-l lg:border-t-0">
+            <nav className="flex border-b border-navy" role="tablist">
+              {TABS.filter((t) => shown[t.id]).map((t) => (
+                <button
+                  key={t.id}
+                  role="tab"
+                  data-tutorial={`tab-${t.id.toLowerCase()}`}
+                  aria-selected={activeTab === t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`flex-1 border-r border-navy px-1 py-1.5 text-[0.8125rem] uppercase tracking-widest transition last:border-r-0 ${
+                    activeTab === t.id ? 'bg-phosphor/10 text-phosphor shadow-glow' : 'text-slate-500 hover:text-phosphor'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+            <div className="min-h-0 flex-1 overflow-y-auto p-2">
+              {activeTab === 'FLEET' && <OrderOfBattle />}
+              {activeTab === 'SECTOR' && <SectorPanel />}
+              {activeTab === 'RND' && <RDBureauPanel />}
+              {activeTab === 'DIPLO' && <DiplomacyLedger />}
+            </div>
+          </aside>
+        )}
         <Toast />
       </div>
       {designerOpen && <ShipDesignerModal />}
+      <TutorialSpotlight />
+      {screen === 'title' && <TitleScreen onStart={() => setScreen('game')} />}
     </main>
   );
 }

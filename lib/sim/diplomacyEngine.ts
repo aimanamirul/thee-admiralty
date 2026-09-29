@@ -60,8 +60,8 @@ export function lobbyVendor(world: WorldDraft, vendorId: VendorId, ministryId: s
 /** Daily tension walk, standing drift and sanction state machine. */
 export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
   // Tension: mean-reverting walk with rare spikes.
-  world.tension += rng.gaussian() * 0.9 + 0.02 * (35 - world.tension);
-  if (rng.chance(0.012)) {
+  if (!world.scripted) world.tension += rng.gaussian() * 0.9 + 0.02 * (35 - world.tension);
+  if (!world.scripted && rng.chance(0.012)) {
     const spike = rng.range(12, 28);
     world.tension += spike;
     world.events.push({ severity: 'WARNING', text: `GEOPOLITICAL: ${rng.pick(HEADLINES)} (tension +${spike.toFixed(0)})` });
@@ -70,9 +70,10 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
 
   for (const v of Object.values(world.vendors)) {
     if (v.id === 'DOMESTIC_YARDS') continue;
-    v.standing = Math.max(10, v.standing - 0.03); // goodwill decays without upkeep
+    if (!world.scripted) v.standing = Math.max(10, v.standing - 0.03); // goodwill decays without upkeep
 
     if (v.status === 'ACTIVE') {
+      if (world.scripted) continue; // scripted worlds inject sanctions by hand
       const p = (world.tension / 100) ** 2 * v.volatility * 0.03 * (1 - v.standing / 130);
       if (rng.chance(p)) {
         const roll = rng.next();

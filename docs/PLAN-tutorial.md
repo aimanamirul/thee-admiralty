@@ -1,6 +1,6 @@
 # Tutorial stage — plan
 
-Status: **plan only, nothing implemented.**
+Status: **implemented** (see `docs/HANDOFF.md` for how it is built; the shipped script has 12 lessons, the table below is the original 9-lesson plan). Launched from the title screen.
 
 ## 1. Diagnosis: why it feels like too much
 
@@ -86,4 +86,4 @@ interface Lesson {
   (a CHOKEPOINT-style map with a single named strait linking them). Lessons 1–2 use A; the graduation lesson opens B, which
   teaches that coverage is a resource problem. The scripted contact, breakdown and sanction events are authored for this map only.
 - Add a **hard-coded seed and archetype** for the scenario and a headless test that plays it through, like `verifySim.ts`.
-- Still open: auto-launch vs title screen, voice of the briefing, Codex now or later.
+- Launch: **title-screen selection** (Begin briefing / Free play). Voice: terse military briefing. Codex: deferred.

@@ -1,0 +1,82 @@
+/**
+ * Browser walk-through of the Admiral's Briefing through the real UI (title screen -> graduation).
+ * Not part of `npm test`: needs `playwright-core` (npm i --no-save playwright-core), a Chromium
+ * (set CHROMIUM_PATH, default /opt/pw-browsers/chromium) and a running server:
+ *   npx next build && npx next start -p 3111 &
+ *   node scripts/e2e-tutorial.mjs [outDir]      # screenshots per lesson, exits non-zero on console errors
+ */
+import { chromium } from 'playwright-core';
+const SP = process.argv[2] ?? './e2e-out';
+import { mkdirSync } from 'node:fs';
+mkdirSync(SP, { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
+const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
+const errors = [];
+page.on('console', (m) => { if (['error', 'warning'].includes(m.type())) errors.push(`${m.type()}: ${m.text().slice(0, 200)}`); });
+page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+await page.goto('http://localhost:3111', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${SP}/t00-title.png` });
+await page.getByRole('button', { name: /Begin briefing/i }).click();
+await page.waitForTimeout(800);
+
+const lessonNo = async () => {
+  const t = await page.locator('[data-testid=tutorial-card]').innerText().catch(() => '');
+  const m = t.match(/BRIEFING (\d+)\/12/i);
+  return m ? Number(m[1]) : t.includes('BRIEFING COMPLETE') ? 13 : 0;
+};
+const waitLesson = async (n, ms = 30000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if ((await lessonNo()) >= n) return; await page.waitForTimeout(150); }
+  throw new Error(`stuck: expected lesson ${n}, on ${await lessonNo()}`);
+};
+const canvas = await page.locator('canvas').boundingBox();
+const at = (fx, fy) => [canvas.x + canvas.width * fx, canvas.y + canvas.height * fy];
+const shot = (n) => page.screenshot({ path: `${SP}/t${n}.png` });
+
+console.log('L1 start', await lessonNo());
+await shot('01-plot');
+await page.mouse.click(...at(0.25, 0.6));
+await waitLesson(2); await shot('02-roe');
+await page.getByRole('button', { name: 'Return fire' }).click();
+await waitLesson(3); await shot('03-station');
+await page.getByText('TF 11', { exact: true }).first().click();
+await page.mouse.click(...at(0.25, 0.6), { button: 'right' });
+await page.getByRole('button', { name: '4x' }).click();
+await page.getByRole('button', { name: 'Run' }).click();
+await waitLesson(4); await shot('04-command');
+await page.getByLabel('Rename TF 11').click();
+await page.getByLabel('New name').fill('Anvil Force');
+await page.getByLabel('New name').press('Enter');
+await waitLesson(5); await shot('05-thirds');
+await waitLesson(6, 60000); await shot('06-contact');
+await waitLesson(7, 60000); await shot('07-spares');
+await page.getByRole('button', { name: /SHOW/ }).click();
+await page.locator('li', { hasText: 'DSR-2D Surface Search' }).getByRole('button', { name: '+1' }).click();
+await waitLesson(8, 30000); await shot('08-design');
+await page.getByRole('button', { name: /Design bureau/i }).click();
+await page.waitForTimeout(500); await shot('08b-designer');
+await page.getByLabel('POWER PLANT socket 1').selectOption({ label: /CODAD-12/ }).catch(async () => {
+  const opts = await page.getByLabel('POWER PLANT socket 1').locator('option').allTextContents();
+  const v = await page.getByLabel('POWER PLANT socket 1').locator('option', { hasText: 'CODAD-12' }).getAttribute('value');
+  await page.getByLabel('POWER PLANT socket 1').selectOption(v);
+});
+await page.getByRole('button', { name: 'Lay down hull' }).click();
+await page.waitForTimeout(300);
+await page.getByLabel('Close designer').click();
+await waitLesson(9); await shot('09-friction');
+await page.locator('li', { hasText: 'MK41 ↔ TACTICOS Protocol Bridge' }).getByRole('button', { name: 'Start' }).click();
+await waitLesson(10, 60000); await shot('10-sanctions');
+await page.locator('section', { hasText: 'Aselsan · TURKEY' }).getByRole('button', { name: /Foreign/ }).click();
+await waitLesson(11, 20000); await shot('11-embargo');
+await page.locator('[data-tutorial="ship-SHP-2"] [role=button]').first().click();
+await page.getByRole('button', { name: /Designate parts hulk/ }).click();
+await waitLesson(12, 60000); await shot('12-graduation');
+await page.mouse.click(...at(0.72, 0.5));
+await page.locator('div', { hasText: /^TF 12 / }).filter({ has: page.getByRole('button', { name: 'Assign' }) }).last().getByRole('button', { name: 'Assign' }).click();
+await waitLesson(13, 20000); await shot('13-final');
+await page.getByRole('button', { name: 'Keep this scenario' }).click();
+await page.waitForTimeout(500); await shot('14-free');
+console.log('ERRORS:', JSON.stringify(errors, null, 1));
+process.exitCode = errors.length ? 1 : 0;
+await browser.close();

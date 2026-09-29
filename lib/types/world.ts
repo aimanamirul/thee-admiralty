@@ -33,6 +33,8 @@ export interface Contact {
   strength: number;
   bornTick: number;
   expiresTick: number;
+  /** Scripted contacts steer straight at this task force instead of drifting. */
+  pursue?: string;
 }
 
 export type EventSeverity = 'INFO' | 'ADVISORY' | 'WARNING' | 'CRITICAL' | 'COMBAT';
@@ -74,6 +76,8 @@ export interface WorldDraft {
   /** Global geopolitical tension 0-100; drives sanction risk. */
   tension: number;
   events: PendingEvent[];
+  /** Tutorial worlds disable random events (contacts, sanctions, failures, threat drift) so lessons are deterministic. */
+  scripted: boolean;
   /** Standing orders. */
   policy: { autoSpares: boolean };
   /** Running statistics for the ledger. */

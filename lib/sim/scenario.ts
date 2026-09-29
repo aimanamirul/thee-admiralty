@@ -103,6 +103,7 @@ export function createInitialWorld(seed: string, archetype?: MapArchetype): Worl
     sectors: {},
     vendors: vendors as Record<VendorId, WorldDraft['vendors'][VendorId]>,
     sanctions: [], research: initialResearch(), contacts: [], tension: 30, events: [],
+    scripted: false,
     policy: { autoSpares: true },
     stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0 },
   };
