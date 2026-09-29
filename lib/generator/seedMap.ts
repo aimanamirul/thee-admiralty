@@ -212,7 +212,7 @@ function buildRimland(ctx: BuildCtx): Macro {
   const a0 = Math.PI + r.range(-0.6, 0.6);
   const angles: number[] = [];
   for (let i = 0; i < straitCount; i++) angles.push(a0 + (i * 2 * Math.PI) / straitCount + r.range(-0.35, 0.35));
-  const gapW = r.range(3.5, 5.5);
+  const gapW = r.range(1.6, 2.8);
   const rMean = (rx + ry) / 2 + ringBase;
 
   const macro = (x: number, y: number) => {
@@ -245,6 +245,20 @@ function buildRimland(ctx: BuildCtx): Macro {
     const y = cy + Math.sin(ang) * ry * f;
     if (x < 6 || y < 6 || x > w - 7 || y > h - 7) continue;
     addBump(land, w, h, x, y, r.range(1.5, 3.5), -macro(x, y) + r.range(1.2, 3));
+  }
+
+  // Island chains threading each gap: the ring is thinned to a string of islets, not cut clean through.
+  for (const a of angles) {
+    const rho1 = 1 / Math.hypot(Math.cos(a) / rx, Math.sin(a) / ry);
+    const chain = r.int(4, 7);
+    for (let i = 0; i < chain; i++) {
+      const rho = rho1 + r.range(-2, ringBase * 2 + 2);
+      const lat = r.range(-4.5, 4.5);
+      const x = cx + Math.cos(a) * rho - Math.sin(a) * lat;
+      const y = cy + Math.sin(a) * rho + Math.cos(a) * lat;
+      if (x < 4 || y < 4 || x > w - 5 || y > h - 5) continue;
+      addBump(land, w, h, x, y, r.range(1.1, 2.4), -macro(x, y) + r.range(0.8, 2.2));
+    }
   }
 
   // Meandering island straits: 1-3 tiles wide, guaranteed to stay open.
