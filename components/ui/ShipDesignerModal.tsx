@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { HULL_LIST, HULLS, MODULE_BY_ID, MODULES, VENDOR_SHORT } from '@/lib/data/catalog';
+import { HULL_LIST, HULLS, MODULE_BY_ID, MODULES } from '@/lib/data/catalog';
 import { TRADITIONS, TRADITION_LABEL } from '@/lib/generator/nameGenerator';
 import { evaluateLoadout, procurability, SLOT_LABEL } from '@/lib/sim/designEngine';
 import { bridgeSet } from '@/lib/sim/researchEngine';
@@ -12,6 +12,7 @@ import type { HullClassId, ShipDesign } from '@/lib/types/hull';
 import { useFleetStore } from '@/store/useFleetStore';
 import TutorialCard from '@/components/tutorial/TutorialCard';
 import { Term } from '@/components/tutorial/Term';
+import { useNames } from '@/store/useNames';
 import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
 
 type Sel = Record<ModuleSlot, string[]>;
@@ -31,9 +32,9 @@ function selFromDesign(d: ShipDesign): Sel {
   return sel;
 }
 
-const PROTO = (p: string) => p.replace('_', ' ');
 
 export default function ShipDesignerModal() {
+  const n = useNames();
   const designs = useFleetStore((s) => s.designs);
   const research = useFleetStore((s) => s.research);
   const vendors = useFleetStore((s) => s.vendors);
@@ -124,7 +125,7 @@ export default function ShipDesignerModal() {
                         const stat = slot === 'POWERPLANT' ? `+${m.powerGenerationMW}MW` : `${m.powerDrawMW}MW`;
                         return (
                           <option key={m.id} value={m.id} disabled={!p.ok}>
-                            {m.name} · {VENDOR_SHORT[m.vendorId]} · {PROTO(m.protocol)} · {stat} · {m.weightT}t · {m.cost}M{p.ok ? '' : ` — ${p.reason}`}
+                            {n.m(m.id)} · {n.vs(m.vendorId)} · {n.x(m.protocol)} · {stat} · {m.weightT}t · {m.cost}M{p.ok ? '' : ` — ${p.reason}`}
                           </option>
                         );
                       })}
@@ -158,7 +159,7 @@ export default function ShipDesignerModal() {
                 <div key={w} className="text-[0.875rem] text-amber-radar">▲ {w}</div>
               ))}
               {blocked.map(({ m, p }) => (
-                <div key={m.id} className="text-[0.875rem] text-warn">✖ {m.name}: {p.reason}</div>
+                <div key={m.id} className="text-[0.875rem] text-warn">✖ {n.m(m.id)}: {p.reason}</div>
               ))}
               {ev.valid && ev.warnings.length === 0 && blocked.length === 0 && <div className="text-[0.875rem] text-emerald-accent">✔ All systems nominal</div>}
             </Section>
@@ -180,12 +181,12 @@ export default function ShipDesignerModal() {
             </Section>
 
             <Section title={<Term k="FRICTION">Protocol compatibility</Term>} tone="amber">
-              <div className="mb-1 text-[0.8125rem] text-slate-500">CMS bus: <span className="text-emerald-accent">{cms ? PROTO(cms.protocol) : 'NONE'}</span></div>
+              <div className="mb-1 text-[0.8125rem] text-slate-500">CMS bus: <span className="text-emerald-accent">{cms ? n.x(cms.protocol) : 'NONE'}</span></div>
               {ev.frictions.length === 0 && <div className="text-[0.875rem] text-emerald-accent">No mismatched modules.</div>}
               {ev.frictions.map((f) => (
                 <div key={f.moduleId + f.bridgeKey} className="flex items-center justify-between text-[0.875rem]">
-                  <span className="truncate text-slate-300">{f.moduleName}</span>
-                  {f.bridged ? <Chip tone="cyan">BRIDGED</Chip> : <Chip tone={f.severity >= 0.5 ? 'red' : 'amber'}>{PROTO(f.moduleProtocol)} · FRICTION {f.severity.toFixed(2)}</Chip>}
+                  <span className="truncate text-slate-300">{n.m(f.moduleId)}</span>
+                  {f.bridged ? <Chip tone="cyan">BRIDGED</Chip> : <Chip tone={f.severity >= 0.5 ? 'red' : 'amber'}>{n.x(f.moduleProtocol)} · FRICTION {f.severity.toFixed(2)}</Chip>}
                 </div>
               ))}
               {ev.frictionIndex > 0 && <div className="mt-1 text-[0.8125rem] text-amber-radar">Integration Friction Penalty: reaction ×{ev.reactionMultiplier.toFixed(2)}, tracking lag +{ev.trackingLagSec.toFixed(1)}s. Research a protocol bridge to remove it.</div>}
@@ -204,7 +205,7 @@ export default function ShipDesignerModal() {
               </div>
               <div className="mt-1 flex flex-wrap gap-1">
                 {ev.vendors.map((v) => (
-                  <Chip key={v} tone={vendors[v as keyof typeof vendors].status === 'ACTIVE' ? 'dim' : 'red'}>{VENDOR_SHORT[v as keyof typeof VENDOR_SHORT]}{vendors[v as keyof typeof vendors].status === 'ACTIVE' ? '' : ` ${vendors[v as keyof typeof vendors].status}`}</Chip>
+                  <Chip key={v} tone={vendors[v as keyof typeof vendors].status === 'ACTIVE' ? 'dim' : 'red'}>{n.vs(v)}{vendors[v as keyof typeof vendors].status === 'ACTIVE' ? '' : ` ${vendors[v as keyof typeof vendors].status}`}</Chip>
                 ))}
               </div>
             </Section>
@@ -245,7 +246,7 @@ export default function ShipDesignerModal() {
                   Lay down hull
                 </Btn>
               </div>
-              {msg && <div className={`mt-1 text-[0.875rem] ${msg.ok ? 'text-emerald-accent' : 'text-warn'}`}>{msg.ok ? '✔' : '✖'} {msg.text}</div>}
+              {msg && <div className={`mt-1 text-[0.875rem] ${msg.ok ? 'text-emerald-accent' : 'text-warn'}`}>{msg.ok ? '✔' : '✖'} {n.t(msg.text)}</div>}
             </Section>
           </div>
         </div>

@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import { MINISTRIES, MODULES, VENDOR_SHORT } from '@/lib/data/catalog';
+import { MINISTRIES, MODULES } from '@/lib/data/catalog';
 import { standingTier, type Vendor } from '@/lib/types/diplomacy';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
+import { useNames } from '@/store/useNames';
 import { Btn, Chip, Meter, Section } from './kit';
 
 function statusChip(v: Vendor, tick: number) {
@@ -17,6 +18,7 @@ function statusChip(v: Vendor, tick: number) {
 }
 
 export default function DiplomacyLedger() {
+  const n = useNames();
   const vendors = useFleetStore((s) => s.vendors);
   const tension = useFleetStore((s) => s.tension);
   const pc = useFleetStore((s) => s.resources.politicalCapital);
@@ -40,7 +42,7 @@ export default function DiplomacyLedger() {
         const tier = standingTier(v.standing);
         const risk = v.id === 'DOMESTIC_YARDS' ? 0 : ((tension / 100) ** 2 * v.volatility * 0.03 * (1 - v.standing / 130)) * 30 * 100;
         return (
-          <Section key={v.id} anchor={`vendor-${v.id}`} title={`${v.name} · ${v.country}`} tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'} right={statusChip(v, tick)}>
+          <Section key={v.id} anchor={`vendor-${v.id}`} title={`${n.v(v.id)} · ${n.c(v.id)}`} tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'} right={statusChip(v, tick)}>
             <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500">
               <span><Term k="STANDING">STANDING</Term></span>
               <div className="relative flex-1">
@@ -52,7 +54,7 @@ export default function DiplomacyLedger() {
               <span className="text-phosphor">T{tier}</span>
             </div>
             <div className="mt-1 flex justify-between text-[0.8125rem] text-slate-500">
-              <span>{VENDOR_SHORT[v.id]} · {counts[v.id] ?? 0} catalogue lines</span>
+              <span>{n.vs(v.id)} · {counts[v.id] ?? 0} catalogue lines</span>
               {v.id !== 'DOMESTIC_YARDS' && <span className={risk > 8 ? 'text-warn' : risk > 3 ? 'text-amber-radar' : ''}>30-DAY SANCTION RISK ≈ {risk.toFixed(1)}%</span>}
             </div>
             {v.id !== 'DOMESTIC_YARDS' && (
@@ -75,7 +77,7 @@ export default function DiplomacyLedger() {
             const live = s.endTick === null || s.endTick > tick;
             return (
               <li key={s.id} className={live ? 'text-warn' : 'text-slate-600'}>
-                D{s.startTick} · {vendors[s.vendorId].name} · {s.kind.replace('_', ' ')} · {live ? (s.endTick === null ? 'INDEFINITE' : `until D${s.endTick}`) : 'lifted'}
+                D{s.startTick} · {n.v(s.vendorId)} · {s.kind.replace('_', ' ')} · {live ? (s.endTick === null ? 'INDEFINITE' : `until D${s.endTick}`) : 'lifted'}
               </li>
             );
           })}

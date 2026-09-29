@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "verify:map": "tsx scripts/verifyMap.ts",
     "verify:sim": "tsx scripts/verifySim.ts",
-    "verify:tutorial": "tsx scripts/verifyTutorial.ts"
+    "verify:tutorial": "tsx scripts/verifyTutorial.ts",
+    "verify:names": "tsx scripts/verifyNames.ts"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

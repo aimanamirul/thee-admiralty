@@ -1,5 +1,6 @@
 /** R&D bureau: RP spending, protocol-bridge projects and domestic substitution. */
 import { PROJECT_BY_ID } from '../data/catalog';
+import { pt } from '../data/tokens';
 import type { BridgeKey } from '../types/equipment';
 import { bridgeKey } from '../types/equipment';
 import type { ResearchState, WorldDraft } from '../types/world';
@@ -30,7 +31,7 @@ export function canStart(state: ResearchState, id: string): { ok: boolean; reaso
   if (state.active.includes(id)) return { ok: false, reason: 'ALREADY ACTIVE' };
   if (state.active.length >= RESEARCH_SLOTS) return { ok: false, reason: 'NO FREE ENGINEERING SLOT' };
   const missing = p.requires.filter((r) => !state.completed.includes(r));
-  if (missing.length) return { ok: false, reason: `REQUIRES ${missing.map((m) => PROJECT_BY_ID[m]?.name ?? m).join(', ')}` };
+  if (missing.length) return { ok: false, reason: `REQUIRES ${missing.map((m) => pt(m)).join(', ')}` };
   return { ok: true };
 }
 
@@ -52,8 +53,8 @@ export function tickResearch(world: WorldDraft): void {
         severity: 'ADVISORY',
         text:
           p.kind === 'PROTOCOL_BRIDGE'
-            ? `R&D COMPLETE: ${p.name} — integration friction removed fleet-wide for this protocol pair`
-            : `R&D COMPLETE: ${p.name} — new domestic hardware available to the Design Bureau`,
+            ? `R&D COMPLETE: ${pt(p.id)} — integration friction removed fleet-wide for this protocol pair`
+            : `R&D COMPLETE: ${pt(p.id)} — new domestic hardware available to the Design Bureau`,
       });
     }
   }

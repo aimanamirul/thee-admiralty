@@ -61,10 +61,27 @@ Lessons that need the player to do something with the clock (2 press play; 6 buy
 Known limits / ideas: Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
 contacts are engaged at 12 tiles before the 10-tile identification, so hostiles are never seen turning red first.
 
+## Contractors phase 0: display-name layer (done)
+
+Vendors, countries, modules, R&D projects and protocols now have a fictional default and a real-name skin (top-bar **Names** button and the
+title screen; persisted in `localStorage` `al.skin`).
+- `lib/data/catalog.ts` carries the FICTIONAL names (Halberd Dynamics, Meridian Navale, Sarnic Defence, Arsenal Yards; Meridian TACTIS, VL-41,
+  Alliance Link, ...). `lib/data/names.ts` holds the REAL overrides and `resolveText(text, skin)`. Internal ids (`RAYTHEON`, `CMS_NG_TACTICOS`,
+  `NATO_LINK16`) are unchanged and never shown.
+- **Name tokens** (`lib/data/tokens.ts`: `vt/vst/ct/mt/pt/xt/xst` produce `{v:ID}`, `{m:ID}`, `{p:ID}`, `{x:PROTO}`...) are what engine events,
+  refusals, lesson copy and catalogue blurbs contain. Components resolve them at render time with `useNames()` (`store/useNames.ts`; `n.t(text)`,
+  `n.v/vs/c/m/p/x/xs(id)`), so toggling the skin also relabels old ledger entries. **Rule: never write a vendor / module / project / protocol name
+  into engine or lesson text; emit a token.**
+- `npm run verify:names` proves it: tables complete, both skins resolve with no leftover tokens, and the fictional skin shows no real name in
+  catalogue data, lesson copy, engine events from 3 archetypes x 700 high-tension days, or static UI source (comments excluded). A mutation test
+  (planting a real name in a lesson, an event and a component) is caught by all three checks.
+- Not yet aliased: the 4 vendors that do not exist yet (Nordvik, Seorak, Kessler-Brandt, cold vendors); add them to `catalog.ts` (fictional) and
+  `names.ts` (real) when phase 1 lands. Tutorial anchors (`vendor-ASELSAN`) still use internal ids on purpose.
+
 ## What to build next
 
-Per the user's decisions: contractors, submarines and the Movement faction are for design discussion first (see backlog). No code task is
-queued; ask the user what to pick up.
+Contractors phase 1 (`docs/PLAN-foreign-contractors.md` §10): relationship ladder + regime profiles + vendors 6-8 + Diplomacy tab v2. Submarines and
+the Movement faction remain design-only. Confirm with the user before starting.
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

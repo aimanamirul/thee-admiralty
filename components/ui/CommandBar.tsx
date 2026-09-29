@@ -38,7 +38,8 @@ export default function CommandBar() {
   const seed = useFleetStore((s) => s.seed);
   const archetype = useFleetStore((s) => s.map.archetype);
   const uiScale = useFleetStore((s) => s.uiScale);
-  const { setRunning, setSpeed, step, newTheatre, setDesignerOpen, setUiScale } = useFleetStore.getState();
+  const skin = useFleetStore((s) => s.skin);
+  const { setRunning, setSpeed, step, newTheatre, setDesignerOpen, setUiScale, setSkin } = useFleetStore.getState();
 
   const fin = useMemo(() => computeFinance(Object.values(ships)), [ships]);
   const building = useMemo(() => Object.values(ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length, [ships]);
@@ -100,6 +101,14 @@ export default function CommandBar() {
           <span className="w-9 text-center text-xs tabular-nums text-slate-500">{Math.round(uiScale * 100)}%</span>
           <Btn tone="dim" aria-label="Larger UI" onClick={() => setUiScale(uiScale + 0.1)}>A+</Btn>
         </div>
+        <Btn
+          tone="dim"
+          aria-label="Name skin"
+          title="Fictional aliases (default) or real vendor and product names. Applies everywhere, including past ledger entries."
+          onClick={() => setSkin(skin === 'FICTIONAL' ? 'REAL' : 'FICTIONAL')}
+        >
+          Names: {skin === 'FICTIONAL' ? 'Fictional' : 'Real'}
+        </Btn>
         {showDesign && (
           <Btn data-tutorial="design-btn" tone="emerald" onClick={() => setDesignerOpen(true)}>
             <Wrench className="mr-1 inline h-3 w-3" />

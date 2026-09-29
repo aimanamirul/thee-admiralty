@@ -65,9 +65,9 @@ await page.getByRole('button', { name: 'Lay down hull' }).click();
 await page.waitForTimeout(300);
 await page.getByLabel('Close designer').click();
 await waitLesson(9); await shot('09-friction');
-await page.locator('li', { hasText: 'MK41 ↔ TACTICOS Protocol Bridge' }).getByRole('button', { name: 'Start' }).click();
+await page.locator('li', { hasText: 'VL-41 ↔ TACTIS Protocol Bridge' }).getByRole('button', { name: 'Start' }).click();
 await waitLesson(10, 60000); await shot('10-sanctions');
-await page.locator('section', { hasText: 'Aselsan · TURKEY' }).getByRole('button', { name: /Foreign/ }).click();
+await page.locator('section', { hasText: 'Sarnic Defence · REPUBLIC OF SARNIA' }).getByRole('button', { name: /Foreign/ }).click();
 await waitLesson(11, 20000); await shot('11-embargo');
 await page.locator('[data-tutorial="ship-SHP-2"] [role=button]').first().click();
 await page.getByRole('button', { name: /Designate parts hulk/ }).click();
@@ -77,6 +77,17 @@ await page.locator('div', { hasText: /^TF 12 / }).filter({ has: page.getByRole('
 await waitLesson(13, 20000); await shot('13-final');
 await page.getByRole('button', { name: 'Keep this scenario' }).click();
 await page.waitForTimeout(500); await shot('14-free');
+// name skin: fictional by default, real on toggle, applied to ledger text and panels
+await page.getByRole('tab', { name: /Diplomacy/i }).click();
+// innerText applies CSS text-transform (uppercase headings), so compare case-insensitively
+const body = async () => (await page.locator('body').innerText()).toLowerCase();
+if (!(await body()).includes('halberd dynamics') || (await body()).includes('raytheon')) errors.push('skin: expected fictional names by default');
+await page.getByRole('button', { name: 'Name skin' }).click();
+await page.waitForTimeout(300);
+if (!(await body()).includes('raytheon') || (await body()).includes('halberd dynamics')) errors.push('skin: expected real names after toggle');
+await page.getByRole('button', { name: 'Name skin' }).click();
+await page.waitForTimeout(300);
+if ((await body()).includes('raytheon')) errors.push('skin: expected fictional names again');
 console.log('ERRORS:', JSON.stringify(errors, null, 1));
 process.exitCode = errors.length ? 1 : 0;
 await browser.close();

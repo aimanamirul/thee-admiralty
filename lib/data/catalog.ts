@@ -6,18 +6,18 @@ import type { HullBase, HullClassId, ShipDesign } from '../types/hull';
 // ------------------------------------------------------------------------------- vendors
 
 export const INITIAL_VENDORS: Vendor[] = [
-  { id: 'DOMESTIC_YARDS', name: 'Domestic Yards', country: 'HOME', standing: 100, volatility: 0, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'NAVAL_GROUP_THALES', name: 'Naval Group / Thales', country: 'FRANCE', standing: 45, volatility: 0.35, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'RAYTHEON', name: 'Raytheon', country: 'USA', standing: 35, volatility: 0.6, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'ASELSAN', name: 'Aselsan', country: 'TURKEY', standing: 50, volatility: 0.45, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
+  { id: 'DOMESTIC_YARDS', name: 'Arsenal Yards', country: 'HOME', standing: 100, volatility: 0, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
+  { id: 'NAVAL_GROUP_THALES', name: 'Meridian Navale', country: 'REPUBLIC OF AURELLE', standing: 45, volatility: 0.35, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
+  { id: 'RAYTHEON', name: 'Halberd Dynamics', country: 'FEDERATED STATES OF HALCYON', standing: 35, volatility: 0.6, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
+  { id: 'ASELSAN', name: 'Sarnic Defence', country: 'REPUBLIC OF SARNIA', standing: 50, volatility: 0.45, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
   { id: 'ZVEZDA_NORD', name: 'Zvezda-Nord Export', country: 'EASTERN BLOC', standing: 55, volatility: 0.8, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
 ];
 
 export const VENDOR_SHORT: Record<VendorId, string> = {
-  DOMESTIC_YARDS: 'DOM',
-  NAVAL_GROUP_THALES: 'N-G/THA',
-  RAYTHEON: 'RTX',
-  ASELSAN: 'ASEL',
+  DOMESTIC_YARDS: 'ARS',
+  NAVAL_GROUP_THALES: 'MERID',
+  RAYTHEON: 'HALB',
+  ASELSAN: 'SARN',
   ZVEZDA_NORD: 'ZVEZDA',
 };
 
@@ -113,17 +113,17 @@ export const MODULES: EquipmentModule[] = [
   // Combat management systems
   cms('CMS_DOM_OB1', 'Open Bus CMS-D1', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 1.5, 8, 6, 0, 0.9, 9, 4, 'Indigenous open-architecture bus. Slow but easy to bridge.'),
   cms('CMS_DOM_OB2', 'Open Bus CMS-D2', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 2.2, 10, 14, 0, 0.9, 6.5, 8, 'Second-generation domestic CMS.', 'PRJ_DOM_CMS'),
-  cms('CMS_NG_TACTICOS', 'Thales TACTICOS', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 2.5, 12, 22, 1, 0.92, 5, 12, 'Ethernet-based CMS. Market benchmark for mid-size warships.'),
-  cms('CMS_RTX_AEGISLINK', 'Aegis Link C&D', 'RAYTHEON', 'NATO_LINK16', 4, 20, 48, 3, 0.9, 3.5, 24, 'Cooperative engagement grade combat system.'),
+  cms('CMS_NG_TACTICOS', 'Meridian TACTIS', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 2.5, 12, 22, 1, 0.92, 5, 12, 'Ethernet-based CMS. Market benchmark for mid-size warships.'),
+  cms('CMS_RTX_AEGISLINK', 'Bulwark Link C&D', 'RAYTHEON', 'NATO_LINK16', 4, 20, 48, 3, 0.9, 3.5, 24, 'Cooperative engagement grade combat system.'),
   cms('CMS_ZV_SIGMA', 'Sigma-M CMS', 'ZVEZDA_NORD', 'EASTERN_ANALOG', 2, 15, 9, 0, 0.78, 7, 6, 'Analog tote-board CMS. Inexpensive, very slow to integrate.'),
 
   // Sensors
   sensor('SEN_DOM_DSR2', 'DSR-2D Surface Search', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 0.8, 6, 3, 0, 0.94, 45, 20, 'X-band navigation and surface search.'),
   sensor('SEN_DOM_DAR3', 'DAR-3D AESA', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 4, 20, 26, 0, 0.88, 140, 90, 'Indigenous S-band AESA.', 'PRJ_DOM_RADAR'),
-  sensor('SEN_NG_SMARTS', 'SMART-S 3D S-band', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 3, 14, 20, 1, 0.9, 150, 60, 'Proven medium-range 3D radar.'),
-  sensor('SEN_NG_APAR', 'APAR-class AESA', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 8, 34, 48, 3, 0.86, 200, 200, 'Multi-function active phased array.'),
-  sensor('SEN_ASEL_SPEAR', 'Aselsan SPEAR 3D AESA', 'ASELSAN', 'NATO_LINK16', 6, 26, 30, 2, 0.87, 180, 140, 'Turkish-built AESA with NATO data link.'),
-  sensor('SEN_RTX_SPY6', 'SPY-6-class AESA', 'RAYTHEON', 'NATO_LINK16', 14, 60, 90, 3, 0.9, 400, 500, 'Ballistic-missile-defence grade radar.'),
+  sensor('SEN_NG_SMARTS', 'SENTA-S 3D S-band', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 3, 14, 20, 1, 0.9, 150, 60, 'Proven medium-range 3D radar.'),
+  sensor('SEN_NG_APAR', 'APEX-class AESA', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 8, 34, 48, 3, 0.86, 200, 200, 'Multi-function active phased array.'),
+  sensor('SEN_ASEL_SPEAR', 'Sarnic SPEAR 3D AESA', 'ASELSAN', 'NATO_LINK16', 6, 26, 30, 2, 0.87, 180, 140, 'AESA from {v:ASELSAN} with an {x:NATO_LINK16} data link.'),
+  sensor('SEN_RTX_SPY6', 'HALO-6-class AESA', 'RAYTHEON', 'NATO_LINK16', 14, 60, 90, 3, 0.9, 400, 500, 'Ballistic-missile-defence grade radar.'),
   sensor('SEN_ZV_SIGMAAIR', 'Sigma Air Search', 'ZVEZDA_NORD', 'EASTERN_ANALOG', 3, 18, 10, 0, 0.8, 120, 40, 'Analog air-search radar.'),
 
   // Armament
@@ -132,11 +132,11 @@ export const MODULES: EquipmentModule[] = [
   arm('ARM_DOM_DSAM8', 'DSAM 8-Cell VLS', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 0.4, 28, 9, 0, 0.9, 'SAM', 8, 22, 30, 'Short-range domestic SAM.'),
   arm('ARM_DOM_DSAM32', 'DSAM-ER 32-Cell VLS', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 1, 90, 30, 0, 0.88, 'SAM', 32, 26, 60, 'Extended-range domestic area defence.', 'PRJ_DOM_VLS'),
   arm('ARM_DOM_SEASTRIKE', 'Sea-Strike SSM Quad', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 0.3, 22, 12, 0, 0.9, 'SSM', 4, 70, 160, 'Indigenous anti-ship missile.', 'PRJ_DOM_SSM'),
-  arm('ARM_NG_SYLVER8', 'Sylver A43 8-Cell', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 0.5, 32, 16, 1, 0.92, 'SAM', 8, 30, 45, 'Vertical launcher, medium-range SAM.'),
-  arm('ARM_NG_MM40', 'MM40 Block3 SSM Quad', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 0.3, 24, 18, 1, 0.9, 'SSM', 4, 85, 180, 'Sea-skimming anti-ship missile.'),
-  arm('ARM_RTX_MK41', 'MK41 VLS + ESSM (16)', 'RAYTHEON', 'NATO_LINK16', 1.2, 70, 42, 2, 0.93, 'SAM', 16, 34, 50, 'Universal launcher loaded with quad-packed ESSM.'),
-  arm('ARM_RTX_HARPOON', 'Harpoon-class SSM Quad', 'RAYTHEON', 'NATO_LINK16', 0.3, 26, 15, 2, 0.92, 'SSM', 4, 80, 140, 'Ubiquitous anti-ship missile.'),
-  arm('ARM_ASEL_SEALANCE', 'Sea Lance SSM Quad', 'ASELSAN', 'NATO_LINK16', 0.3, 22, 11, 1, 0.9, 'SSM', 4, 75, 150, 'Turkish anti-ship missile, NATO-compatible.'),
+  arm('ARM_NG_SYLVER8', 'Sylvane V43 8-Cell', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 0.5, 32, 16, 1, 0.92, 'SAM', 8, 30, 45, 'Vertical launcher, medium-range SAM.'),
+  arm('ARM_NG_MM40', 'MX40 Block3 SSM Quad', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 0.3, 24, 18, 1, 0.9, 'SSM', 4, 85, 180, 'Sea-skimming anti-ship missile.'),
+  arm('ARM_RTX_MK41', 'VL-41 VLS + SPX-16 (16)', 'RAYTHEON', 'NATO_LINK16', 1.2, 70, 42, 2, 0.93, 'SAM', 16, 34, 50, 'Universal launcher loaded with quad-packed medium-range SAMs.'),
+  arm('ARM_RTX_HARPOON', 'Lancer-class SSM Quad', 'RAYTHEON', 'NATO_LINK16', 0.3, 26, 15, 2, 0.92, 'SSM', 4, 80, 140, 'Ubiquitous anti-ship missile.'),
+  arm('ARM_ASEL_SEALANCE', 'Sea Lance SSM Quad', 'ASELSAN', 'NATO_LINK16', 0.3, 22, 11, 1, 0.9, 'SSM', 4, 75, 150, 'Anti-ship missile with {x:NATO_LINK16} compatibility.'),
   arm('ARM_ZV_KH8', 'P-Kh SSM x8', 'ZVEZDA_NORD', 'EASTERN_ANALOG', 0.5, 60, 14, 0, 0.82, 'SSM', 8, 90, 200, 'Heavy analog-guided salvo missile.'),
   arm('ARM_ZV_CIWS30', 'AK-30 CIWS', 'ZVEZDA_NORD', 'EASTERN_ANALOG', 0.4, 14, 3, 0, 0.88, 'GUN', 1, 12, 5, 'Twin 30mm close-in weapon.'),
 ];
@@ -159,12 +159,12 @@ export interface ResearchProject {
 }
 
 export const RESEARCH_PROJECTS: ResearchProject[] = [
-  { id: 'BR_L16_TAC', name: 'MK41 ↔ TACTICOS Protocol Bridge', kind: 'PROTOCOL_BRIDGE', costRP: 120, requires: [], bridge: ['NATO_LINK16', 'TACTICOS_ETHERNET'], blurb: 'Raytheon guidance & launcher data onto the Thales TACTICOS Ethernet bus.' },
-  { id: 'BR_L16_DOM', name: 'Link-16 ↔ Open Bus Gateway', kind: 'PROTOCOL_BRIDGE', costRP: 80, requires: [], bridge: ['NATO_LINK16', 'DOMESTIC_OPEN'], blurb: 'Lets domestic CMS command NATO-standard sensors and weapons.' },
-  { id: 'BR_TAC_DOM', name: 'TACTICOS ↔ Open Bus Gateway', kind: 'PROTOCOL_BRIDGE', costRP: 80, requires: [], bridge: ['TACTICOS_ETHERNET', 'DOMESTIC_OPEN'], blurb: 'Gateway between French Ethernet CMS and the domestic bus.' },
+  { id: 'BR_L16_TAC', name: 'VL-41 ↔ TACTIS Protocol Bridge', kind: 'PROTOCOL_BRIDGE', costRP: 120, requires: [], bridge: ['NATO_LINK16', 'TACTICOS_ETHERNET'], blurb: '{v:RAYTHEON} guidance & launcher data onto the {v:NAVAL_GROUP_THALES} {x:TACTICOS_ETHERNET} bus.' },
+  { id: 'BR_L16_DOM', name: 'Alliance Link ↔ Open Bus Gateway', kind: 'PROTOCOL_BRIDGE', costRP: 80, requires: [], bridge: ['NATO_LINK16', 'DOMESTIC_OPEN'], blurb: 'Lets domestic CMS command {x:NATO_LINK16}-standard sensors and weapons.' },
+  { id: 'BR_TAC_DOM', name: 'TACTIS ↔ Open Bus Gateway', kind: 'PROTOCOL_BRIDGE', costRP: 80, requires: [], bridge: ['TACTICOS_ETHERNET', 'DOMESTIC_OPEN'], blurb: 'Gateway between the {x:TACTICOS_ETHERNET} CMS and the domestic bus.' },
   { id: 'BR_EAST_DOM', name: 'Analog ↔ Open Bus Adapter', kind: 'PROTOCOL_BRIDGE', costRP: 100, requires: [], bridge: ['EASTERN_ANALOG', 'DOMESTIC_OPEN'], blurb: 'A/D conversion rack that digitises eastern analog signalling.' },
-  { id: 'BR_EAST_TAC', name: 'Analog ↔ TACTICOS Digitiser', kind: 'PROTOCOL_BRIDGE', costRP: 140, requires: ['BR_EAST_DOM'], bridge: ['EASTERN_ANALOG', 'TACTICOS_ETHERNET'], blurb: 'Builds on the open-bus adapter to reach TACTICOS.' },
-  { id: 'BR_EAST_L16', name: 'Analog ↔ Link-16 Digitiser', kind: 'PROTOCOL_BRIDGE', costRP: 160, requires: ['BR_EAST_DOM'], bridge: ['EASTERN_ANALOG', 'NATO_LINK16'], blurb: 'Cross-block bridge. Politically awkward, technically hard.' },
+  { id: 'BR_EAST_TAC', name: 'Analog ↔ TACTIS Digitiser', kind: 'PROTOCOL_BRIDGE', costRP: 140, requires: ['BR_EAST_DOM'], bridge: ['EASTERN_ANALOG', 'TACTICOS_ETHERNET'], blurb: 'Builds on the open-bus adapter to reach {x:TACTICOS_ETHERNET}.' },
+  { id: 'BR_EAST_L16', name: 'Analog ↔ Alliance Link Digitiser', kind: 'PROTOCOL_BRIDGE', costRP: 160, requires: ['BR_EAST_DOM'], bridge: ['EASTERN_ANALOG', 'NATO_LINK16'], blurb: 'Cross-block bridge. Politically awkward, technically hard.' },
   { id: 'PRJ_DOM_CMS', name: 'Domestic CMS Mk2', kind: 'DOMESTIC_SUBSTITUTE', costRP: 110, requires: [], blurb: 'Unlocks Open Bus CMS-D2 (6.5s reaction, 8 channels).' },
   { id: 'PRJ_DOM_RADAR', name: 'Domestic 3D AESA Programme', kind: 'DOMESTIC_SUBSTITUTE', costRP: 170, requires: [], blurb: 'Unlocks DAR-3D AESA — sanction-proof air surveillance.' },
   { id: 'PRJ_DOM_VLS', name: 'Domestic 32-Cell VLS & DSAM-ER', kind: 'DOMESTIC_SUBSTITUTE', costRP: 190, requires: ['PRJ_DOM_CMS'], blurb: 'Unlocks DSAM-ER area-defence VLS.' },

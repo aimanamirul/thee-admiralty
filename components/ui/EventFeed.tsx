@@ -1,6 +1,7 @@
 'use client';
 
 import { useFleetStore } from '@/store/useFleetStore';
+import { useNames } from '@/store/useNames';
 import type { EventSeverity } from '@/lib/types/world';
 
 const TONE: Record<EventSeverity, string> = {
@@ -14,6 +15,7 @@ const TAG: Record<EventSeverity, string> = { INFO: 'INF', ADVISORY: 'ADV', WARNI
 
 export default function EventFeed() {
   const log = useFleetStore((s) => s.log);
+  const n = useNames();
   const recent = log.slice(-120).reverse();
   return (
     <div className="flex h-full flex-col border-t border-phosphor/30 bg-panel">
@@ -26,7 +28,7 @@ export default function EventFeed() {
           <li key={e.id} className={`whitespace-pre-wrap ${TONE[e.severity]}`}>
             <span className="text-slate-600">D{String(e.tick).padStart(4, '0')} </span>
             <span className="text-slate-500">[{TAG[e.severity]}] </span>
-            {e.text}
+            {n.t(e.text)}
           </li>
         ))}
       </ul>

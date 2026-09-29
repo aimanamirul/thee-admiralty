@@ -3,6 +3,7 @@
  * readiness decay, over-deployment breakdowns, spares and hull cannibalisation, task-force movement.
  */
 import { HULLS, MODULE_BY_ID } from '../data/catalog';
+import { mt } from '../data/tokens';
 import type { Rng } from '../generator/prng';
 import type { InstalledModule } from '../types/equipment';
 import type { Fleet, OpState, Ship, TaskForce } from '../types/fleet';
@@ -125,7 +126,7 @@ export function takeSpare(world: WorldDraft, moduleId: string): 'STOCK' | 'HULK'
     const idx = hulk.modules.findIndex((m) => m.moduleId === moduleId && !m.failed);
     if (idx >= 0) {
       hulk.modules.splice(idx, 1);
-      world.events.push({ severity: 'ADVISORY', text: `CANNIBALISED ${MODULE_BY_ID[moduleId].name} from hulk ${hulk.pennant} ${hulk.name.toUpperCase()}` });
+      world.events.push({ severity: 'ADVISORY', text: `CANNIBALISED ${mt(moduleId)} from hulk ${hulk.pennant} ${hulk.name.toUpperCase()}` });
       return 'HULK';
     }
   }
@@ -135,7 +136,7 @@ export function takeSpare(world: WorldDraft, moduleId: string): 'STOCK' | 'HULK'
     const cost = mod.cost * 0.6;
     if (world.resources.budget >= cost) {
       world.resources.budget -= cost;
-      world.events.push({ severity: 'INFO', text: `RUSH ORDER: ${mod.name} (${cost.toFixed(1)} M)` });
+      world.events.push({ severity: 'INFO', text: `RUSH ORDER: ${mt(mod.id)} (${cost.toFixed(1)} M)` });
       return 'STOCK';
     }
   }
@@ -263,7 +264,7 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
               ship.readiness -= hit;
               world.events.push({
                 severity: over > 5 ? 'CRITICAL' : 'WARNING',
-                text: `${label}: ${MODULE_BY_ID[m.moduleId]?.name ?? m.moduleId} FAILED${over > 5 ? ` (OVERDEPLOYED ${over}d)` : ''}`,
+                text: `${label}: ${mt(m.moduleId)} FAILED${over > 5 ? ` (OVERDEPLOYED ${over}d)` : ''}`,
               });
             }
           }
@@ -299,9 +300,9 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
           if (src) {
             failed.failed = false;
             failed.condition = 1;
-            world.events.push({ severity: 'INFO', text: `${label}: ${MODULE_BY_ID[failed.moduleId].name} repaired from ${src === 'STOCK' ? 'spares' : 'hulk'}` });
+            world.events.push({ severity: 'INFO', text: `${label}: ${mt(failed.moduleId)} repaired from ${src === 'STOCK' ? 'spares' : 'hulk'}` });
           } else if (ship.stateDays % 10 === 0) {
-            world.events.push({ severity: 'WARNING', text: `${label}: DOCK STALLED — no spare ${MODULE_BY_ID[failed.moduleId].name} (buy spares or designate a parts hulk)` });
+            world.events.push({ severity: 'WARNING', text: `${label}: DOCK STALLED — no spare ${mt(failed.moduleId)} (buy spares or designate a parts hulk)` });
           }
         } else if (ship.readiness >= 90 && ship.integrity >= 90 && ship.stateDays >= MIN_DOCK_DAYS) {
           setState(ship, 'TRANSIT_WORKUP');

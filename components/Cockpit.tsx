@@ -15,7 +15,9 @@ import TutorialCard from '@/components/tutorial/TutorialCard';
 import TutorialSpotlight from '@/components/tutorial/TutorialSpotlight';
 import type { UiFlag } from '@/lib/tutorial/lessons';
 import { useFleetStore, type PanelTab } from '@/store/useFleetStore';
+import { useNames } from '@/store/useNames';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
+import { SKIN_STORAGE_KEY } from '@/lib/data/names';
 
 const TABS: { id: PanelTab; label: string; flag: UiFlag }[] = [
   { id: 'FLEET', label: 'Order of battle', flag: 'TAB_FLEET' },
@@ -46,6 +48,22 @@ function useUiScale() {
   }, [scale]);
 }
 
+/** Restores and remembers the name skin (fictional / real). */
+function useSkinPersist() {
+  const skin = useFleetStore((s) => s.skin);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+      if (saved === 'REAL' || saved === 'FICTIONAL') useFleetStore.getState().setSkin(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(SKIN_STORAGE_KEY, skin);
+    } catch {}
+  }, [skin]);
+}
+
 /** Drives the simulation: one day per tick, faster at higher speeds. */
 function useSimClock() {
   const running = useFleetStore((s) => s.running);
@@ -58,6 +76,7 @@ function useSimClock() {
 }
 
 function Toast() {
+  const n = useNames();
   const toast = useFleetStore((s) => s.toast);
   const dismiss = useFleetStore((s) => s.dismissToast);
   useEffect(() => {
@@ -68,7 +87,7 @@ function Toast() {
   if (!toast) return null;
   return (
     <div role="alert" onClick={dismiss} className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 cursor-pointer border border-warn bg-void/95 px-3 py-1.5 text-[0.875rem] uppercase tracking-widest text-warn shadow-glowRed">
-      ⚠ {toast.text}
+      ⚠ {n.t(toast.text)}
     </div>
   );
 }
@@ -76,6 +95,7 @@ function Toast() {
 export default function Cockpit() {
   useSimClock();
   useUiScale();
+  useSkinPersist();
   useTutorialEvaluate();
   const tab = useFleetStore((s) => s.tab);
   const setTab = useFleetStore((s) => s.setTab);

@@ -2,13 +2,14 @@
 
 import { Check, ChevronDown, ChevronRight, Pencil, Skull } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { HULLS, MODULE_BY_ID, MODULES, VENDOR_SHORT } from '@/lib/data/catalog';
+import { HULLS, MODULE_BY_ID, MODULES } from '@/lib/data/catalog';
 import { evaluateLoadout, procurability } from '@/lib/sim/designEngine';
 import { OP_STATE_LABEL, PATROL_LIMIT_DAYS, stateCounts, taskForceShipIds } from '@/lib/sim/fleetEngine';
 import { bridgeSet } from '@/lib/sim/researchEngine';
 import type { HierarchyKind, OpState, Ship, TaskForce } from '@/lib/types/fleet';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
+import { useNames } from '@/store/useNames';
 import { useUiFlag } from '@/store/useTutorialStore';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
 
@@ -92,6 +93,7 @@ function ThirdsGauge({ ships }: { ships: Ship[] }) {
 }
 
 function ShipDetail({ ship }: { ship: Ship }) {
+  const n = useNames();
   const research = useFleetStore((s) => s.research);
   const vendors = useFleetStore((s) => s.vendors);
   const fleets = useFleetStore((s) => s.fleets);
@@ -118,7 +120,7 @@ function ShipDetail({ ship }: { ship: Ship }) {
         <div>
           <div className="text-[0.8125rem] text-slate-500">CONSTRUCTION · {ship.buildProgressDays}/{ship.buildTotalDays} days</div>
           <Meter value={ship.buildProgressDays} max={ship.buildTotalDays} tone={ship.frozenBy ? 'red' : 'cyan'} label={`${Math.round((ship.buildProgressDays / ship.buildTotalDays) * 100)}%`} />
-          {ship.frozenBy && <div className="mt-1 text-warn">⚠ STALLED — {vendors[ship.frozenBy].name} sanction. Substitute their hardware below.</div>}
+          {ship.frozenBy && <div className="mt-1 text-warn">⚠ STALLED — {n.v(ship.frozenBy)} sanction. Substitute their hardware below.</div>}
         </div>
       )}
 
@@ -133,11 +135,11 @@ function ShipDetail({ ship }: { ship: Ship }) {
           return (
             <li key={i} className="border border-navy px-1.5 py-1">
               <div className="flex items-center justify-between gap-1">
-                <span className={m.failed ? 'text-warn line-through' : 'text-slate-200'}>{def.name}</span>
+                <span className={m.failed ? 'text-warn line-through' : 'text-slate-200'}>{n.m(def.id)}</span>
                 <span className="flex items-center gap-1">
                   {m.failed && <Chip tone="red">FAILED</Chip>}
-                  <Chip tone="dim">{VENDOR_SHORT[def.vendorId]}</Chip>
-                  <Chip tone="dim">{def.protocol.replace('_', ' ')}</Chip>
+                  <Chip tone="dim">{n.vs(def.vendorId)}</Chip>
+                  <Chip tone="dim">{n.x(def.protocol)}</Chip>
                 </span>
               </div>
               {ship.buildStatus === 'COMMISSIONED' && <Meter value={m.condition * 100} label={`${Math.round(m.condition * 100)}`} />}
@@ -151,7 +153,7 @@ function ShipDetail({ ship }: { ship: Ship }) {
                   <option value="">SUBSTITUTE… (×1.5 cost)</option>
                   {alternatives.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} [{VENDOR_SHORT[a.vendorId]}] {(a.cost * 1.5).toFixed(0)}M
+                      {n.m(a.id)} [{n.vs(a.vendorId)}] {(a.cost * 1.5).toFixed(0)}M
                     </option>
                   ))}
                 </select>
@@ -299,6 +301,7 @@ function TaskForceNode({ tf }: { tf: TaskForce }) {
 }
 
 function SparesYard() {
+  const n = useNames();
   const spares = useFleetStore((s) => s.spares);
   const ships = useFleetStore((s) => s.ships);
   const auto = useFleetStore((s) => s.policy.autoSpares);
@@ -326,7 +329,7 @@ function SparesYard() {
             return (
               <li key={m.id} className="flex items-center justify-between gap-1 text-[0.8125rem]">
                 <span className="truncate text-slate-300">
-                  {m.name} <span className="text-slate-600">[{VENDOR_SHORT[m.vendorId]}]</span>
+                  {n.m(m.id)} <span className="text-slate-600">[{n.vs(m.vendorId)}]</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-5 text-right tabular-nums text-amber-radar">{spares[m.id] ?? 0}</span>

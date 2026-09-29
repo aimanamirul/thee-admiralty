@@ -2,6 +2,7 @@
  * Admiral's Briefing lesson script. Pure data + functions: no store imports, so gates can run headlessly
  * (see scripts/verifyTutorial.ts). Events are injected in `onEnter`; purchases and orders stay real.
  */
+import { mt } from '../data/tokens';
 import type { SimSpeed } from '../../store/useFleetStore';
 import type { Vendor } from '../types/diplomacy';
 import type { Fleet, Ship } from '../types/fleet';
@@ -77,7 +78,7 @@ function dock(w: WorldDraft, id: string, readiness: number, failed?: string) {
     const m = s.modules.find((x) => x.moduleId === failed);
     if (m) {
       m.failed = true;
-      w.events.push({ severity: 'WARNING', text: `${shipLabel(s)}: ${failed} FAILED — hull in dock` });
+      w.events.push({ severity: 'WARNING', text: `${shipLabel(s)}: ${mt(failed)} FAILED — hull in dock` });
     }
   }
 }
@@ -221,7 +222,7 @@ export const LESSONS: Lesson[] = [
       'The corvette in dock has a failed surface radar and there is no spare in stock.',
       'Open the Spares yard and buy one (+1), then run the clock: docks repair from stock. With no stock, a docked hull can be stripped as a Parts Hulk.',
     ],
-    objective: 'Buy a DSR-2D radar spare and let the corvette finish repairs.',
+    objective: 'Buy a {m:SEN_DOM_DSR2} spare and let the corvette finish repairs.',
     anchor: 'spares',
     reveals: ['SPARES'],
     tab: 'FLEET',
@@ -238,9 +239,9 @@ export const LESSONS: Lesson[] = [
     title: 'Design bureau',
     body: [
       'Open the Design Bureau. The preset corvette draws more power than its plant generates, so it cannot be laid down.',
-      `Change its power plant to the CODAD-12 Diesel Pack, keep the Aselsan radar and Thales CMS, and lay the hull down.`,
+      `Change its power plant to the {m:PP_DOM_D12}, keep the {v:ASELSAN} radar and the {v:NAVAL_GROUP_THALES} CMS, and lay the hull down.`,
     ],
-    objective: 'Lay down a valid corvette with the SPEAR radar and TACTICOS CMS.',
+    objective: 'Lay down a valid corvette with the {m:SEN_ASEL_SPEAR} and the {m:CMS_NG_TACTICOS}.',
     anchor: 'design-btn',
     reveals: ['DESIGN_BTN', 'READOUT_INDUSTRY'],
     tab: 'FLEET',
@@ -254,10 +255,10 @@ export const LESSONS: Lesson[] = [
     id: 'friction',
     title: 'Integration friction and R&D',
     body: [
-      'The Aselsan radar speaks Link-16 and the Thales CMS speaks TACTICOS. Mismatched protocols add friction: slower reaction and tracking lag.',
-      'Open R&D and start the Link-16 to TACTICOS bridge. Once complete it removes the penalty fleet-wide, permanently.',
+      'The {v:ASELSAN} radar speaks {x:NATO_LINK16} and the {v:NAVAL_GROUP_THALES} CMS speaks {x:TACTICOS_ETHERNET}. Mismatched protocols add friction: slower reaction and tracking lag.',
+      'Open R&D and start the {p:BR_L16_TAC}. Once complete it removes the penalty fleet-wide, permanently.',
     ],
-    objective: 'Complete the MK41 to TACTICOS Protocol Bridge.',
+    objective: 'Complete the {p:BR_L16_TAC}.',
     anchor: 'tab-rnd',
     reveals: ['TAB_RND', 'READOUT_RP'],
     tab: 'RND',
@@ -268,10 +269,10 @@ export const LESSONS: Lesson[] = [
     id: 'sanctions',
     title: 'Sanctions and lobbying',
     body: [
-      "Aselsan's government signals an export freeze in 12 days. A frozen vendor stalls construction and blocks spares.",
-      'Open Diplomacy and lobby to raise Aselsan standing to 65 before the deadline. Political capital pays for it.',
+      "The government behind {v:ASELSAN} signals an export freeze in 12 days. A frozen vendor stalls construction and blocks spares.",
+      'Open Diplomacy and lobby to raise {v:ASELSAN} standing to 65 before the deadline. Political capital pays for it.',
     ],
-    objective: 'Raise Aselsan standing to 65.',
+    objective: 'Raise {v:ASELSAN} standing to 65.',
     anchor: 'vendor-ASELSAN',
     reveals: ['TAB_DIPLO', 'READOUT_PC', 'READOUT_TENSION'],
     tab: 'DIPLO',
@@ -281,7 +282,7 @@ export const LESSONS: Lesson[] = [
       v.pendingSanction = 'EXPORT_FREEZE';
       v.statusUntilTick = w.tick + 12;
       v.standing = 52;
-      w.events.push({ severity: 'WARNING', text: 'EXPORT RISK: Aselsan signals EXPORT FREEZE in 12 days — lobby to avert' });
+      w.events.push({ severity: 'WARNING', text: 'EXPORT RISK: {v:ASELSAN} signals EXPORT FREEZE in 12 days — lobby to avert' });
     },
     gate: (v) => v.vendors.ASELSAN.standing >= 65,
   },
@@ -289,7 +290,7 @@ export const LESSONS: Lesson[] = [
     id: 'embargo',
     title: 'Parts embargo and cannibalisation',
     body: [
-      "Naval Group's government has embargoed spares: stock cannot be bought or fitted. The frigate in dock needs a new CMS.",
+      "The government behind {v:NAVAL_GROUP_THALES} has embargoed spares: stock cannot be bought or fitted. The frigate in dock needs a new CMS.",
       'Designate its docked sister ship as a Parts Hulk (open the hull, then the hulk button). Its CMS is cannibalised for the repair. Run the clock.',
     ],
     objective: 'Repair the frigate by cannibalising a Parts Hulk.',
@@ -308,7 +309,7 @@ export const LESSONS: Lesson[] = [
       w.ships['SHP-1'].isPartsHulk = false;
       w.ships['SHP-2'].isPartsHulk = false;
       w.spares['CMS_NG_TACTICOS'] = 0;
-      w.events.push({ severity: 'CRITICAL', text: 'Naval Group: PARTS EMBARGO for 60 days — their spares cannot be fitted (cannibalise hulks!)' });
+      w.events.push({ severity: 'CRITICAL', text: '{v:NAVAL_GROUP_THALES}: PARTS EMBARGO for 60 days — their spares cannot be fitted (cannibalise hulks!)' });
     },
     gate: (v) => !!v.ships['SHP-1'] && v.ships['SHP-1'].modules.every((m) => !m.failed) && Object.values(v.ships).some((s) => s.isPartsHulk),
   },

@@ -6,6 +6,7 @@
  */
 import { create } from 'zustand';
 import { STARTER_DESIGNS } from '../lib/data/catalog';
+import { DEFAULT_SKIN, type Skin } from '../lib/data/names';
 import * as cmd from '../lib/sim/commands';
 import type { CommandResult } from '../lib/sim/commands';
 import { createInitialWorld } from '../lib/sim/scenario';
@@ -58,6 +59,8 @@ interface UiSlice {
   toast: { text: string; ok: boolean; id: number } | null;
   /** Root font-size multiplier; every rem-based UI size and canvas label follows it. */
   uiScale: number;
+  /** Name skin: fictional aliases (default) or real vendor / product names. */
+  skin: Skin;
   /** Design the designer opens with (set by the tutorial); null = first saved design. */
   designerPreset: ShipDesign | null;
 }
@@ -76,6 +79,7 @@ interface Actions {
   deleteDesign: (id: string) => void;
   dismissToast: () => void;
   setUiScale: (v: number) => void;
+  setSkin: (s: Skin) => void;
   /** Replace the whole world (tutorial scenario, loaded games). Resets selection, clock and ledger. */
   loadWorld: (w: WorldDraft) => void;
   /** Apply an arbitrary edit to the world through the normal command path (scripted events). */
@@ -162,6 +166,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     designs: STARTER_DESIGNS,
     toast: null,
     uiScale: 1,
+    skin: DEFAULT_SKIN,
     designerPreset: null,
 
     step: (days = 1) => {
@@ -220,6 +225,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     saveDesign: (d) => set((s) => ({ designs: [...s.designs.filter((x) => x.id !== d.id), d] })),
     deleteDesign: (id) => set((s) => ({ designs: s.designs.filter((x) => x.id !== id) })),
     dismissToast: () => set({ toast: null }),
+    setSkin: (skin) => set({ skin }),
     setUiScale: (v) => set({ uiScale: Math.max(0.85, Math.min(1.6, Math.round(v * 20) / 20)) }),
 
     orderShip: (a) => run((w) => cmd.orderShip(w, a)),

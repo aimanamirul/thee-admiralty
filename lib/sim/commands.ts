@@ -1,5 +1,6 @@
 /** Player commands. Each mutates a WorldDraft and reports success or a human-readable refusal. */
 import { HULLS, MODULE_BY_ID, PROJECT_BY_ID } from '../data/catalog';
+import { mt, pt } from '../data/tokens';
 import { generatePennant, generateShipName } from '../generator/nameGenerator';
 import { Rng } from '../generator/prng';
 import type { HierarchyKind, NamingTradition, Tempo } from '../types/fleet';
@@ -34,7 +35,7 @@ export function orderShip(
   for (const id of a.moduleIds) {
     const m = MODULE_BY_ID[id];
     const p = procurability(m, vendorMap(world), done_);
-    if (!p.ok) return fail(`${m.name}: ${p.reason}`);
+    if (!p.ok) return fail(`${mt(m.id)}: ${p.reason}`);
   }
   if (world.resources.budget < ev.cost) return fail(`INSUFFICIENT BUDGET: ${ev.cost.toFixed(0)} M REQUIRED`);
   world.resources.budget -= ev.cost;
@@ -60,13 +61,13 @@ export function buySpares(world: WorldDraft, moduleId: string, qty: number): Com
   const m = MODULE_BY_ID[moduleId];
   if (!m) return fail('UNKNOWN MODULE');
   const p = procurability(m, vendorMap(world), new Set(world.research.completed));
-  if (!p.ok) return fail(`${m.name}: ${p.reason}`);
+  if (!p.ok) return fail(`${mt(m.id)}: ${p.reason}`);
   if (vendorBlocksOrders(world.vendors[m.vendorId])) return fail('VENDOR SANCTIONED');
   const cost = m.cost * 0.35 * qty;
   if (world.resources.budget < cost) return fail(`INSUFFICIENT BUDGET: ${cost.toFixed(1)} M`);
   world.resources.budget -= cost;
   world.spares[moduleId] = (world.spares[moduleId] ?? 0) + qty;
-  return done(`${qty}× ${m.name} added to spares`);
+  return done(`${qty}× ${mt(m.id)} added to spares`);
 }
 
 /** Swap a module on a hull still under construction — the escape hatch from export freezes. */
@@ -77,7 +78,7 @@ export function substituteModule(world: WorldDraft, shipId: string, index: numbe
   const next = MODULE_BY_ID[newModuleId];
   if (!old || !next || old.slot !== next.slot) return fail('INCOMPATIBLE SOCKET');
   const p = procurability(next, vendorMap(world), new Set(world.research.completed));
-  if (!p.ok) return fail(`${next.name}: ${p.reason}`);
+  if (!p.ok) return fail(`${mt(next.id)}: ${p.reason}`);
   const cost = Math.max(0, next.cost * 1.5 - MODULE_BY_ID[old.moduleId].cost * 0.5);
   if (world.resources.budget < cost) return fail(`INSUFFICIENT BUDGET: ${cost.toFixed(0)} M`);
   const trial = ship.modules.map((m, i) => (i === index ? newModuleId : m.moduleId));
@@ -86,7 +87,7 @@ export function substituteModule(world: WorldDraft, shipId: string, index: numbe
   world.resources.budget -= cost;
   ship.modules[index] = { moduleId: newModuleId, slot: next.slot, condition: 1, failed: false };
   syncConstructionFreezes(world);
-  world.events.push({ severity: 'INFO', text: `${ship.pennant}: substituted ${MODULE_BY_ID[old.moduleId].name} → ${next.name} (${cost.toFixed(0)} M premium)` });
+  world.events.push({ severity: 'INFO', text: `${ship.pennant}: substituted ${mt(old.moduleId)} → ${mt(next.id)} (${cost.toFixed(0)} M premium)` });
   return done('Substitution complete');
 }
 
@@ -94,7 +95,7 @@ export function startResearch(world: WorldDraft, id: string): CommandResult {
   const c = canStart(world.research, id);
   if (!c.ok) return fail(c.reason ?? 'CANNOT START');
   world.research.active.push(id);
-  world.events.push({ severity: 'INFO', text: `R&D STARTED: ${PROJECT_BY_ID[id].name}` });
+  world.events.push({ severity: 'INFO', text: `R&D STARTED: ${pt(id)}` });
   return done('Project started');
 }
 

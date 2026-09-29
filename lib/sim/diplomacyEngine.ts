@@ -1,5 +1,6 @@
 /** Vendors, lobbying, geopolitical tension and export-sanction hazards. */
 import { MINISTRIES, MODULE_BY_ID } from '../data/catalog';
+import { vt } from '../data/tokens';
 import type { Rng } from '../generator/prng';
 import type { SanctionKind, Vendor, VendorId } from '../types/diplomacy';
 import type { WorldDraft } from '../types/world';
@@ -40,19 +41,19 @@ export function lobbyVendor(world: WorldDraft, vendorId: VendorId, ministryId: s
   if (world.resources.politicalCapital < m.cost) return { ok: false, reason: `NEEDS ${m.cost} POLITICAL CAPITAL` };
   world.resources.politicalCapital -= m.cost;
   v.standing = Math.min(100, v.standing + m.standingGain);
-  world.events.push({ severity: 'INFO', text: `LOBBY: ${m.name} → ${v.name} standing +${m.standingGain} (now ${v.standing.toFixed(0)})` });
+  world.events.push({ severity: 'INFO', text: `LOBBY: ${m.name} → ${vt(v.id)} standing +${m.standingGain} (now ${v.standing.toFixed(0)})` });
 
   if (v.status === 'FROZEN' && v.statusUntilTick !== null) {
     v.statusUntilTick = Math.max(world.tick + 1, v.statusUntilTick - 10);
     const s = activeSanction(world, vendorId);
     if (s) s.endTick = v.statusUntilTick;
-    world.events.push({ severity: 'INFO', text: `${v.name} sanction shortened — lifts day ${v.statusUntilTick}` });
+    world.events.push({ severity: 'INFO', text: `${vt(v.id)} sanction shortened — lifts day ${v.statusUntilTick}` });
   }
   if (v.status === 'REVOKED' && v.standing >= REINSTATE_STANDING) {
     v.status = 'ACTIVE';
     v.statusUntilTick = null;
     for (const s of world.sanctions) if (s.vendorId === vendorId && s.endTick === null) s.endTick = world.tick;
-    world.events.push({ severity: 'ADVISORY', text: `${v.name} licence REINSTATED after ministerial intervention` });
+    world.events.push({ severity: 'ADVISORY', text: `${vt(v.id)} licence REINSTATED after ministerial intervention` });
   }
   return { ok: true };
 }
@@ -82,7 +83,7 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
         v.statusUntilTick = world.tick + WARNING_DAYS;
         world.events.push({
           severity: 'WARNING',
-          text: `EXPORT RISK: ${v.name} signals ${v.pendingSanction.replace('_', ' ')} in ${WARNING_DAYS} days — lobby to avert`,
+          text: `EXPORT RISK: ${vt(v.id)} signals ${v.pendingSanction.replace('_', ' ')} in ${WARNING_DAYS} days — lobby to avert`,
         });
       }
     } else if (v.status === 'WARNING' && v.statusUntilTick !== null && world.tick >= v.statusUntilTick) {
@@ -92,14 +93,14 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
         v.statusUntilTick = null;
         v.pendingSanction = null;
         v.standing -= 5;
-        world.events.push({ severity: 'ADVISORY', text: `${v.name} sanction AVERTED — ministerial assurances held` });
+        world.events.push({ severity: 'ADVISORY', text: `${vt(v.id)} sanction AVERTED — ministerial assurances held` });
       } else if (kind === 'LICENSE_REVOKED') {
         v.status = 'REVOKED';
         v.statusUntilTick = null;
         v.pendingSanction = null;
         v.standing = Math.min(v.standing, 8);
         world.sanctions.push({ id: `SAN-${world.tick}-${v.id}`, vendorId: v.id, kind, startTick: world.tick, endTick: null });
-        world.events.push({ severity: 'CRITICAL', text: `${v.name}: EXPORT LICENCE REVOKED — orders frozen, support contracts terminated` });
+        world.events.push({ severity: 'CRITICAL', text: `${vt(v.id)}: EXPORT LICENCE REVOKED — orders frozen, support contracts terminated` });
       } else {
         const days = rng.int(30, 90);
         v.status = 'FROZEN';
@@ -110,14 +111,14 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
           severity: 'CRITICAL',
           text:
             kind === 'EXPORT_FREEZE'
-              ? `${v.name}: EXPORT FREEZE for ${days} days — construction using their hardware stalled`
-              : `${v.name}: PARTS EMBARGO for ${days} days — their spares cannot be fitted (cannibalise hulks!)`,
+              ? `${vt(v.id)}: EXPORT FREEZE for ${days} days — construction using their hardware stalled`
+              : `${vt(v.id)}: PARTS EMBARGO for ${days} days — their spares cannot be fitted (cannibalise hulks!)`,
         });
       }
     } else if (v.status === 'FROZEN' && v.statusUntilTick !== null && world.tick >= v.statusUntilTick) {
       v.status = 'ACTIVE';
       v.statusUntilTick = null;
-      world.events.push({ severity: 'ADVISORY', text: `${v.name}: sanctions lifted — deliveries resume` });
+      world.events.push({ severity: 'ADVISORY', text: `${vt(v.id)}: sanctions lifted — deliveries resume` });
     }
   }
   syncConstructionFreezes(world);
@@ -139,7 +140,7 @@ export function syncConstructionFreezes(world: WorldDraft): void {
       }
     }
     if (culprit && ship.frozenBy !== culprit) {
-      world.events.push({ severity: 'WARNING', text: `${ship.pennant} ${ship.name.toUpperCase()}: construction FROZEN — ${world.vendors[culprit].name} sanction` });
+      world.events.push({ severity: 'WARNING', text: `${ship.pennant} ${ship.name.toUpperCase()}: construction FROZEN — ${vt(culprit)} sanction` });
     }
     ship.frozenBy = culprit;
   }

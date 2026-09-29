@@ -8,22 +8,23 @@ import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, 
 import { bridgeKey, PROTOCOLS } from '@/lib/types/equipment';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
+import { useNames } from '@/store/useNames';
 import { Btn, Chip, Meter, Section } from './kit';
 
-const SHORT: Record<string, string> = { TACTICOS_ETHERNET: 'TACTICOS', NATO_LINK16: 'LINK-16', EASTERN_ANALOG: 'E.ANALOG', DOMESTIC_OPEN: 'OPEN BUS' };
 
 function BridgeMatrix() {
+  const n = useNames();
   const completed = useFleetStore((s) => s.research.completed);
   const bridges = useMemo(() => bridgeSet(completed), [completed]);
   return (
     <div className="grid grid-cols-5 gap-px text-center text-[0.75rem]">
       <div />
       {PROTOCOLS.map((p) => (
-        <div key={p} className="py-0.5 text-slate-500">{SHORT[p]}</div>
+        <div key={p} className="py-0.5 text-slate-500">{n.xs(p)}</div>
       ))}
       {PROTOCOLS.map((row) => (
         <div key={row} className="contents">
-          <div className="py-1 text-right pr-1 text-slate-500">{SHORT[row]}</div>
+          <div className="py-1 text-right pr-1 text-slate-500">{n.xs(row)}</div>
           {PROTOCOLS.map((col) => {
             const sev = frictionSeverity(row, col);
             const bridged = bridges.has(bridgeKey(row, col));
@@ -41,6 +42,7 @@ function BridgeMatrix() {
 }
 
 export default function RDBureauPanel() {
+  const n = useNames();
   const research = useFleetStore((s) => s.research);
   const rp = useFleetStore((s) => s.resources.researchPoints);
   const budget = useFleetStore((s) => s.resources.budget);
@@ -56,16 +58,16 @@ export default function RDBureauPanel() {
       <li key={p.id} className={`border px-2 py-1.5 ${done ? 'border-emerald-accent/40 opacity-70' : active ? 'border-emerald-accent shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'border-navy'}`}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-[0.875rem] text-emerald-accent">{p.name}</div>
-            <div className="text-[0.8125rem] leading-snug text-slate-500">{p.blurb}</div>
+            <div className="text-[0.875rem] text-emerald-accent">{n.p(p.id)}</div>
+            <div className="text-[0.8125rem] leading-snug text-slate-500">{n.t(p.blurb)}</div>
           </div>
           <div className="shrink-0 text-right">
-            {done ? <Chip tone="emerald">COMPLETE</Chip> : active ? <Btn tone="amber" onClick={() => stopResearch(p.id)}>Pause</Btn> : <Btn tone="emerald" disabled={!can.ok} title={can.reason} onClick={() => startResearch(p.id)}>Start</Btn>}
+            {done ? <Chip tone="emerald">COMPLETE</Chip> : active ? <Btn tone="amber" onClick={() => stopResearch(p.id)}>Pause</Btn> : <Btn tone="emerald" disabled={!can.ok} title={can.reason ? n.t(can.reason) : undefined} onClick={() => startResearch(p.id)}>Start</Btn>}
             <div className="mt-0.5 text-[0.75rem] text-slate-500">{p.costRP} RP</div>
           </div>
         </div>
         {!done && (progress > 0 || active) && <Meter value={progress} max={p.costRP} tone="emerald" label={`${Math.round((progress / p.costRP) * 100)}%`} />}
-        {!done && !can.ok && !active && can.reason && <div className="mt-0.5 text-[0.75rem] text-amber-radar/80">{can.reason}</div>}
+        {!done && !can.ok && !active && can.reason && <div className="mt-0.5 text-[0.75rem] text-amber-radar/80">{n.t(can.reason)}</div>}
       </li>
     );
   };

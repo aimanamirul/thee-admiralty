@@ -4,6 +4,7 @@ import { Check, GraduationCap } from 'lucide-react';
 import { LESSONS } from '@/lib/tutorial/lessons';
 import { useTutorialStore } from '@/store/useTutorialStore';
 import { Btn } from '@/components/ui/kit';
+import { useNames } from '@/store/useNames';
 
 /**
  * The briefing card. Docked as a strip under the map (never over the plot); `compact` renders the same content
@@ -15,6 +16,7 @@ export default function TutorialCard({ compact = false }: { compact?: boolean })
   const completing = useTutorialStore((s) => s.completing);
   const graduated = useTutorialStore((s) => s.graduated);
   const { skip, finish } = useTutorialStore.getState();
+  const n = useNames();
 
   if (!active || index < 0) return null;
   const lesson = LESSONS[index];
@@ -49,10 +51,10 @@ export default function TutorialCard({ compact = false }: { compact?: boolean })
               ))}
             </span>
           </div>
-          <h2 className="glow-text mt-0.5 text-base uppercase tracking-[0.2em] text-phosphor">{lesson.title}</h2>
+          <h2 className="glow-text mt-0.5 text-base uppercase tracking-[0.2em] text-phosphor">{n.t(lesson.title)}</h2>
           {lesson.body.map((line, i) => (
             <p key={i} className="mt-0.5 text-[0.875rem] leading-snug text-slate-300">
-              {line}
+              {n.t(line)}
             </p>
           ))}
         </div>
@@ -63,7 +65,7 @@ export default function TutorialCard({ compact = false }: { compact?: boolean })
             </span>
             <span>
               <span className="block text-[0.75rem] uppercase tracking-[0.2em] opacity-70">{completing ? 'Objective complete' : 'Objective'}</span>
-              {lesson.objective}
+              {n.t(lesson.objective)}
             </span>
           </div>
           <div className="flex justify-end">

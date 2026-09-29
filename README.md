@@ -11,6 +11,7 @@ npm run build
 npm run verify:map     # determinism / connectivity / tier checks for all archetypes (add -- --ascii to draw them)
 npx tsx scripts/verifySim.ts 730 [seed] [CHOKEPOINT|CORRIDOR|RIMLAND] [--surge]   # headless soak test of the sim
 npm run verify:tutorial   # headless bot plays every briefing lesson and checks its gate
+npm run verify:names      # fictional skin never shows a real vendor/product name (data, events, lessons, UI source)
 node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the file header)
 ```
 

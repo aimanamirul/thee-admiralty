@@ -12,6 +12,7 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
   const status = useTutorialStore((s) => s.status);
   const [seed, setSeed] = useState(DEFAULT_SEED);
   const [arch, setArch] = useState<MapArchetype | 'AUTO'>('AUTO');
+  const skin = useFleetStore((s) => s.skin);
 
   const briefing = () => {
     useTutorialStore.getState().begin();
@@ -77,7 +78,12 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
             </div>
           </div>
         </div>
-        <p className="mt-4 text-[0.75rem] uppercase tracking-[0.2em] text-slate-600">The briefing can be replayed at any time from the top bar.</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-600">The briefing can be replayed at any time from the top bar.</p>
+          <Btn tone="dim" title="Fictional aliases (default) or real vendor and product names" onClick={() => useFleetStore.getState().setSkin(skin === 'FICTIONAL' ? 'REAL' : 'FICTIONAL')}>
+            Names: {skin === 'FICTIONAL' ? 'Fictional' : 'Real'}
+          </Btn>
+        </div>
       </div>
     </div>
   );
