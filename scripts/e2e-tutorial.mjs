@@ -30,7 +30,7 @@ const waitLesson = async (n, ms = 30000) => {
   while (Date.now() - t0 < ms) { if ((await lessonNo()) >= n) return; await page.waitForTimeout(150); }
   throw new Error(`stuck: expected lesson ${n}, on ${await lessonNo()}`);
 };
-const canvas = await page.locator('canvas').boundingBox();
+let canvas = await page.locator('canvas').boundingBox();
 const at = (fx, fy) => [canvas.x + canvas.width * fx, canvas.y + canvas.height * fy];
 const shot = (n) => page.screenshot({ path: `${SP}/t${n}.png` });
 
@@ -45,6 +45,15 @@ await page.mouse.click(...at(0.25, 0.6), { button: 'right' });
 await page.getByRole('button', { name: '4x' }).click();
 await page.getByRole('button', { name: 'Run' }).click();
 await waitLesson(4); await shot('04-command');
+// reload mid-briefing: the title screen offers to resume at the same lesson with the fleet where it was
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: /Resume briefing/i }).click();
+await page.waitForTimeout(800);
+if ((await lessonNo()) !== 4) errors.push(`resume: expected lesson 4, got ${await lessonNo()}`);
+if (!/ordered to SECTOR 1/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('resume: ledger history lost');
+canvas = await page.locator('canvas').boundingBox();
+await shot('04b-resumed');
 await page.getByLabel('Rename TF 11').click();
 await page.getByLabel('New name').fill('Anvil Force');
 await page.getByLabel('New name').press('Enter');
@@ -69,7 +78,7 @@ await page.locator('li', { hasText: 'VL-41 ↔ TACTIS Protocol Bridge' }).getByR
 await waitLesson(10, 60000); await shot('10-sanctions');
 await page.locator('section', { hasText: 'Sarnic Defence · REPUBLIC OF SARNIA' }).getByRole('button', { name: /Foreign/ }).click();
 await waitLesson(11, 20000); await shot('11-embargo');
-await page.locator('[data-tutorial="ship-SHP-2"] [role=button]').first().click();
+await page.locator('[data-tutorial="ship-SHP-6"] [role=button]').first().click();
 await page.getByRole('button', { name: /Designate parts hulk/ }).click();
 await waitLesson(12, 60000); await shot('12-graduation');
 await page.mouse.click(...at(0.72, 0.5));

@@ -56,9 +56,23 @@ How it is built (spec/lesson table: `docs/PLAN-tutorial.md`):
   entry, lost ships, disconnected sectors, presets that are not broken/fixable as taught). `scripts/e2e-tutorial.mjs` plays the same path
   through the real UI with Playwright (see its header). Both pass.
 
+Review fixes (post first implementation):
+- **Spotlight** dims at 35% and not at all when the lesson's action is on the plot (lessons with a `target`), so the map is never masked
+  while it is the objective.
+- **Reserve frigate `SHP-6`** (built last in `tutorialScenario.ts` so other names stay stable): laid up in dock with a failed power plant and
+  no spare. The fleet is six hulls, so the Rule-of-Thirds lesson ends at 2/2/2 (its onEnter stages SHP-2/SHP-3 to relieve SHP-1; the bot asserts
+  it), and the embargo lesson hulks this worn ship instead of a healthy sister. Expect periodic "DOCK STALLED" lines for it; they foreshadow
+  the hulk lesson.
+- **Resume:** a checkpoint (world minus map, ledger, flags) is saved to `localStorage` `al.tutorial.checkpoint` at the start of every lesson;
+  the title screen then offers **Resume briefing** (restarts that lesson). Cleared on skip, finish and graduation; discarded if the lesson
+  ids no longer match.
+- Map: the fit reserves the measured height of the toolbar overlay; OBJECTIVE label moved upper-right of the ring; no latitude label in the
+  top-left corner.
+
 Lessons that need the player to do something with the clock (2 press play; 6 buy a spare) start it automatically once the action is done.
 
-Known limits / ideas: Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
+Known limits / ideas (from the review, not yet done): lesson 6 (contact) is passive — no ROE choice; the layout jumps as panels unlock
+(reserve space up front); hulk button is two clicks deep. Also: Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
 contacts are engaged at 12 tiles before the 10-tile identification, so hostiles are never seen turning red first.
 
 ## Contractors phase 0: display-name layer (done)

@@ -81,7 +81,9 @@ interface Actions {
   setUiScale: (v: number) => void;
   setSkin: (s: Skin) => void;
   /** Replace the whole world (tutorial scenario, loaded games). Resets selection, clock and ledger. */
-  loadWorld: (w: WorldDraft) => void;
+  loadWorld: (w: WorldDraft, ledger?: { log: GameEvent[]; logSeq: number }) => void;
+  /** Deep copy of the current world (the map is shared, not copied). */
+  snapshotWorld: () => WorldDraft;
   /** Apply an arbitrary edit to the world through the normal command path (scripted events). */
   mutate: (fn: (w: WorldDraft) => void) => void;
   setDesignerPreset: (d: ShipDesign | null) => void;
@@ -194,8 +196,9 @@ export const useFleetStore = create<GameState>((set, get) => {
         selectedShipId: null,
         toast: null,
       }),
-    loadWorld: (w) => {
-      const { log, logSeq } = appendLog([], 0, w.tick, w.events);
+    snapshotWorld: () => pickWorld(get()),
+    loadWorld: (w, ledger) => {
+      const { log, logSeq } = appendLog(ledger?.log ?? [], ledger?.logSeq ?? 0, w.tick, w.events);
       w.events = [];
       set({
         ...worldPatch(w),

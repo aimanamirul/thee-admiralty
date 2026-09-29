@@ -125,6 +125,7 @@ interface Toggles {
 
 export default function TacticalMap() {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true });
   const [toggles, setToggles] = useState<Toggles>(togglesRef.current);
@@ -160,7 +161,8 @@ export default function TacticalMap() {
     const fitView = () => {
       if (!layers) return;
       const { width, height } = layers.map;
-      const top = 44; // room for the layer toolbar and longitude labels
+      // Leave room for the (rem-sized, tutorial-gated) toolbar overlay plus the longitude labels drawn above the frame.
+      const top = (overlayRef.current?.offsetHeight ?? 36) + 26;
       view.fit = Math.min(cw / (width + 6), (ch - top) / (height + 6));
       view.scale = view.fit;
       view.tx = (cw - width * view.scale) / 2;
@@ -178,6 +180,7 @@ export default function TacticalMap() {
     };
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
+    if (overlayRef.current) ro.observe(overlayRef.current);
     resize();
 
     const toWorld = (sx: number, sy: number) => ({ x: (sx - view.tx) / view.scale, y: (sy - view.ty) / view.scale });
@@ -310,7 +313,8 @@ export default function TacticalMap() {
       g.textBaseline = 'middle';
       g.textAlign = 'left';
       const left = toScreen(0, 0);
-      for (let y = 0; y <= m.height; y += 20) {
+      // Start below the top edge: the corner belongs to the longitude row.
+      for (let y = 20; y <= m.height; y += 20) {
         const p = toScreen(0, y);
         g.fillText(fmtLat(tileToLat(origin, y)), Math.max(2, left.x + 3), p.y - 6);
         g.fillRect(Math.max(0, left.x - 4), p.y, 5, 1);
@@ -528,11 +532,14 @@ export default function TacticalMap() {
           ctx.shadowBlur = 10 * dpr;
           ctx.lineWidth = 2;
           ctx.setLineDash([6, 4]);
+          const r = 24 + 8 * pulse;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 24 + 8 * pulse, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           ctx.stroke();
           ctx.restore();
-          label('OBJECTIVE', p.x, p.y - 42, C.amber, 'center', 11);
+          // Upper-right of the ring: clear of the sector id / name (centred on the anchor), task-force labels (below it),
+          // the home-port stack (above it) and the latitude scale on the left frame edge.
+          label('OBJECTIVE', p.x + 34, p.y - 34, C.amber, 'left', 11);
         }
       }
 
@@ -707,7 +714,7 @@ export default function TacticalMap() {
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-void">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
-      <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
+      <div ref={overlayRef} className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
         {showLayers && <div className="pointer-events-auto flex gap-1">
           {(['grid', 'bathy', 'sectors', 'threat'] as const).map((k) => (
             <button

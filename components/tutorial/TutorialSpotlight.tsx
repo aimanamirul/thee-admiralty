@@ -17,7 +17,10 @@ interface Box {
  * Never intercepts input; honours prefers-reduced-motion via Tailwind's motion-safe variant.
  */
 export default function TutorialSpotlight() {
-  const anchor = useTutorialStore((s) => (s.active && !s.completing && !s.graduated && s.lessonIndex >= 0 ? LESSONS[s.lessonIndex].anchor : undefined));
+  const lesson = useTutorialStore((s) => (s.active && !s.completing && !s.graduated && s.lessonIndex >= 0 ? LESSONS[s.lessonIndex] : undefined));
+  const anchor = lesson?.anchor;
+  // Lessons whose action happens on the plot (a target sector) must not dim the map: outline only.
+  const dim = lesson?.target === undefined;
   const designerOpen = useFleetStore((s) => s.designerOpen);
   const uiScale = useFleetStore((s) => s.uiScale);
   const [box, setBox] = useState<Box | null>(null);
@@ -48,7 +51,7 @@ export default function TutorialSpotlight() {
     <div
       aria-hidden
       className="pointer-events-none fixed z-[40] border-2 border-phosphor motion-safe:animate-pulse"
-      style={{ left: box.x - pad, top: box.y - pad, width: box.w + pad * 2, height: box.h + pad * 2, boxShadow: '0 0 0 9999px rgba(5,8,17,0.55), 0 0 14px rgba(0,240,255,0.8)' }}
+      style={{ left: box.x - pad, top: box.y - pad, width: box.w + pad * 2, height: box.h + pad * 2, boxShadow: `${dim ? '0 0 0 9999px rgba(5,8,17,0.35), ' : ''}0 0 14px rgba(0,240,255,0.8)` }}
     />
   );
 }

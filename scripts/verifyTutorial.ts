@@ -5,7 +5,7 @@
 import { LESSONS, PRESET_FIX_PLANT, TUTORIAL_PRESET, type TutorialView } from '../lib/tutorial/lessons';
 import * as cmd from '../lib/sim/commands';
 import { evaluateLoadout } from '../lib/sim/designEngine';
-import { designateHulk } from '../lib/sim/fleetEngine';
+import { designateHulk, stateCounts } from '../lib/sim/fleetEngine';
 import { bridgeSet } from '../lib/sim/researchEngine';
 import { createTutorialMap, createTutorialWorld, waterConnected, HOME_SECTOR, BEYOND_SECTOR } from '../lib/sim/tutorialScenario';
 import { advanceDay } from '../lib/sim/worldEngine';
@@ -64,7 +64,7 @@ const actions: Record<string, () => void> = {
     ok(cmd.startResearch(w, 'BR_L16_TAC'), 'start bridge');
   },
   sanctions: () => ok(cmd.lobbyVendorCmd(w, 'ASELSAN', 'MIN_FOREIGN'), 'lobby'),
-  embargo: () => ok(designateHulk(w, 'SHP-2'), 'designate hulk'),
+  embargo: () => ok(designateHulk(w, 'SHP-6'), 'designate hulk'),
   graduation: () => {
     check(!w.scripted, 'graduation must turn scripted off');
     ok(cmd.assignTaskForce(w, 'TF-2', BEYOND_SECTOR), 'assign TF-2');
@@ -85,6 +85,11 @@ for (const lesson of LESSONS) {
     days++;
   }
   check(lesson.gate(view()), `[${lesson.id}] gate never opened (soft-lock) after ${days} days`);
+  if (lesson.id === 'thirds') {
+    const c = stateCounts(Object.values(w.ships));
+    check(c.ACTIVE_PATROL === 2 && c.TRANSIT_WORKUP === 2 && c.MAINTENANCE_DOCK === 2, `thirds lesson should end 2/2/2, got ${JSON.stringify(c)}`);
+  }
+  if (lesson.id === 'contact') check(w.stats.hostilesDestroyed + w.stats.shipsLost >= 0 && Object.keys(w.ships).length === 6, 'no ships lost in the raid');
   console.log(`lesson ${lesson.id.padEnd(10)} done in ${String(days).padStart(3)} days (day ${w.tick})`);
 }
 

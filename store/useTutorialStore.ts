@@ -6,10 +6,14 @@
  */
 import { create } from 'zustand';
 import { LESSONS, type TutorialView, type UiFlag } from '../lib/tutorial/lessons';
-import { createTutorialWorld } from '../lib/sim/tutorialScenario';
+import { createTutorialMap, createTutorialWorld } from '../lib/sim/tutorialScenario';
+import type { WorldDraft } from '../lib/types/world';
 import { DEFAULT_SEED, useFleetStore } from './useFleetStore';
 
 const STORAGE_KEY = 'al.tutorial';
+/** Progress checkpoint taken at the start of every lesson, so a reload resumes the briefing instead of restarting it. */
+const CHECKPOINT_KEY = 'al.tutorial.checkpoint';
+const CHECKPOINT_VERSION = 1;
 const COMPLETE_DELAY_MS = 1400;
 
 export type TutorialStatus = 'new' | 'done' | 'skipped';
@@ -27,6 +31,8 @@ interface TutorialState {
   graduated: boolean;
   status: TutorialStatus;
   begin: () => void;
+  /** Continue a briefing saved in localStorage; false if there is none. */
+  resume: () => boolean;
   skip: () => void;
   finish: (newTheatre: boolean) => void;
   evaluate: () => void;
@@ -47,6 +53,41 @@ function writeStatus(s: TutorialStatus) {
   } catch {}
 }
 
+interface Checkpoint {
+  version: number;
+  lessonIndex: number;
+  lessonId: string;
+  flags: UiFlag[];
+  /** World before the lesson's onEnter ran; the map is regenerated from the fixed tutorial seed on resume. */
+  world: Omit<WorldDraft, 'map'>;
+  log: ReturnType<typeof useFleetStore.getState>['log'];
+  logSeq: number;
+}
+
+function readCheckpoint(): Checkpoint | null {
+  try {
+    const raw = localStorage.getItem(CHECKPOINT_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw) as Checkpoint;
+    // Discard checkpoints from an older lesson script.
+    if (c.version !== CHECKPOINT_VERSION || LESSONS[c.lessonIndex]?.id !== c.lessonId) return null;
+    return c;
+  } catch {
+    return null;
+  }
+}
+function clearCheckpoint() {
+  try {
+    localStorage.removeItem(CHECKPOINT_KEY);
+  } catch {}
+}
+
+/** For the title screen: the lesson a saved briefing would resume at. */
+export function savedBriefing(): { lessonIndex: number; title: string } | null {
+  const c = readCheckpoint();
+  return c ? { lessonIndex: c.lessonIndex, title: LESSONS[c.lessonIndex].title } : null;
+}
+
 let timer: ReturnType<typeof setTimeout> | undefined;
 let entering = false;
 
@@ -64,6 +105,11 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
     const g = useFleetStore.getState();
     entering = true;
     try {
+      try {
+        const { map: _map, ...world } = g.snapshotWorld();
+        const cp: Checkpoint = { version: CHECKPOINT_VERSION, lessonIndex: i, lessonId: lesson.id, flags: get().flags, world, log: g.log, logSeq: g.logSeq };
+        localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(cp));
+      } catch {}
       set((s) => ({
         lessonIndex: i,
         completing: false,
@@ -96,8 +142,20 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
     graduated: false,
     status: readStatus(),
 
+    resume: () => {
+      const c = readCheckpoint();
+      if (!c) return false;
+      if (timer) clearTimeout(timer);
+      const world = { ...c.world, map: createTutorialMap() } as WorldDraft;
+      useFleetStore.getState().loadWorld(world, { log: c.log, logSeq: c.logSeq });
+      set({ active: true, lessonIndex: -1, flags: c.flags, graduated: false, completing: false, ranWhen: false });
+      enter(c.lessonIndex);
+      return true;
+    },
+
     begin: () => {
       if (timer) clearTimeout(timer);
+      clearCheckpoint();
       useFleetStore.getState().loadWorld(createTutorialWorld());
       set({ active: true, lessonIndex: -1, flags: [], graduated: false, completing: false, ranWhen: false });
       enter(0);
@@ -112,12 +170,14 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
         w.policy.autoSpares = true;
       });
       writeStatus('skipped');
+      clearCheckpoint();
       set({ active: false, flags: ['*'], completing: false, graduated: false, status: 'skipped' });
     },
 
     finish: (newTheatre) => {
       if (timer) clearTimeout(timer);
       writeStatus('done');
+      clearCheckpoint();
       useFleetStore.getState().setDesignerPreset(null);
       set({ active: false, flags: ['*'], completing: false, graduated: false, status: 'done' });
       if (newTheatre) useFleetStore.getState().newTheatre(DEFAULT_SEED);
@@ -128,6 +188,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       if (lessonIndex + 1 < LESSONS.length) enter(lessonIndex + 1);
       else {
         writeStatus('done');
+        clearCheckpoint();
         set({ graduated: true, completing: false, status: 'done' });
       }
     },

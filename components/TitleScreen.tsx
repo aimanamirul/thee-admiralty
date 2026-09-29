@@ -1,11 +1,13 @@
 'use client';
 
-import { GraduationCap, Play, Radar } from 'lucide-react';
+import { GraduationCap, Play, Radar, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { Btn } from '@/components/ui/kit';
 import { ARCHETYPE_LABEL, type MapArchetype } from '@/lib/types/map';
 import { DEFAULT_SEED, useFleetStore } from '@/store/useFleetStore';
-import { useTutorialStore } from '@/store/useTutorialStore';
+import { LESSONS } from '@/lib/tutorial/lessons';
+import { useNames } from '@/store/useNames';
+import { savedBriefing, useTutorialStore } from '@/store/useTutorialStore';
 
 /** Title screen: pick the Admiral's Briefing (tutorial) or free play. */
 export default function TitleScreen({ onStart }: { onStart: () => void }) {
@@ -13,10 +15,16 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
   const [seed, setSeed] = useState(DEFAULT_SEED);
   const [arch, setArch] = useState<MapArchetype | 'AUTO'>('AUTO');
   const skin = useFleetStore((s) => s.skin);
+  const n = useNames();
+  // Read once on mount; localStorage is only available client-side (the cockpit is client-only).
+  const [saved] = useState(savedBriefing);
 
   const briefing = () => {
     useTutorialStore.getState().begin();
     onStart();
+  };
+  const resume = () => {
+    if (useTutorialStore.getState().resume()) onStart();
   };
   const freePlay = () => {
     const custom = seed.trim() !== DEFAULT_SEED || arch !== 'AUTO';
@@ -36,17 +44,32 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
         </div>
 
         <div className="mt-6 space-y-3">
+          {saved && (
+            <button
+              autoFocus
+              onClick={resume}
+              className="flex w-full items-center gap-3 border border-emerald-accent bg-emerald-accent/10 px-4 py-3 text-left transition hover:bg-emerald-accent/20"
+            >
+              <RotateCcw className="h-6 w-6 shrink-0 text-emerald-accent" />
+              <span className="flex-1">
+                <span className="block text-lg uppercase tracking-[0.25em] text-emerald-accent">Resume briefing</span>
+                <span className="block text-[0.875rem] text-slate-400">
+                  Lesson {saved.lessonIndex + 1}/{LESSONS.length}: {n.t(saved.title)}. Picks up at the start of that lesson.
+                </span>
+              </span>
+            </button>
+          )}
           <button
-            autoFocus
+            autoFocus={!saved}
             onClick={briefing}
             className="group flex w-full items-center gap-3 border border-phosphor bg-phosphor/10 px-4 py-3 text-left shadow-glow transition hover:bg-phosphor/20"
           >
             <GraduationCap className="h-6 w-6 shrink-0 text-phosphor" />
             <span className="flex-1">
-              <span className="block text-lg uppercase tracking-[0.25em] text-phosphor">Begin briefing</span>
+              <span className="block text-lg uppercase tracking-[0.25em] text-phosphor">{saved ? 'Restart briefing' : 'Begin briefing'}</span>
               <span className="block text-[0.875rem] text-slate-400">A guided scenario on a two-sector map: sectors, rotation, contacts, spares, design, R&amp;D and sanctions. About fifteen minutes.</span>
             </span>
-            {status === 'new' && <span className="border border-emerald-accent/60 px-1 text-[0.75rem] uppercase tracking-wider text-emerald-accent">Recommended</span>}
+            {status === 'new' && !saved && <span className="border border-emerald-accent/60 px-1 text-[0.75rem] uppercase tracking-wider text-emerald-accent">Recommended</span>}
             {status === 'done' && <span className="border border-navy px-1 text-[0.75rem] uppercase tracking-wider text-slate-500">Completed</span>}
             {status === 'skipped' && <span className="border border-navy px-1 text-[0.75rem] uppercase tracking-wider text-slate-500">Skipped</span>}
           </button>

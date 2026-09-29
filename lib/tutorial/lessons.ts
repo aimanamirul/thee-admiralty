@@ -147,7 +147,7 @@ export const LESSONS: Lesson[] = [
     title: 'Rule of thirds',
     body: [
       'Hulls wear out on patrol. Each cycles Patrol, Transit/Workup, Overhaul; aim for a third in each state.',
-      'The clock now runs at 16x and stops when the frigate on patrol is due for overhaul. Surge tempo would suspend rotation and buy presence at the price of breakdowns.',
+      'The clock now runs at 16x. Watch the frigate on patrol go to dock as its relief finishes workup and takes the station. Surge tempo would suspend rotation and buy presence at the price of breakdowns.',
     ],
     objective: 'Watch a hull rotate into the dock.',
     anchor: 'thirds',
@@ -159,6 +159,13 @@ export const LESSONS: Lesson[] = [
       s.state = 'ACTIVE_PATROL';
       s.stateDays = 26;
       s.readiness = Math.max(s.readiness, 75);
+      // Stage the reliefs so they finish workup as the frigate rotates out: the gauge ends at two per state.
+      for (const id of ['SHP-2', 'SHP-3']) {
+        const r = w.ships[id];
+        r.state = 'TRANSIT_WORKUP';
+        r.stateDays = 11;
+        r.readiness = Math.max(r.readiness, 60);
+      }
     },
     gate: (v) => newLog(v, /rotating to MAINTENANCE/),
   },
@@ -291,10 +298,10 @@ export const LESSONS: Lesson[] = [
     title: 'Parts embargo and cannibalisation',
     body: [
       "The government behind {v:NAVAL_GROUP_THALES} has embargoed spares: stock cannot be bought or fitted. The frigate in dock needs a new CMS.",
-      'Designate its docked sister ship as a Parts Hulk (open the hull, then the hulk button). Its CMS is cannibalised for the repair. Run the clock.',
+      'The worn reserve frigate in dock has a dead power plant but a working CMS. Open it and designate it a Parts Hulk; its CMS is cannibalised for the repair. A hulk can be restored to service later, once parts flow again.',
     ],
     objective: 'Repair the frigate by cannibalising a Parts Hulk.',
-    anchor: 'ship-SHP-2',
+    anchor: 'ship-SHP-6',
     reveals: [],
     tab: 'FLEET',
     run: { speed: 4, when: (v) => Object.values(v.ships).some((s) => s.isPartsHulk) },
@@ -305,9 +312,11 @@ export const LESSONS: Lesson[] = [
       ng.pendingSanction = null;
       w.sanctions.push({ id: `SAN-TUT-${w.tick}`, vendorId: 'NAVAL_GROUP_THALES', kind: 'PARTS_EMBARGO', startTick: w.tick, endTick: w.tick + 60 });
       dock(w, 'SHP-1', 45, 'CMS_NG_TACTICOS');
-      dock(w, 'SHP-2', 70);
       w.ships['SHP-1'].isPartsHulk = false;
-      w.ships['SHP-2'].isPartsHulk = false;
+      // The reserve frigate stays laid up even if the player bought it a power plant earlier.
+      const reserve = w.ships['SHP-6'];
+      if (reserve && !reserve.isPartsHulk && reserve.state !== 'MAINTENANCE_DOCK') dock(w, 'SHP-6', 40);
+      if (reserve && !reserve.modules.some((m) => m.failed)) reserve.modules.find((m) => m.slot === 'POWERPLANT')!.failed = true;
       w.spares['CMS_NG_TACTICOS'] = 0;
       w.events.push({ severity: 'CRITICAL', text: '{v:NAVAL_GROUP_THALES}: PARTS EMBARGO for 60 days — their spares cannot be fitted (cannibalise hulks!)' });
     },

@@ -162,6 +162,12 @@ export function createTutorialWorld(): WorldDraft {
   const tf1Frigates = [build(ffg('ACTIVE_PATROL', 5, 82, 20)), build(ffg('TRANSIT_WORKUP', 3, 58, 12))];
   const tf1Corvette = [build({ hull: 'CORVETTE', design: 'DES_COR_MK1', tradition: 'GEOGRAPHIC', state: 'TRANSIT_WORKUP', stateDays: 6, readiness: 60, vet: 10 })];
   const facs = [1, 2].map(() => build({ hull: 'FAC', design: 'DES_FAC_MK1', tradition: 'CELESTIAL', state: 'TRANSIT_WORKUP', stateDays: 4, readiness: 60, vet: 6 }));
+  // Worn reserve frigate: laid up in dock with a dead power plant and no spare. Built last so the other names stay stable.
+  // It rounds the fleet to six (two per Rule-of-Thirds state) and is the obvious Parts Hulk in the embargo lesson.
+  const reserve = build(ffg('MAINTENANCE_DOCK', 0, 35, 8));
+  ships[reserve].integrity = 55;
+  ships[reserve].modules.find((m) => m.moduleId === 'PP_DOM_D12')!.failed = true;
+  ships[reserve].designName = 'Argus-class Frigate (reserve)';
 
   const mkTf = (index: number, name: string, squads: { hull: HullClassId; ids: string[] }[]): TaskForce => ({
     id: `TF-${index + 1}`,
@@ -180,7 +186,7 @@ export function createTutorialWorld(): WorldDraft {
       id: 'FLT-1',
       name: 'First Fleet',
       taskForces: [
-        mkTf(0, TUTORIAL_TF1_NAME, [{ hull: 'FRIGATE', ids: tf1Frigates }, { hull: 'CORVETTE', ids: tf1Corvette }]),
+        mkTf(0, TUTORIAL_TF1_NAME, [{ hull: 'FRIGATE', ids: [...tf1Frigates, reserve] }, { hull: 'CORVETTE', ids: tf1Corvette }]),
         mkTf(1, 'TF 12', [{ hull: 'FAC', ids: facs }]),
       ],
     },
