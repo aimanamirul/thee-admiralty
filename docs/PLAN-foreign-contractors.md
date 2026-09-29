@@ -139,7 +139,15 @@ regime hazard multiplier, secondary-sanction term, propagation through `affiliat
 1. **Names:** a toggle. Default to fictional aliases; real names are a skin. Sanction/scandal text stays generic in both modes.
 2. **Submarines:** yes, a new hull class (`SUBMARINE`, with `AIP`/diesel-electric plants, stealth and depth attributes). This makes
    Hanwha, TKMS and CSSC meaningful and gives abyssal waters a gameplay role.
-3. Still open: new protocol tags (`NORDIC_OPEN`, `SINO_DIGITAL`) and how punishing bloc affinity should be.
+3. **Vendor count (decided):** curated ~8 foreign vendors, each with a distinct regime, niche and story; the relationship ladder
+   reveals them gradually. Not the 15+ sandbox roster in §5 (that is a source pool to pick from).
+4. **Fairness (decided):** every supply-chain hazard is avoidable with information: foreshadowed warnings, plus a "due diligence"
+   action that reveals hidden sub-suppliers (`origins`) *before* purchase. No unforeseeable blindsides.
+5. **Bloc affinity (decided):** soft. Courting adversary blocs costs standing and price with the other blocs; it never locks the
+   player out and there are no hard secondary sanctions in v1.
+6. **Economy (decided):** rebalance so budget bites (income currently far outpaces spending, ~2.6B by day 56). Vendor deposits,
+   cancellation penalties and offsets are real budget decisions alongside Political Capital and time. Needs its own balance pass.
+7. Still open: which roster to pick (see brainstorm), new protocol tags (`NORDIC_OPEN`, `SINO_DIGITAL`).
 
 ## Sources
 

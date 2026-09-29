@@ -24,6 +24,7 @@ Not committed on purpose: the `dev` script in `package.json` was locally changed
 | Submarines | **Yes**, a new hull class (`SUBMARINE`). |
 | Tutorial scenario | **Fixed scenario on a fixed 2-sector map**, teaching the game "A to Z". Launched from a **title-screen** choice (Begin briefing / Free play). |
 | Order of work | **Tutorial first.** Contractors, submarines and the Movement faction are for later brainstorming/design, not to be built yet. |
+| Contractors (2026-09-29) | Curated ~8 vendors; hazards fully avoidable via information (due diligence reveals `origins`); soft bloc affinity; rebalance economy so budget bites. Details: `docs/PLAN-foreign-contractors.md` §8. |
 | Movement faction | Fictional setting; invented geography recommended (still open); guardrails in its doc are mandatory. |
 
 Defaults chosen by the assistant for things the user has not answered (change freely): **terse military-briefing voice**; **Codex deferred**.
