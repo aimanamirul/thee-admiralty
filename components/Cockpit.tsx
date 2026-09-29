@@ -19,6 +19,23 @@ const TABS: { id: PanelTab; label: string }[] = [
   { id: 'DIPLO', label: 'Diplomacy' },
 ];
 
+/** Applies the UI scale to the root font-size and remembers it between sessions. */
+function useUiScale() {
+  const scale = useFleetStore((s) => s.uiScale);
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem('al.uiScale'));
+      if (saved) useFleetStore.getState().setUiScale(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${16 * scale}px`;
+    try {
+      localStorage.setItem('al.uiScale', String(scale));
+    } catch {}
+  }, [scale]);
+}
+
 /** Drives the simulation: one day per tick, faster at higher speeds. */
 function useSimClock() {
   const running = useFleetStore((s) => s.running);
@@ -40,7 +57,7 @@ function Toast() {
   }, [toast, dismiss]);
   if (!toast) return null;
   return (
-    <div role="alert" onClick={dismiss} className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 cursor-pointer border border-warn bg-void/95 px-3 py-1.5 text-[11px] uppercase tracking-widest text-warn shadow-glowRed">
+    <div role="alert" onClick={dismiss} className="fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 cursor-pointer border border-warn bg-void/95 px-3 py-1.5 text-[0.875rem] uppercase tracking-widest text-warn shadow-glowRed">
       ⚠ {toast.text}
     </div>
   );
@@ -48,6 +65,7 @@ function Toast() {
 
 export default function Cockpit() {
   useSimClock();
+  useUiScale();
   const tab = useFleetStore((s) => s.tab);
   const setTab = useFleetStore((s) => s.setTab);
   const designerOpen = useFleetStore((s) => s.designerOpen);
@@ -61,11 +79,11 @@ export default function Cockpit() {
             <TacticalMap />
             <CRTOverlay />
           </div>
-          <div className="h-40 shrink-0 lg:h-44">
+          <div className="h-48 shrink-0 lg:h-56">
             <EventFeed />
           </div>
         </div>
-        <aside className="flex h-[46vh] shrink-0 flex-col border-t border-phosphor/30 bg-panel lg:h-auto lg:w-[460px] lg:border-l lg:border-t-0">
+        <aside className="flex h-[46vh] shrink-0 flex-col border-t border-phosphor/30 bg-panel lg:h-auto lg:w-[34rem] lg:border-l lg:border-t-0">
           <nav className="flex border-b border-navy" role="tablist">
             {TABS.map((t) => (
               <button
@@ -73,7 +91,7 @@ export default function Cockpit() {
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex-1 border-r border-navy px-1 py-1.5 text-[10px] uppercase tracking-widest transition last:border-r-0 ${
+                className={`flex-1 border-r border-navy px-1 py-1.5 text-[0.8125rem] uppercase tracking-widest transition last:border-r-0 ${
                   tab === t.id ? 'bg-phosphor/10 text-phosphor shadow-glow' : 'text-slate-500 hover:text-phosphor'
                 }`}
               >

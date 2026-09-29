@@ -15,9 +15,9 @@ function Readout({ icon, label, value, sub, tone = 'text-phosphor' }: { icon: Re
     <div className="flex items-center gap-2 border-l border-navy px-3">
       <span className={tone}>{icon}</span>
       <div className="leading-tight">
-        <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
+        <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">{label}</div>
         <div className={`text-sm tabular-nums ${tone}`}>{value}</div>
-        {sub && <div className="text-[9px] tabular-nums text-slate-500">{sub}</div>}
+        {sub && <div className="text-[0.75rem] tabular-nums text-slate-500">{sub}</div>}
       </div>
     </div>
   );
@@ -32,7 +32,8 @@ export default function CommandBar() {
   const speed = useFleetStore((s) => s.speed);
   const seed = useFleetStore((s) => s.seed);
   const archetype = useFleetStore((s) => s.map.archetype);
-  const { setRunning, setSpeed, step, newTheatre, setDesignerOpen } = useFleetStore.getState();
+  const uiScale = useFleetStore((s) => s.uiScale);
+  const { setRunning, setSpeed, step, newTheatre, setDesignerOpen, setUiScale } = useFleetStore.getState();
 
   const fin = useMemo(() => computeFinance(Object.values(ships)), [ships]);
   const building = useMemo(() => Object.values(ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length, [ships]);
@@ -44,8 +45,8 @@ export default function CommandBar() {
       <div className="mr-2 flex items-center gap-2 pr-2">
         <Radar className="h-5 w-5 text-phosphor" />
         <div className="leading-tight">
-          <div className="glow-text text-sm font-bold tracking-[0.3em] text-phosphor">ADMIRALTY LEDGER</div>
-          <div className="text-[9px] uppercase tracking-[0.25em] text-slate-500">
+          <div className="glow-text text-lg tracking-[0.3em] text-phosphor">ADMIRALTY LEDGER</div>
+          <div className="text-[0.75rem] uppercase tracking-[0.25em] text-slate-500">
             {ARCHETYPE_LABEL[archetype]}
           </div>
         </div>
@@ -56,13 +57,13 @@ export default function CommandBar() {
       <Readout icon={<FlaskConical className="h-4 w-4" />} label="Research" value={`${res.researchPoints.toFixed(0)} RP`} tone="text-emerald-accent" />
       <Readout icon={<Landmark className="h-4 w-4" />} label="Pol. Capital" value={res.politicalCapital.toFixed(1)} tone="text-amber-radar" />
       <div className="flex w-28 flex-col justify-center border-l border-navy px-3">
-        <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Tension</div>
+        <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">Tension</div>
         <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
       </div>
 
       <div className="ml-auto flex items-center gap-2">
         <div className="text-right leading-tight">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">DAY {tick}</div>
+          <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">DAY {tick}</div>
           <div className="text-xs tabular-nums text-phosphor">{dateOf(tick)}</div>
         </div>
         <div className="flex items-center gap-1">
@@ -79,6 +80,11 @@ export default function CommandBar() {
             </Btn>
           ))}
         </div>
+        <div className="flex items-center gap-1" title="UI scale">
+          <Btn tone="dim" aria-label="Smaller UI" onClick={() => setUiScale(uiScale - 0.1)}>A−</Btn>
+          <span className="w-9 text-center text-xs tabular-nums text-slate-500">{Math.round(uiScale * 100)}%</span>
+          <Btn tone="dim" aria-label="Larger UI" onClick={() => setUiScale(uiScale + 0.1)}>A+</Btn>
+        </div>
         <Btn tone="emerald" onClick={() => setDesignerOpen(true)}>
           <Wrench className="mr-1 inline h-3 w-3" />
           Design bureau
@@ -90,8 +96,8 @@ export default function CommandBar() {
             newTheatre(seedInput, arch === 'AUTO' ? undefined : arch);
           }}
         >
-          <input value={seedInput} onChange={(e) => setSeedInput(e.target.value)} className="w-28 px-1.5 py-0.5 text-[11px] uppercase" aria-label="Map seed" />
-          <select value={arch} onChange={(e) => setArch(e.target.value as MapArchetype | 'AUTO')} className="px-1 py-0.5 text-[10px]" aria-label="Theatre archetype">
+          <input value={seedInput} onChange={(e) => setSeedInput(e.target.value)} className="w-28 px-1.5 py-0.5 text-[0.875rem] uppercase" aria-label="Map seed" />
+          <select value={arch} onChange={(e) => setArch(e.target.value as MapArchetype | 'AUTO')} className="px-1 py-0.5 text-[0.8125rem]" aria-label="Theatre archetype">
             <option value="AUTO">AUTO</option>
             {(Object.keys(ARCHETYPE_LABEL) as MapArchetype[]).map((a) => (
               <option key={a} value={a}>

@@ -15,7 +15,7 @@ function BridgeMatrix() {
   const completed = useFleetStore((s) => s.research.completed);
   const bridges = useMemo(() => bridgeSet(completed), [completed]);
   return (
-    <div className="grid grid-cols-5 gap-px text-center text-[9px]">
+    <div className="grid grid-cols-5 gap-px text-center text-[0.75rem]">
       <div />
       {PROTOCOLS.map((p) => (
         <div key={p} className="py-0.5 text-slate-500">{SHORT[p]}</div>
@@ -55,16 +55,16 @@ export default function RDBureauPanel() {
       <li key={p.id} className={`border px-2 py-1.5 ${done ? 'border-emerald-accent/40 opacity-70' : active ? 'border-emerald-accent shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'border-navy'}`}>
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-[11px] text-emerald-accent">{p.name}</div>
-            <div className="text-[10px] leading-snug text-slate-500">{p.blurb}</div>
+            <div className="text-[0.875rem] text-emerald-accent">{p.name}</div>
+            <div className="text-[0.8125rem] leading-snug text-slate-500">{p.blurb}</div>
           </div>
           <div className="shrink-0 text-right">
             {done ? <Chip tone="emerald">COMPLETE</Chip> : active ? <Btn tone="amber" onClick={() => stopResearch(p.id)}>Pause</Btn> : <Btn tone="emerald" disabled={!can.ok} title={can.reason} onClick={() => startResearch(p.id)}>Start</Btn>}
-            <div className="mt-0.5 text-[9px] text-slate-500">{p.costRP} RP</div>
+            <div className="mt-0.5 text-[0.75rem] text-slate-500">{p.costRP} RP</div>
           </div>
         </div>
         {!done && (progress > 0 || active) && <Meter value={progress} max={p.costRP} tone="emerald" label={`${Math.round((progress / p.costRP) * 100)}%`} />}
-        {!done && !can.ok && !active && can.reason && <div className="mt-0.5 text-[9px] text-amber-radar/80">{can.reason}</div>}
+        {!done && !can.ok && !active && can.reason && <div className="mt-0.5 text-[0.75rem] text-amber-radar/80">{can.reason}</div>}
       </li>
     );
   };
@@ -75,11 +75,11 @@ export default function RDBureauPanel() {
   return (
     <div className="space-y-2">
       <Section title="Bureau status" tone="emerald" right={<FlaskConical className="h-3 w-3" />}>
-        <div className="flex items-baseline justify-between text-[11px]">
+        <div className="flex items-baseline justify-between text-[0.875rem]">
           <span className="text-slate-500">Research points banked</span>
           <span className="text-emerald-accent tabular-nums">{rp.toFixed(0)} RP (+{BASE_RP_INCOME}/day)</span>
         </div>
-        <div className="text-[10px] text-slate-500">Engineering slots {research.active.length}/{RESEARCH_SLOTS} · each absorbs up to {RP_THROUGHPUT_PER_PROJECT} RP/day</div>
+        <div className="text-[0.8125rem] text-slate-500">Engineering slots {research.active.length}/{RESEARCH_SLOTS} · each absorbs up to {RP_THROUGHPUT_PER_PROJECT} RP/day</div>
         <div className="mt-2 flex gap-1">
           <Btn tone="emerald" disabled={budget < FUND_BUREAU_COST} onClick={() => fundBureau()}>Fund bureau: {FUND_BUREAU_COST}M → +{FUND_BUREAU_RP} RP</Btn>
           <Btn tone="amber" disabled={ic >= 8 || budget < 150 * ic} onClick={() => expandIndustry()}>Slipway +1 ({150 * ic}M)</Btn>
@@ -88,7 +88,7 @@ export default function RDBureauPanel() {
 
       <Section title="Protocol friction matrix" tone="amber">
         <BridgeMatrix />
-        <p className="mt-1 text-[10px] text-slate-500">Unbridged pairs add integration friction: slower CMS reaction and sensor tracking lag. A completed bridge removes it fleet-wide, permanently.</p>
+        <p className="mt-1 text-[0.8125rem] text-slate-500">Unbridged pairs add integration friction: slower CMS reaction and sensor tracking lag. A completed bridge removes it fleet-wide, permanently.</p>
       </Section>
 
       <Section title="Protocol bridges" tone="emerald">

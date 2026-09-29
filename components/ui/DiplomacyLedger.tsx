@@ -32,7 +32,7 @@ export default function DiplomacyLedger() {
     <div className="space-y-2">
       <Section title="Geopolitical climate" tone="amber" right={<span className="text-amber-radar">PC {pc.toFixed(1)}</span>}>
         <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
-        <p className="mt-1 text-[10px] text-slate-500">Tension raises the chance a vendor state revokes licences, freezes exports or embargoes spares. Ministerial lobbying builds standing; at 65+ a pending sanction is averted outright.</p>
+        <p className="mt-1 text-[0.8125rem] text-slate-500">Tension raises the chance a vendor state revokes licences, freezes exports or embargoes spares. Ministerial lobbying builds standing; at 65+ a pending sanction is averted outright.</p>
       </Section>
 
       {Object.values(vendors).map((v) => {
@@ -40,7 +40,7 @@ export default function DiplomacyLedger() {
         const risk = v.id === 'DOMESTIC_YARDS' ? 0 : ((tension / 100) ** 2 * v.volatility * 0.03 * (1 - v.standing / 130)) * 30 * 100;
         return (
           <Section key={v.id} title={`${v.name} · ${v.country}`} tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'} right={statusChip(v, tick)}>
-            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+            <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500">
               <span>STANDING</span>
               <div className="relative flex-1">
                 <Meter value={v.standing} tone="cyan" label={v.standing.toFixed(0)} />
@@ -50,7 +50,7 @@ export default function DiplomacyLedger() {
               </div>
               <span className="text-phosphor">T{tier}</span>
             </div>
-            <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+            <div className="mt-1 flex justify-between text-[0.8125rem] text-slate-500">
               <span>{VENDOR_SHORT[v.id]} · {counts[v.id] ?? 0} catalogue lines</span>
               {v.id !== 'DOMESTIC_YARDS' && <span className={risk > 8 ? 'text-warn' : risk > 3 ? 'text-amber-radar' : ''}>30-DAY SANCTION RISK ≈ {risk.toFixed(1)}%</span>}
             </div>
@@ -68,8 +68,8 @@ export default function DiplomacyLedger() {
       })}
 
       <Section title="Sanction register" tone="red">
-        {sanctions.length === 0 && <p className="text-[11px] text-slate-500">No sanctions on record.</p>}
-        <ul className="space-y-0.5 text-[10px]">
+        {sanctions.length === 0 && <p className="text-[0.875rem] text-slate-500">No sanctions on record.</p>}
+        <ul className="space-y-0.5 text-[0.8125rem]">
           {[...sanctions].reverse().slice(0, 8).map((s) => {
             const live = s.endTick === null || s.endTick > tick;
             return (

@@ -17,11 +17,11 @@ export default function EventFeed() {
   const recent = log.slice(-120).reverse();
   return (
     <div className="flex h-full flex-col border-t border-phosphor/30 bg-panel">
-      <div className="flex items-center justify-between border-b border-navy px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-phosphor">
+      <div className="flex items-center justify-between border-b border-navy px-2 py-0.5 text-[0.8125rem] uppercase tracking-[0.2em] text-phosphor">
         <span>▍Tactical ticker</span>
         <span className="text-slate-500">{log.length} entries</span>
       </div>
-      <ul className="flex-1 overflow-y-auto px-2 py-1 text-[11px] leading-snug" aria-live="polite">
+      <ul className="flex-1 overflow-y-auto px-2 py-1 text-[0.875rem] leading-snug" aria-live="polite">
         {recent.map((e) => (
           <li key={e.id} className={`whitespace-pre-wrap ${TONE[e.severity]}`}>
             <span className="text-slate-600">D{String(e.tick).padStart(4, '0')} </span>

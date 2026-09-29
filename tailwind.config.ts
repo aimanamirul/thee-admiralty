@@ -14,7 +14,7 @@ const config: Config = {
         emerald: { accent: '#10b981' },
       },
       fontFamily: {
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'Liberation Mono', 'monospace'],
+        mono: ['var(--font-share-tech-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'Liberation Mono', 'monospace'],
       },
       boxShadow: {
         glow: '0 0 8px rgba(0,240,255,0.35), inset 0 0 8px rgba(0,240,255,0.08)',

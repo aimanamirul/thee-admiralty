@@ -31,14 +31,14 @@ export default function SectorPanel() {
     return (
       <div className="space-y-2">
         <Section title="Theatre overview">
-          <p className="mb-2 text-[11px] text-slate-400">Select a sector on the plot (left click) or below. Right-click a sector with a task force selected to order it on station.</p>
+          <p className="mb-2 text-[0.875rem] text-slate-400">Select a sector on the plot (left click) or below. Right-click a sector with a task force selected to order it on station.</p>
           <ul className="space-y-1">
             {map.sectors.map((s) => {
               const st = sectorStates[s.id];
               return (
                 <li key={s.id}>
                   <button onClick={() => selectSector(s.id)} className="w-full border border-navy px-2 py-1 text-left hover:border-phosphor/60">
-                    <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center justify-between text-[0.875rem]">
                       <span className="text-phosphor">{s.name}</span>
                       <span className="tabular-nums text-slate-500">{st.roe.replace('_', ' ')}</span>
                     </div>
@@ -50,9 +50,9 @@ export default function SectorPanel() {
           </ul>
         </Section>
         <Section title="Chokepoints" tone="amber">
-          {map.chokepoints.length === 0 && <p className="text-[11px] text-slate-500">None identified.</p>}
+          {map.chokepoints.length === 0 && <p className="text-[0.875rem] text-slate-500">None identified.</p>}
           {map.chokepoints.map((c) => (
-            <div key={c.id} className="flex justify-between text-[11px]">
+            <div key={c.id} className="flex justify-between text-[0.875rem]">
               <span className="text-amber-radar">{c.name}</span>
               <span className="text-slate-400">{c.widthTiles} tile{c.widthTiles === 1 ? '' : 's'} · {c.links.map((l) => `S${l + 1}`).join('↔')}</span>
             </div>
@@ -78,9 +78,9 @@ export default function SectorPanel() {
           {sec.abyssalFraction > 0.4 && <Chip tone="emerald">ABYSSAL — SUB / CARRIER WATERS</Chip>}
           {sec.littoralFraction > 0.25 && <Chip tone="amber">LITTORAL — MISSILE BOAT HEAVEN</Chip>}
         </div>
-        <div className="mb-1 text-[10px] uppercase tracking-widest text-slate-500">Threat level</div>
+        <div className="mb-1 text-[0.8125rem] uppercase tracking-widest text-slate-500">Threat level</div>
         <Meter value={st.threat} tone={threatTone(st.threat)} label={st.threat.toFixed(0)} />
-        <div className="mt-2 text-[10px] uppercase tracking-widest text-slate-500">Rules of engagement</div>
+        <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">Rules of engagement</div>
         <div className="mt-1 flex gap-1">
           {ROES.map((r) => (
             <Btn key={r.id} tone={st.roe === r.id ? (r.id === 'WEAPONS_FREE' ? 'red' : r.id === 'HOLD_FIRE' ? 'amber' : 'cyan') : 'dim'} onClick={() => setRoe(selected, r.id)} className="flex-1">
@@ -88,7 +88,7 @@ export default function SectorPanel() {
             </Btn>
           ))}
         </div>
-        <p className="mt-1 text-[10px] text-slate-500">{roe.hint}</p>
+        <p className="mt-1 text-[0.8125rem] text-slate-500">{roe.hint}</p>
       </Section>
 
       <Section title="Bathymetry & telemetry">
@@ -97,7 +97,7 @@ export default function SectorPanel() {
           <div style={{ width: `${sec.shelfFraction * 100}%` }} className="bg-[#2a5c8a]" />
           <div style={{ width: `${sec.abyssalFraction * 100}%` }} className="bg-[#10233a]" />
         </div>
-        <div className="mb-2 flex justify-between text-[9px] text-slate-500">
+        <div className="mb-2 flex justify-between text-[0.75rem] text-slate-500">
           <span className="text-amber-radar">LITTORAL {(sec.littoralFraction * 100).toFixed(0)}%</span>
           <span className="text-[#5a9bd0]">SHELF {(sec.shelfFraction * 100).toFixed(0)}%</span>
           <span>ABYSSAL {(sec.abyssalFraction * 100).toFixed(0)}%</span>
@@ -109,9 +109,9 @@ export default function SectorPanel() {
         <Stat k="Contacts on plot" v={here.length ? `${here.length} (${here.filter((c) => c.cls === 'HOSTILE').length} hostile)` : 'none'} tone={here.some((c) => c.cls === 'HOSTILE') ? 'text-warn' : undefined} />
         {chokes.length > 0 && (
           <div className="mt-2 border-t border-navy pt-1">
-            <div className="text-[10px] uppercase tracking-widest text-amber-radar">Chokepoints</div>
+            <div className="text-[0.8125rem] uppercase tracking-widest text-amber-radar">Chokepoints</div>
             {chokes.map((c) => (
-              <div key={c.id} className="flex justify-between text-[11px]">
+              <div key={c.id} className="flex justify-between text-[0.875rem]">
                 <span className="text-amber-radar">{c.name}</span>
                 <span className="text-slate-400">{c.widthTiles}T wide</span>
               </div>
@@ -127,7 +127,7 @@ export default function SectorPanel() {
           const patrol = list.filter((s) => s.state === 'ACTIVE_PATROL').length;
           const deep = list.filter((s) => HULLS[s.hullId].draftM >= 6.8).length;
           return (
-            <div key={tf.id} className={`mb-1 flex items-center justify-between border px-2 py-1 text-[11px] ${onStation ? 'border-emerald-accent/60' : 'border-navy'} ${selectedTf === tf.id ? 'bg-phosphor/5' : ''}`}>
+            <div key={tf.id} className={`mb-1 flex items-center justify-between border px-2 py-1 text-[0.875rem] ${onStation ? 'border-emerald-accent/60' : 'border-navy'} ${selectedTf === tf.id ? 'bg-phosphor/5' : ''}`}>
               <div>
                 <span className="text-phosphor">{tf.name}</span>{' '}
                 <span className="text-slate-500">

@@ -55,6 +55,8 @@ interface UiSlice {
   designerOpen: boolean;
   designs: ShipDesign[];
   toast: { text: string; ok: boolean; id: number } | null;
+  /** Root font-size multiplier; every rem-based UI size and canvas label follows it. */
+  uiScale: number;
 }
 
 interface Actions {
@@ -70,6 +72,7 @@ interface Actions {
   saveDesign: (d: ShipDesign) => void;
   deleteDesign: (id: string) => void;
   dismissToast: () => void;
+  setUiScale: (v: number) => void;
   // commands (each returns the engine's verdict)
   orderShip: (a: { designName: string; hullId: ShipDesign['hullId']; moduleIds: string[]; squadronId: string; tradition: NamingTradition; customName?: string }) => CommandResult;
   buySpares: (moduleId: string, qty: number) => CommandResult;
@@ -150,6 +153,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     designerOpen: false,
     designs: STARTER_DESIGNS,
     toast: null,
+    uiScale: 1,
 
     step: (days = 1) => {
       const s = get();
@@ -184,6 +188,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     saveDesign: (d) => set((s) => ({ designs: [...s.designs.filter((x) => x.id !== d.id), d] })),
     deleteDesign: (id) => set((s) => ({ designs: s.designs.filter((x) => x.id !== id) })),
     dismissToast: () => set({ toast: null }),
+    setUiScale: (v) => set({ uiScale: Math.max(0.85, Math.min(1.6, Math.round(v * 20) / 20)) }),
 
     orderShip: (a) => run((w) => cmd.orderShip(w, a)),
     buySpares: (id, qty) => run((w) => cmd.buySpares(w, id, qty)),

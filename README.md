@@ -12,6 +12,14 @@ npm run verify:map     # determinism / connectivity / tier checks for all archet
 npx tsx scripts/verifySim.ts 730 [seed] [CHOKEPOINT|CORRIDOR|RIMLAND] [--surge]   # headless soak test of the sim
 ```
 
+## Status & docs
+
+Free play is complete; the guided tutorial is designed but not built. Start with [`docs/HANDOFF.md`](docs/HANDOFF.md) for the
+current state and next task, then the plans: [tutorial](docs/PLAN-tutorial.md), [foreign contractors](docs/PLAN-foreign-contractors.md),
+[asymmetric faction](docs/PLAN-asymmetric-faction.md).
+
+UI: Share Tech Mono font; use **A− / A+** in the top bar to scale the whole interface (saved in the browser).
+
 ## Playing
 
 | Control | Action |

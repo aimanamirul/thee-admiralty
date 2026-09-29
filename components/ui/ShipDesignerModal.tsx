@@ -90,7 +90,7 @@ export default function ShipDesignerModal() {
             <Section title="Hull base">
               <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
                 {HULL_LIST.map((h) => (
-                  <button key={h.id} onClick={() => changeHull(h.id)} className={`border px-1.5 py-1 text-left text-[10px] ${hullId === h.id ? 'border-phosphor bg-phosphor/10 text-phosphor shadow-glow' : 'border-navy text-slate-400 hover:border-phosphor/50'}`}>
+                  <button key={h.id} onClick={() => changeHull(h.id)} className={`border px-1.5 py-1 text-left text-[0.8125rem] ${hullId === h.id ? 'border-phosphor bg-phosphor/10 text-phosphor shadow-glow' : 'border-navy text-slate-400 hover:border-phosphor/50'}`}>
                     <div className="uppercase tracking-wider">{h.name}</div>
                     <div className="text-slate-500">{h.displacementT.toLocaleString()} t · {h.draftM} m</div>
                     <div className="text-slate-500">{fmtM(h.cost)} · {h.buildDays}d</div>
@@ -103,14 +103,14 @@ export default function ShipDesignerModal() {
                 <Stat k="Hotel load" v={`${hull.hotelLoadMW} MW`} />
                 <Stat k="Payload" v={`${hull.payloadT} t`} />
               </div>
-              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full px-2 py-1 text-[12px]" aria-label="Design name" placeholder="Design / class name" />
+              <input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full px-2 py-1 text-[0.9375rem]" aria-label="Design name" placeholder="Design / class name" />
             </Section>
 
             {SLOT_ORDER.map((slot) => (
               <Section key={slot} title={`${SLOT_LABEL[slot]} · ${hull.sockets[slot]} socket${hull.sockets[slot] > 1 ? 's' : ''}`} tone={slot === 'POWERPLANT' ? 'amber' : slot === 'CMS' ? 'emerald' : 'cyan'}>
                 <div className="space-y-1">
                   {sel[slot].map((val, idx) => (
-                    <select key={idx} value={val} onChange={(e) => setSlot(slot, idx, e.target.value)} className="w-full px-1.5 py-1 text-[11px]" aria-label={`${SLOT_LABEL[slot]} socket ${idx + 1}`}>
+                    <select key={idx} value={val} onChange={(e) => setSlot(slot, idx, e.target.value)} className="w-full px-1.5 py-1 text-[0.875rem]" aria-label={`${SLOT_LABEL[slot]} socket ${idx + 1}`}>
                       <option value="">— empty —</option>
                       {MODULES.filter((m) => m.slot === slot).map((m) => {
                         const p = procurability(m, vendors, done);
@@ -130,7 +130,7 @@ export default function ShipDesignerModal() {
             <Section title="Saved designs">
               <ul className="space-y-1">
                 {designs.map((d) => (
-                  <li key={d.id} className="flex items-center justify-between border border-navy px-2 py-1 text-[11px]">
+                  <li key={d.id} className="flex items-center justify-between border border-navy px-2 py-1 text-[0.875rem]">
                     <span className="text-slate-300">{d.name} <span className="text-slate-600">· {HULLS[d.hullId].name}</span></span>
                     <span className="flex gap-1">
                       <Btn tone="cyan" onClick={() => { setHullId(d.hullId); setName(d.name); setSel(selFromDesign(d)); setMsg(null); }}>Load</Btn>
@@ -145,24 +145,24 @@ export default function ShipDesignerModal() {
           <div className="space-y-2">
             <Section title="Design readout" tone={ev.valid ? 'emerald' : 'red'} right={<Chip tone={ev.valid ? 'emerald' : 'red'}>{ev.valid ? 'VALID' : 'INVALID'}</Chip>}>
               {ev.errors.map((e) => (
-                <div key={e} className="text-[11px] text-warn">✖ {e}</div>
+                <div key={e} className="text-[0.875rem] text-warn">✖ {e}</div>
               ))}
               {ev.warnings.map((w) => (
-                <div key={w} className="text-[11px] text-amber-radar">▲ {w}</div>
+                <div key={w} className="text-[0.875rem] text-amber-radar">▲ {w}</div>
               ))}
               {blocked.map(({ m, p }) => (
-                <div key={m.id} className="text-[11px] text-warn">✖ {m.name}: {p.reason}</div>
+                <div key={m.id} className="text-[0.875rem] text-warn">✖ {m.name}: {p.reason}</div>
               ))}
-              {ev.valid && ev.warnings.length === 0 && blocked.length === 0 && <div className="text-[11px] text-emerald-accent">✔ All systems nominal</div>}
+              {ev.valid && ev.warnings.length === 0 && blocked.length === 0 && <div className="text-[0.875rem] text-emerald-accent">✔ All systems nominal</div>}
             </Section>
 
             <Section title="Power grid & displacement">
-              <div className="mb-1 flex justify-between text-[10px] text-slate-500">
+              <div className="mb-1 flex justify-between text-[0.8125rem] text-slate-500">
                 <span>POWER {ev.powerDrawMW.toFixed(1)} / {ev.powerGenerationMW.toFixed(1)} MW</span>
                 <span className={ev.powerMarginMW < 0 ? 'text-warn' : ''}>MARGIN {ev.powerMarginMW.toFixed(1)}</span>
               </div>
               <Meter value={Math.min(100, powerPct)} tone={powerPct > 100 ? 'red' : powerPct > 90 ? 'amber' : 'cyan'} label={`${powerPct.toFixed(0)}%`} />
-              <div className="mb-1 mt-2 flex justify-between text-[10px] text-slate-500">
+              <div className="mb-1 mt-2 flex justify-between text-[0.8125rem] text-slate-500">
                 <span>PAYLOAD {ev.payloadUsedT} / {ev.payloadT} t</span>
               </div>
               <Meter value={Math.min(100, payloadPct)} tone={payloadPct > 100 ? 'red' : payloadPct > 90 ? 'amber' : 'cyan'} label={`${payloadPct.toFixed(0)}%`} />
@@ -173,15 +173,15 @@ export default function ShipDesignerModal() {
             </Section>
 
             <Section title="Protocol compatibility" tone="amber">
-              <div className="mb-1 text-[10px] text-slate-500">CMS bus: <span className="text-emerald-accent">{cms ? PROTO(cms.protocol) : 'NONE'}</span></div>
-              {ev.frictions.length === 0 && <div className="text-[11px] text-emerald-accent">No mismatched modules.</div>}
+              <div className="mb-1 text-[0.8125rem] text-slate-500">CMS bus: <span className="text-emerald-accent">{cms ? PROTO(cms.protocol) : 'NONE'}</span></div>
+              {ev.frictions.length === 0 && <div className="text-[0.875rem] text-emerald-accent">No mismatched modules.</div>}
               {ev.frictions.map((f) => (
-                <div key={f.moduleId + f.bridgeKey} className="flex items-center justify-between text-[11px]">
+                <div key={f.moduleId + f.bridgeKey} className="flex items-center justify-between text-[0.875rem]">
                   <span className="truncate text-slate-300">{f.moduleName}</span>
                   {f.bridged ? <Chip tone="cyan">BRIDGED</Chip> : <Chip tone={f.severity >= 0.5 ? 'red' : 'amber'}>{PROTO(f.moduleProtocol)} · FRICTION {f.severity.toFixed(2)}</Chip>}
                 </div>
               ))}
-              {ev.frictionIndex > 0 && <div className="mt-1 text-[10px] text-amber-radar">Integration Friction Penalty: reaction ×{ev.reactionMultiplier.toFixed(2)}, tracking lag +{ev.trackingLagSec.toFixed(1)}s. Research a protocol bridge to remove it.</div>}
+              {ev.frictionIndex > 0 && <div className="mt-1 text-[0.8125rem] text-amber-radar">Integration Friction Penalty: reaction ×{ev.reactionMultiplier.toFixed(2)}, tracking lag +{ev.trackingLagSec.toFixed(1)}s. Research a protocol bridge to remove it.</div>}
             </Section>
 
             <Section title="Combat figures">
@@ -207,16 +207,16 @@ export default function ShipDesignerModal() {
               <Stat k="Upkeep" v={`${(ev.upkeepPerDay * 2.5).toFixed(2)} M/day`} />
               <Stat k="Build time" v={`${hull.buildDays} days`} />
               <div className="mt-2 grid grid-cols-2 gap-1">
-                <select value={tradition} onChange={(e) => setTradition(e.target.value as NamingTradition)} className="px-1 py-1 text-[10px]" aria-label="Naming tradition">
+                <select value={tradition} onChange={(e) => setTradition(e.target.value as NamingTradition)} className="px-1 py-1 text-[0.8125rem]" aria-label="Naming tradition">
                   {TRADITIONS.map((t) => (
                     <option key={t} value={t}>
                       NAMES: {TRADITION_LABEL[t]}
                     </option>
                   ))}
                 </select>
-                <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Custom name (optional)" className="px-1 py-1 text-[11px]" aria-label="Custom ship name" />
+                <input value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Custom name (optional)" className="px-1 py-1 text-[0.875rem]" aria-label="Custom ship name" />
               </div>
-              <select value={squadronId} onChange={(e) => setSquadronId(e.target.value)} className="mt-1 w-full px-1 py-1 text-[10px]" aria-label="Receiving squadron">
+              <select value={squadronId} onChange={(e) => setSquadronId(e.target.value)} className="mt-1 w-full px-1 py-1 text-[0.8125rem]" aria-label="Receiving squadron">
                 {squadrons.map((s) => (
                   <option key={s.id} value={s.id}>
                     ASSIGN TO {s.label}
@@ -238,7 +238,7 @@ export default function ShipDesignerModal() {
                   Lay down hull
                 </Btn>
               </div>
-              {msg && <div className={`mt-1 text-[11px] ${msg.ok ? 'text-emerald-accent' : 'text-warn'}`}>{msg.ok ? '✔' : '✖'} {msg.text}</div>}
+              {msg && <div className={`mt-1 text-[0.875rem] ${msg.ok ? 'text-emerald-accent' : 'text-warn'}`}>{msg.ok ? '✔' : '✖'} {msg.text}</div>}
             </Section>
           </div>
         </div>

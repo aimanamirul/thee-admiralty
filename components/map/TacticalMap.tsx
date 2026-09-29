@@ -148,6 +148,8 @@ export default function TacticalMap() {
     const cursor = { x: -1, y: -1, inside: false };
     const display = new Map<string, { x: number; y: number; h: number }>();
     let raf = 0;
+    let ui = 1;
+    let fontFamily = 'monospace';
     let frames = 0;
     let fpsStamp = performance.now();
 
@@ -300,7 +302,7 @@ export default function TacticalMap() {
 
       // Latitude / longitude markings in screen space along the frame.
       g.fillStyle = 'rgba(0,240,255,0.55)';
-      g.font = '9px ui-monospace, Menlo, Consolas, monospace';
+      g.font = `${12 * ui}px ${fontFamily}`;
       g.textBaseline = 'middle';
       g.textAlign = 'left';
       const left = toScreen(0, 0);
@@ -382,7 +384,7 @@ export default function TacticalMap() {
     };
 
     const label = (text: string, x: number, y: number, color: string, align: CanvasTextAlign = 'left', size = 10) => {
-      ctx.font = `${size}px ui-monospace, Menlo, Consolas, monospace`;
+      ctx.font = `${Math.round(size * 1.45 * ui)}px ${fontFamily}`;
       ctx.textAlign = align;
       ctx.textBaseline = 'middle';
       ctx.fillStyle = color;
@@ -393,6 +395,8 @@ export default function TacticalMap() {
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
       const st = useFleetStore.getState();
+      ui = st.uiScale;
+      fontFamily = getComputedStyle(document.body).fontFamily || 'monospace';
       if (!layers || layers.map !== st.map) {
         layers = buildLayers(st.map);
         origin = geoOrigin(st.map.seed);
@@ -426,7 +430,7 @@ export default function TacticalMap() {
       ctx.drawImage(tint, -0.5, -0.5, map.width, map.height);
       ctx.restore();
 
-      const vsig = `${map.stats.fingerprint}|${view.scale.toFixed(4)}|${view.tx.toFixed(1)}|${view.ty.toFixed(1)}|${cw}|${ch}|${dpr}|${tg.grid}|${tg.bathy}|${tg.sectors}`;
+      const vsig = `${ui}|${map.stats.fingerprint}|${view.scale.toFixed(4)}|${view.tx.toFixed(1)}|${view.ty.toFixed(1)}|${cw}|${ch}|${dpr}|${tg.grid}|${tg.bathy}|${tg.sectors}`;
       if (vsig !== vecSig) {
         vecSig = vsig;
         if (vec.width !== canvas.width || vec.height !== canvas.height) {
@@ -677,7 +681,7 @@ export default function TacticalMap() {
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-void">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
-      <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[10px] uppercase tracking-widest">
+      <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
         <div className="pointer-events-auto flex gap-1">
           {(['grid', 'bathy', 'sectors', 'threat'] as const).map((k) => (
             <button
