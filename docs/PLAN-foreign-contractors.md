@@ -147,7 +147,45 @@ regime hazard multiplier, secondary-sanction term, propagation through `affiliat
    player out and there are no hard secondary sanctions in v1.
 6. **Economy (decided):** rebalance so budget bites (income currently far outpaces spending, ~2.6B by day 56). Vendor deposits,
    cancellation penalties and offsets are real budget decisions alongside Political Capital and time. Needs its own balance pass.
-7. Still open: which roster to pick (see brainstorm), new protocol tags (`NORDIC_OPEN`, `SINO_DIGITAL`).
+7. **Cold vendors (decided):** all three, staged cheapest-first: Japan-type (policy-shift event), China-type (bloc-gated, needs soft
+   affinity), India-type (JV, needs multi-parent sanction logic). They are hidden until unlocked, so they do not add to the initial 8.
+8. **Naming (decided):** fully fictional by default (vendors, countries, modules, R&D projects, tutorial copy); real names are an
+   optional skin behind a settings toggle. Sanction and scandal wording stays generic in both modes.
+9. Still open: new protocol tags (`NORDIC_OPEN`, `SINO_DIGITAL`); approval of the alias set below.
+
+## 9. Curated roster (decided 2026-09-29)
+
+Eight vendors at start, three cold vendors unlocking over a run. Each one teaches a different mechanic. The "real analogue" column
+is the skin mapping only; the game shows the alias by default.
+
+| # | Alias (default) | Country alias | Real analogue (skin) | Regime | Start rung | Teaches |
+|---|---|---|---|---|---|---|
+| 1 | Arsenal Yards | Home | Domestic Yards | Home | Signed | Fallback, substitution, licensed production |
+| 2 | Meridian Navale | Republic of Aurelle | Naval Group / Thales | Politically steered, refunds owed | Signed | Cancellation and resale (Mistral case) |
+| 3 | Halberd Dynamics | Federated States of Halcyon | Raytheon | Deepest catalogue, strictest licences | Framework | Closed ecosystem, high friction |
+| 4 | Sarnic Defence | Republic of Sarnia | Aselsan | Transactional, eager for customers | Signed | Substitution story (already in the tutorial) |
+| 5 | Zvezda-Nord Export | Eastern Bloc | (fictional already) | State monopoly, cheap | Signed | Bloc affinity: courting it costs Western standing |
+| 6 | Nordvik Systems | Kingdom of Vinterland | Saab | Restrictive on conflict parties | Contact | Bridge-friendly CMS; standing tied to your `incidents` |
+| 7 | Seorak Consortium | Republic of Seoryeong | Hanwha / HD HHI | Business-friendly, fast | Contact | Consortium sales; gateway to submarines |
+| 8 | Kessler-Brandt Antriebe | Federal Republic of Rheinmark | TKMS / MTU-class | Slow, component licences | Unknown | **Hidden sub-supplier** (engines inside others' products) |
+| C1 | Mitsurugi Heavy Industries | Akitsu Federation | MHI | **Closed** until a policy-shift event | Closed | Policy-shift event, premium reliable hulls |
+| C2 | Dahai Marine Group | Dahai Republic | CSSC / NORINCO | Volume builder, gated by bloc | Unknown | Soft bloc affinity, few references |
+| C3 | Vayu-Sarath Aerospace (JV) | Bharatvar + Eastern Bloc | BrahMos | JV: either parent state can sanction | Unknown | Double sanction exposure |
+
+Build order for the cold vendors: C1 (a `closedUntilEvent` flag and one event), C2 (needs soft bloc affinity), C3 (needs multi-parent
+sanction logic). Module names follow the same rule: fictional by default (e.g. TACTICOS → "TACTIS", MK41 + ESSM → "VL-41 + SPX-16",
+Aegis Link → "Bulwark Link"), with the real name in the skin table.
+
+## 10. Build phases (revised for the decisions above)
+
+0. **Display-name layer.** `displayName(id, skin)` for vendors, countries, modules, projects; tutorial text uses tokens
+   (`{vendor:SARNIC}`) instead of literals; settings toggle (persisted). Do this first, before content grows.
+1. **Ladder + regimes + roster 6-8.** `rung`, regime profiles replacing the single `volatility`, catalogue gated by rung, Diplomacy tab v2.
+2. **Information game.** `origins` on modules, a due-diligence action that reveals them before purchase, warning stage kept for every hazard.
+3. **Contracts.** Deposits, cancellation penalties, refund/resale for hulls under construction (Mistral); incident-driven standing loss for restrictive regimes.
+4. **Economy rebalance** (its own pass): income vs upkeep, deposits, offsets; verify with `verifySim`.
+5. **Cold vendors** C1, C2, C3 in that order; then submarines as a separate track.
+
 
 ## Sources
 
