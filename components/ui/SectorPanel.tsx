@@ -13,6 +13,7 @@ import { INTERDICTION_FLAGS } from '@/lib/sim/interdiction';
 import { flagText } from '@/lib/sim/shipping';
 import type { FlagFilter } from '@/lib/types/shipping';
 import { useNames } from '@/store/useNames';
+import { useUiFlag } from '@/store/useTutorialStore';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
@@ -43,6 +44,7 @@ export default function SectorPanel() {
   const selectedContact = useFleetStore((s) => s.selectedContactId);
   const merchants = useFleetStore((s) => s.shipping.ships);
   const hasLanes = useFleetStore((s) => s.shipping.lanes.length > 0);
+  const showInspect = useUiFlag('INSPECT');
   const n = useNames();
   const selectedMerchant = useFleetStore((s) => s.selectedMerchantId);
   const { selectSector, setRoe, assignTaskForce, setSop, selectContact, selectMerchant, setSectorInspect } = useFleetStore.getState();
@@ -134,7 +136,7 @@ export default function SectorPanel() {
             ))}
           </div>
         </div>
-        {hasLanes && (
+        {hasLanes && showInspect && (
           <div data-tutorial="inspect-order">
             <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">
               <Term k="INSPECTION">Merchant searches</Term>

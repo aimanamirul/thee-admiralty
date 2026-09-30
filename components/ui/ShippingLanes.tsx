@@ -5,13 +5,15 @@ import { Term } from '@/components/tutorial/Term';
 import { premiumPct } from '@/lib/sim/shipping';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useNames } from '@/store/useNames';
+import { useUiFlag } from '@/store/useTutorialStore';
 import { Chip, fmtM, Meter, Section, Stat } from './kit';
 
 /** Theatre view of civilian shipping: each lane's war-risk and traffic, the trade index and the running record. */
 export default function ShippingLanes() {
   const sh = useFleetStore((s) => s.shipping);
   const n = useNames();
-  if (sh.lanes.length === 0) return null;
+  const show = useUiFlag('SHIPPING');
+  if (!show || sh.lanes.length === 0) return null;
   const s = sh.stats;
   return (
     <Section anchor="shipping-lanes" title={<Term k="SHIPPING">Shipping lanes</Term>} tone="cyan" right={<Ship className="h-3.5 w-3.5 text-phosphor" />}>

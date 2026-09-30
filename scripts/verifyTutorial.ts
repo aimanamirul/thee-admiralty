@@ -39,7 +39,7 @@ let selectedSectorId: number | null = null;
 let startSeq = 0;
 const view = (): TutorialView => ({
   tick: w.tick, map: w.map, selectedSectorId, sectors: w.sectors, fleets: w.fleets, ships: w.ships, vendors: w.vendors,
-  research: w.research, resources: w.resources, spares: w.spares, contacts: w.contacts, running: true, log, startSeq,
+  research: w.research, resources: w.resources, spares: w.spares, contacts: w.contacts, shipping: w.shipping, running: true, log, startSeq,
 });
 const ok = (r: { ok: boolean; reason?: string }, what: string) => check(r.ok, `${what}: ${r.reason ?? ''}`);
 
@@ -97,6 +97,38 @@ const actions: Record<string, () => void> = {
   sanctions: () => ok(cmd.lobbyVendorCmd(w, 'ASELSAN', 'MIN_FOREIGN'), 'lobby'),
   suppliers: () => ok(cmd.advanceRelationshipCmd(w, 'NORDVIK'), 'trade mission'),
   homefront: () => ok(cmd.holdBudgetHearing(w), 'budget hearing'),
+  escort: () => {
+    // Unescorted, the tanker meets the raider and is lost (every choice must end the lesson, none may soft-lock).
+    const c = structuredClone(w);
+    c.events = [];
+    let d0 = 0;
+    while (c.shipping.ships.some((m) => m.id === 'MV-TUT-1') && d0++ < 120) advanceDay(c);
+    check(c.shipping.stats.lost === 1 && c.shipping.stats.transited === 0, `[escort/unescorted] the tanker should be lost (lost ${c.shipping.stats.lost}, arrived ${c.shipping.stats.transited})`);
+    check(c.stats.shipsLost === 0, '[escort/unescorted] no warship lost');
+    console.log(`  escort, unescorted -> tanker lost on day ${c.tick} (support ${c.politics.support.toFixed(1)})`);
+    // Escorted by TF 11 the same lane is safe.
+    ok(cmd.escortMerchantCmd(w, 'TF-1', 'MV-TUT-1'), 'escort the tanker');
+  },
+  search: () => {
+    // The unlucky 10%: the search finds nothing. The lesson must still end, and the cost must be the one the preview promised.
+    const c = structuredClone(w);
+    c.events = [];
+    c.shipping.ships[0].contraband = false;
+    const sup0 = c.politics.support;
+    ok(cmd.inspectMerchantCmd(c, 'TF-1', 'MV-TUT-2'), '[search/clean] order');
+    let d0 = 0;
+    while (d0++ < 40) {
+      advanceDay(c);
+      const m = c.shipping.ships.find((x) => x.id === 'MV-TUT-2');
+      if (!m || (m.checked && !m.inspecting)) break;
+    }
+    const m = c.shipping.ships.find((x) => x.id === 'MV-TUT-2');
+    check(!m || (m.checked && !m.inspecting), '[search/clean] the lesson ends on a clean search');
+    check(c.shipping.stats.inspections === 1 && c.shipping.stats.seized === 0, '[search/clean] one search, nothing seized');
+    check(c.politics.support < sup0 + 0.4, `[search/clean] a clean search costs support (${sup0.toFixed(2)} -> ${c.politics.support.toFixed(2)})`);
+    console.log(`  search, clean path -> gate opens after ${d0} days`);
+    ok(cmd.inspectMerchantCmd(w, 'TF-1', 'MV-TUT-2'), 'search the suspect ship');
+  },
   embargo: () => ok(designateHulk(w, 'SHP-6'), 'designate hulk'),
   graduation: () => {
     check(!w.scripted, 'graduation must turn scripted off');
@@ -122,6 +154,16 @@ for (const lesson of LESSONS) {
   if (lesson.id === 'thirds') {
     const c = stateCounts(Object.values(w.ships));
     check(c.ACTIVE_PATROL === 2 && c.TRANSIT_WORKUP === 2 && c.MAINTENANCE_DOCK === 2, `thirds lesson should end 2/2/2, got ${JSON.stringify(c)}`);
+  }
+  if (lesson.id === 'escort') {
+    check(w.shipping.stats.lost === 0 && w.shipping.stats.transited === 1 && w.shipping.stats.escorted === 1, `[escort] escorted passage: lost ${w.shipping.stats.lost}, arrived ${w.shipping.stats.transited}, escorted ${w.shipping.stats.escorted}`);
+    check(w.stats.shipsLost === 0 && Object.keys(w.ships).length >= 6, '[escort] no warship lost escorting');
+    check(!w.fleets.flatMap((f) => f.taskForces).some((t) => t.escort), '[escort] the escort is released at port');
+  }
+  if (lesson.id === 'search') {
+    check(w.shipping.stats.inspections === 1, `[search] one search (${w.shipping.stats.inspections})`);
+    check(w.shipping.stats.seized === 1 || /SEARCH CLEAN/.test(log.map((e) => e.text).join('\n')), '[search] either a seizure or a clean search is logged');
+    console.log(`  search -> ${w.shipping.stats.seized ? 'contraband seized' : 'clean search'}`);
   }
   if (lesson.id === 'contact') check(w.stats.hostilesDestroyed + w.stats.shipsLost >= 0 && Object.keys(w.ships).length === 6, 'no ships lost in the raid');
   console.log(`lesson ${lesson.id.padEnd(10)} PC ${w.resources.politicalCapital.toFixed(1).padStart(5)} done in ${String(days).padStart(3)} days (day ${w.tick})`);

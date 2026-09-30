@@ -9,6 +9,7 @@ import { flagText } from '@/lib/sim/shipping';
 import { POLICY_LABEL, POLICY_SHORT, type FlagFilter, type InterdictionPolicy } from '@/lib/types/shipping';
 import { useFleetStore } from '@/store/useFleetStore';
 import { useNames } from '@/store/useNames';
+import { useUiFlag } from '@/store/useTutorialStore';
 import { Btn, Chip, Section } from './kit';
 
 const POLICIES: InterdictionPolicy[] = ['INSPECT_ALL', 'TURN_BACK', 'UNRESTRICTED'];
@@ -24,11 +25,12 @@ export default function InterdictionPanel() {
   const tick = useFleetStore((s) => s.tick);
   const map = useFleetStore((s) => s.map);
   const n = useNames();
+  const show = useUiFlag('FORCE');
   const { declareZone, liftZone, setZonePolicy } = useFleetStore.getState();
   const [flag, setFlag] = useState<FlagFilter>('ALL');
   const [sectors, setSectors] = useState<number[]>([]);
   const [policy, setPolicy] = useState<InterdictionPolicy>('INSPECT_ALL');
-  if (lanes.length === 0) return null;
+  if (!show || lanes.length === 0) return null;
   const world = useFleetStore.getState().snapshotWorld();
   const options = laneSectors(world);
   const toggle = (s: number) => setSectors((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));

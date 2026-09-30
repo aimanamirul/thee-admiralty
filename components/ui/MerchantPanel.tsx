@@ -9,6 +9,7 @@ import { merchantStatusLine, previewCancelEscort, previewEngage, previewEscort, 
 import { escortBlocked, flagText, laneOf, MERCHANT_SPEED, premiumPct } from '@/lib/sim/shipping';
 import { KIND_LABEL } from '@/lib/types/shipping';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useUiFlag } from '@/store/useTutorialStore';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, fmtM, Section, Stat } from './kit';
 
@@ -19,6 +20,8 @@ export default function MerchantPanel() {
   const lanes = useFleetStore((s) => s.shipping.lanes);
   const fleets = useFleetStore((s) => s.fleets);
   const n = useNames();
+  const showSearch = useUiFlag('INSPECT');
+  const showForce = useUiFlag('FORCE');
   const { selectMerchant, escortMerchant, cancelEscort, inspectMerchant, engageMerchant } = useFleetStore.getState();
   // A strike needs a second click; changing ship or task force disarms it.
   const [armed, setArmed] = useState<string | null>(null);
@@ -95,9 +98,9 @@ export default function MerchantPanel() {
                     <Btn tone="cyan" disabled={!!escortBlocked(world, tf.id, m.id)} preview={(w) => `Escort: ${previewEscort(w, tf.id, m.id)}`} onClick={() => escortMerchant(tf.id, m.id)}>
                       {distress ? 'Aid' : 'Escort'}
                     </Btn>
-                    <Btn tone="amber" disabled={!!inspectBlocked(world, tf.id, m.id)} preview={(w) => `Search: ${previewInspect(w, tf.id, m.id)}`} onClick={() => inspectMerchant(tf.id, m.id)}>
+                    {showSearch && <Btn tone="amber" disabled={!!inspectBlocked(world, tf.id, m.id)} preview={(w) => `Search: ${previewInspect(w, tf.id, m.id)}`} onClick={() => inspectMerchant(tf.id, m.id)}>
                       Search
-                    </Btn>
+                    </Btn>}
                   </>
                 )}
               </span>
@@ -105,7 +108,7 @@ export default function MerchantPanel() {
           );
         })}
       </ul>
-      {m.kind !== 'FERRY' && (
+      {showForce && m.kind !== 'FERRY' && (
         <>
           <div className="mt-2 text-[0.75rem] uppercase tracking-widest text-warn">
             <Term k="INTERDICTION">Use of force</Term>

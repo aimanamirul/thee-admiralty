@@ -342,7 +342,7 @@ export function shippingReport(w: WorldDraft, fiscalYear: number): string {
 
 export function tickInterdiction(w: WorldDraft, _rng: Rng): void {
   const sh = w.shipping;
-  if (w.scripted || sh.lanes.length === 0) return;
+  if (sh.lanes.length === 0) return;
 
   // ---- orders coming into force; polarization eases only while no force is authorised
   for (const z of sh.zones) if (w.tick === z.effectiveTick) w.events.push({ severity: 'WARNING', text: `EXCLUSION ORDER ${z.id} IN FORCE: ${POLICY_LABEL[z.policy]} — ${flagText(z.flag)} shipping in ${z.sectors.map((s) => w.map.sectors[s].label).join(', ')}` });

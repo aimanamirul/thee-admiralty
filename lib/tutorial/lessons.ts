@@ -8,6 +8,8 @@ import type { Vendor } from '../types/diplomacy';
 import type { Fleet, Ship } from '../types/fleet';
 import type { ShipDesign } from '../types/hull';
 import type { MapData } from '../types/map';
+import { pointAt, generateLanes } from '../sim/shipping';
+import type { Lane, Merchant, ShippingState } from '../types/shipping';
 import type { Contact, GameEvent, ResearchState, Resources, SectorState, WorldDraft } from '../types/world';
 import { HOME_SECTOR, BEYOND_SECTOR, TUTORIAL_TF1_NAME } from '../sim/tutorialScenario';
 
@@ -16,7 +18,8 @@ export type UiFlag =
   | 'PANEL' | 'TAB_SECTOR' | 'TAB_FLEET' | 'TAB_RND' | 'TAB_DIPLO'
   | 'DATE' | 'CLOCK' | 'TICKER'
   | 'READOUT_BUDGET' | 'READOUT_INDUSTRY' | 'READOUT_RP' | 'READOUT_PC' | 'READOUT_TENSION'
-  | 'THIRDS' | 'SPARES' | 'ORGANISE' | 'DESIGN_BTN' | 'LAYERS' | 'HULK' | 'READOUT_SUPPORT';
+  | 'THIRDS' | 'SPARES' | 'ORGANISE' | 'DESIGN_BTN' | 'LAYERS' | 'HULK' | 'READOUT_SUPPORT'
+  | 'SHIPPING' | 'INSPECT' | 'FORCE';
 
 /** Plain subset of game state the gates read, so they also run in Node. */
 export interface TutorialView {
@@ -31,6 +34,7 @@ export interface TutorialView {
   resources: Resources;
   spares: Record<string, number>;
   contacts: Contact[];
+  shipping: ShippingState;
   running: boolean;
   log: GameEvent[];
   /** Ledger ids above this belong to the current lesson. */
@@ -51,6 +55,8 @@ export interface Lesson {
   select?: number;
   /** Contact to select on entry (opens its ladder panel). */
   selectContact?: string;
+  /** Merchant ship to select on entry (opens its panel). */
+  selectMerchant?: string;
   /** Sector that gets the pulsing objective ring on the plot. */
   target?: number;
   preset?: ShipDesign;
@@ -87,6 +93,23 @@ function dock(w: WorldDraft, id: string, readiness: number, failed?: string) {
     }
   }
 }
+
+/** The tutorial lane: east to west, its first stretch beyond the strait. The briefing world starts with none (nothing random runs). */
+function tutorialLane(w: WorldDraft): Lane {
+  const all = generateLanes(w.map, w.seed);
+  return all.find((l) => l.sectors[0] === BEYOND_SECTOR && l.sectors[1] === HOME_SECTOR) ?? all[0];
+}
+
+/** A hand-placed merchant ship heading for the lane's western end (the home side). */
+function tutorialShip(w: WorldDraft, lane: Lane, m: Pick<Merchant, 'id' | 'name' | 'kind' | 'flag' | 'dist' | 'cargo'> & Partial<Merchant>): Merchant {
+  const { pos, heading } = pointAt(lane.path, m.dist);
+  return {
+    laneId: lane.id, dir: 1, position: pos, heading, bornTick: w.tick, status: 'UNDERWAY', distressUntil: null, escort: null,
+    contraband: false, tip: false, checked: false, turnedBack: false, inspecting: null, ...m,
+  };
+}
+
+const escorting = (v: { fleets: Fleet[] }, shipId: string) => v.fleets.some((f) => f.taskForces.some((t) => t.escort === shipId));
 
 /**
  * Pick a water cell in HOME_SECTOR about `dist` tiles from task force `tfId` whose straight approach stays clear of every
@@ -302,6 +325,7 @@ export const LESSONS: Lesson[] = [
     body: [
       'Open the Design Bureau. The preset corvette draws more power than its plant generates, so it cannot be laid down.',
       `Change its power plant to the {m:PP_DOM_D12}, keep the {v:ASELSAN} radar and the {v:NAVAL_GROUP_THALES} CMS, and lay the hull down.`,
+      'A hull is bought on contract: a 30% deposit now, the balance paid daily while it builds. A hull under construction can still be cancelled (refunds depend on who broke the deal) or sold.',
     ],
     objective: 'Lay down a valid corvette with the {m:SEN_ASEL_SPEAR} and the {m:CMS_NG_TACTICOS}.',
     anchor: 'design-btn',
@@ -376,6 +400,75 @@ export const LESSONS: Lesson[] = [
     gate: (v) => newLog(v, /BUDGET HEARING/),
   },
   {
+    id: 'escort',
+    title: 'Shipping under threat',
+    body: [
+      'Civilian ships sail identified along shipping lanes (dotted). Raiders hunt them wherever nothing is watching: a ship is protected by a task force within 14 tiles, or by one holding its sector. Losses cost support and, through the war-risk premium, the trade index that feeds next year\'s budget.',
+      'A tanker under the {c:ASELSAN} flag is running the lane from BEYOND THE STRAIT, and an unidentified track lies in wait at the strait mouth. Its panel is open. Hover Escort on your frigate group (the first task force listed): it leaves the home sector uncovered while it is away. Order it; the clock starts when you do.',
+    ],
+    objective: 'Escort the tanker through the strait to port.',
+    anchor: 'merchant-panel',
+    reveals: ['SHIPPING'],
+    tab: 'SECTOR',
+    target: BEYOND_SECTOR,
+    selectMerchant: 'MV-TUT-1',
+    run: { speed: 4, when: (v) => escorting(v, 'MV-TUT-1') },
+    onEnter: (w) => {
+      w.contacts = w.contacts.filter((c) => !c.id.startsWith('CT-TUT'));
+      const lane = tutorialLane(w);
+      w.shipping.lanes = [lane];
+      w.shipping.seq = 1;
+      w.shipping.ships = [tutorialShip(w, lane, { id: 'MV-TUT-1', name: 'Amber Wayfarer', kind: 'TANKER', flag: 'ASELSAN', dist: 30, cargo: 70 })];
+      // The raider lies in wait on the lane at the strait mouth, still in the uncovered outer sector.
+      const at = pointAt(lane.path, 84).pos;
+      w.contacts.push({
+        id: 'CT-TUT-PIRATE', sectorId: BEYOND_SECTOR, position: at, heading: Math.PI, cls: 'UNKNOWN', hostile: true, intent: 'RAIDER',
+        strength: 20, bornTick: w.tick, expiresTick: w.tick + 150,
+      });
+      w.events.push({ severity: 'WARNING', text: 'SHIPPING ADVISORY: TKR AMBER WAYFARER inbound from BEYOND THE STRAIT; an unidentified track is reported near the strait mouth' });
+    },
+    // Any outcome ends the lesson (arrived, lost or foundered): each teaches what cover is worth.
+    gate: (v) => !v.shipping.ships.some((m) => m.id === 'MV-TUT-1'),
+  },
+  {
+    id: 'search',
+    title: 'Searching a suspect ship',
+    body: [
+      'Some ships carry contraband. Intelligence has tipped off a container ship on the lane (the TIP-OFF chip). Tips are mostly right and sometimes wrong, and searching an innocent ship costs support and standing with its flag state.',
+      'Order your frigate group to search it: it goes alongside, holds the ship for two days, then either seizes the cargo (money, support) or lets it go. Hover Search to read both outcomes first. Exclusion orders, the heavy version of this, come later and always give notice.',
+    ],
+    objective: 'Search the tipped container ship.',
+    anchor: 'merchant-panel',
+    reveals: ['INSPECT'],
+    tab: 'SECTOR',
+    selectMerchant: 'MV-TUT-2',
+    run: { speed: 4, when: (v) => escorting(v, 'MV-TUT-2') },
+    onEnter: (w) => {
+      w.contacts = w.contacts.filter((c) => !c.id.startsWith('CT-TUT'));
+      const lane = w.shipping.lanes[0] ?? tutorialLane(w);
+      w.shipping.lanes = [lane];
+      const t1 = w.fleets.flatMap((f) => f.taskForces).find((t) => t.id === 'TF-1')!;
+      // A lane point in the home sector about 22 tiles from TF 11, with plenty of lane left to sail.
+      let best = 100;
+      let bestErr = Infinity;
+      for (let d = 90; d <= 160; d++) {
+        const p = pointAt(lane.path, d).pos;
+        const err = Math.abs(Math.hypot(p.x - t1.position.x, p.y - t1.position.y) - 22);
+        if (err < bestErr) {
+          bestErr = err;
+          best = d;
+        }
+      }
+      w.shipping.seq = Math.max(w.shipping.seq, 2);
+      w.shipping.ships = [tutorialShip(w, lane, { id: 'MV-TUT-2', name: 'Grey Tern', kind: 'CONTAINER', flag: 'OPEN_REGISTRY', dist: best, cargo: 80, contraband: true, tip: true })];
+      w.events.push({ severity: 'ADVISORY', text: 'INTELLIGENCE: a tip-off names CON GREY TERN (open registry) as carrying contraband' });
+    },
+    gate: (v) => {
+      const m = v.shipping.ships.find((x) => x.id === 'MV-TUT-2');
+      return !m || (m.checked && !m.inspecting);
+    },
+  },
+  {
     id: 'embargo',
     title: 'Parts embargo and cannibalisation',
     body: [
@@ -410,6 +503,7 @@ export const LESSONS: Lesson[] = [
     body: [
       'Briefing complete. Every panel is open, random events are live, and your task forces now hail, warn and board unknown contacts on their own (sector SOP: CHALLENGE).',
       'BEYOND THE STRAIT (threat 70) is uncovered. TF 12\'s fast attack craft carry almost no air defence: against a raid there they would be lost. Hover Assign to compare, then decide which force goes and what is left at home. Coverage is your scarcest resource.',
+      'Shipping is live on every lane, and so are the heavy levers in the Sector overview: standing search orders and maritime exclusion orders. Exclusion orders give notice, cost standing, trade and support at home, and count every casualty; read the strip before you commit.',
     ],
     objective: 'Assign a task force to BEYOND THE STRAIT.',
     reveals: ['*'],
@@ -421,6 +515,8 @@ export const LESSONS: Lesson[] = [
       // Hand over the free-play default: task forces now hail, warn and board unknown contacts on their own.
       for (const st of Object.values(w.sectors)) st.sop = 'CHALLENGE';
       w.sectors[BEYOND_SECTOR].threat = 70;
+      // Every lane opens (the briefing used one); ships already sailing keep their lane.
+      w.shipping.lanes = generateLanes(w.map, w.seed).map((l) => w.shipping.lanes.find((x) => x.id === l.id) ?? l);
       w.events.push({ severity: 'ADVISORY', text: 'BRIEFING COMPLETE — random events live, standing orders restored' });
     },
     gate: (v) => v.fleets.some((f) => f.taskForces.some((t) => t.assignedSectorId === BEYOND_SECTOR)),

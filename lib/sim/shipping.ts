@@ -423,10 +423,13 @@ function loss(w: WorldDraft, m: Merchant, lane: Lane, how: 'SUNK' | 'SEIZED' | '
 
 export function tickShipping(w: WorldDraft, rng: Rng): void {
   const sh = w.shipping;
-  if (w.scripted || sh.lanes.length === 0) return;
+  if (sh.lanes.length === 0) return;
+  // Scripted (tutorial) worlds keep hand-placed ships sailing, attacked, rescued and searched, but nothing random: no new traffic,
+  // no war-risk drift, no rerouting, and the trade index stays at 100.
+  const scripted = w.scripted;
 
   // ---- war-risk, traffic, rerouting
-  for (const lane of sh.lanes) {
+  for (const lane of scripted ? [] : sh.lanes) {
     const threat = lane.sectors.reduce((a, s) => a + (w.sectors[s]?.threat ?? 0), 0) / lane.sectors.length;
     lane.risk = clamp(lane.risk + (RISK_FOLLOWS_THREAT * threat - lane.risk) * RISK_DRIFT);
     lane.traffic = trafficAt(lane.risk);
@@ -440,7 +443,7 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
   }
 
   // ---- traffic
-  for (const lane of sh.lanes) {
+  for (const lane of scripted ? [] : sh.lanes) {
     if (lane.reroutedUntil !== null || sh.ships.length >= MAX_MERCHANTS) continue;
     if (!rng.chance(lane.base * lane.traffic)) continue;
     const m = spawnMerchant(w, lane, rng);
@@ -522,6 +525,7 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
   }
 
   // ---- trade index
+  if (scripted) return;
   sh.index = clamp(sh.index + (targetIndex(sh) - sh.index) * 0.1);
   sh.year.indexSum += sh.index;
   sh.year.days++;

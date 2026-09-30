@@ -22,8 +22,8 @@ await page.waitForTimeout(800);
 
 const lessonNo = async () => {
   const t = await page.locator('[data-testid=tutorial-card]').innerText().catch(() => '');
-  const m = t.match(/BRIEFING (\d+)\/15/i);
-  return m ? Number(m[1]) : t.includes('BRIEFING COMPLETE') ? 16 : 0;
+  const m = t.match(/BRIEFING (\d+)\/17/i);
+  return m ? Number(m[1]) : t.includes('BRIEFING COMPLETE') ? 18 : 0;
 };
 const waitLesson = async (n, ms = 30000) => {
   const t0 = Date.now();
@@ -98,14 +98,24 @@ await waitLesson(12, 20000); await page.waitForTimeout(600); await shot('12-supp
 await page.locator('[data-tutorial="vendor-NORDVIK"]').getByRole('button', { name: /Advance/ }).click();
 await waitLesson(13, 20000); await page.waitForTimeout(600); await shot('13-homefront');
 await page.getByRole('button', { name: /Budget hearing: demand more/ }).click();
-await waitLesson(14, 20000); await shot('14-embargo');
+await waitLesson(14, 20000); await page.waitForTimeout(600); await shot('14-escort');
+// shipping: the merchant panel is open; send the (renamed) first task force to escort the tanker through the strait
+const merchant = page.locator('[data-tutorial="merchant-panel"]');
+await merchant.locator('li', { hasText: 'Anvil Force' }).getByRole('button', { name: 'Escort' }).click();
+await waitLesson(15, 120000); await page.waitForTimeout(600); await shot('15-search');
+if (!/SAFE PASSAGE|SHIPPING LOSS/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('escort: expected a passage or a loss in the ledger');
+await merchant.locator('li', { hasText: 'Anvil Force' }).getByRole('button', { name: 'Search' }).click();
+await waitLesson(16, 90000); await shot('16-embargo');
+if (!/SEIZURE|SEARCH CLEAN/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('search: expected a seizure or a clean search in the ledger');
 await page.locator('[data-tutorial="hulk-SHP-6"]').click();
-await waitLesson(15, 60000); await shot('15-graduation');
-await page.mouse.click(...at(0.72, 0.5));
+await waitLesson(17, 60000); await shot('17-graduation');
+// select the outer sector from the overview list (the plot shrinks as the briefing text grows, so a fixed click spot is fragile)
+await page.getByRole('button', { name: 'Overview' }).click();
+await page.getByRole('button', { name: /SECTOR 2/ }).click();
 await page.getByRole('button', { name: 'Assign' }).first().click();
-await waitLesson(16, 20000); await shot('16-final');
+await waitLesson(18, 20000); await shot('18-final');
 await page.getByRole('button', { name: 'Keep this scenario' }).click();
-await page.waitForTimeout(500); await shot('17-free');
+await page.waitForTimeout(500); await shot('19-free');
 // name skin: fictional by default, real on toggle, applied to ledger text and panels
 await page.getByRole('tab', { name: /Diplomacy/i }).click();
 // innerText applies CSS text-transform (uppercase headings), so compare case-insensitively

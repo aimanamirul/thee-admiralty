@@ -92,6 +92,7 @@ back* and *unrestricted* (the second searches first and turns back only the inno
 FREE (elsewhere an unrestricted order falls back to turning back), so ROE stays the ceiling; passenger ferries are never targets; a
 deliberate "Engage" order exists on any merchant ship and is the gravest incident unless a lawful order covers it (two-click confirm);
 polarization is a number 0-100 on the politics state, and the yearly report is a ledger line plus a line in the shipping section.
+The tutorial teaches escorts (lesson 14) and searches (lesson 15); exclusion orders are only named at graduation.
 
 **Recommended order with submarines:** T1–T3 before submarine phase S3, since enemy submarines' main target is shipping.
 

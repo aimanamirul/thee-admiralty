@@ -1,6 +1,6 @@
 # Handoff — where the project stands
 
-Read this first in a new session. Last updated 2026-09-30 (tutorial pass: 15 lessons covering the SOP ladder, supplier ladder and home front).
+Read this first in a new session. Last updated 2026-09-30 (tutorial: 17 lessons, now also covering shipping, escorts and searches).
 
 ## State of the code
 
@@ -43,7 +43,7 @@ How it is built (spec/lesson table: `docs/PLAN-tutorial.md`):
 - **Scenario:** `lib/sim/tutorialScenario.ts` — `generateMap('BRIEFING-01','CHOKEPOINT')` split at the narrow strait into
   sector 0 HOME APPROACHES / sector 1 BEYOND THE STRAIT, one chokepoint THE NARROWS, 5 ships in TF 11 / TF 12. Throws if the split is
   not two connected, mutually reachable sectors.
-- **Lessons:** `lib/tutorial/lessons.ts` (15 lessons, pure data; gates take a plain `TutorialView` so they also run in Node).
+- **Lessons:** `lib/tutorial/lessons.ts` (17 lessons, pure data; gates take a plain `TutorialView` so they also run in Node).
   `lib/tutorial/glossary.ts` + `components/tutorial/Term.tsx` give hover definitions for jargon.
 - **State machine:** `store/useTutorialStore.ts` (imports the game store, never the reverse). `evaluate()` runs on every game-store change
   (subscription in `Cockpit.tsx`); a met gate shows "objective complete" for 1.4 s, pauses the clock, then advances. `run: {speed, when?}`
@@ -185,7 +185,7 @@ hovered or keyboard-focused: costs, before -> after values, time to effect, risk
 
 ## Tutorial pass after the new systems (done, 2026-09-30)
 
-The briefing now teaches everything added since it was written. 15 lessons:
+The briefing teaches everything added since it was written. 17 lessons (the two shipping lessons were added after the shipping work; see below):
 
 | # | id | Teaches | Gate |
 |---|---|---|---|
@@ -202,8 +202,10 @@ The briefing now teaches everything added since it was written. 15 lessons:
 | 11 | sanctions | Sanction warning, lobbying | sanction averted |
 | 12 | **suppliers** | Supplier ladder, regimes, blocs: open a trade mission with Nordvik | Nordvik advancing past CONTACT |
 | 13 | **homefront** | Appropriation, tranches, 15% carryover, support thresholds; reveals the Support readout | budget hearing held |
-| 14 | embargo | Parts embargo, one-click hulk | SHP-6 hulked, frigate repaired |
-| 15 | graduation | All sectors to SOP CHALLENGE; send a task force beyond the strait | any TF assigned there |
+| 14 | **escort** | Shipping lanes, cover, war-risk and the trade index: escort a tanker past a raider lying in wait at the strait mouth | the tanker leaves the plot (arrived, or lost when unescorted) |
+| 15 | **search** | Tip-offs, contraband, the price of a clean search: search a tipped container ship | ship searched (seized or released) |
+| 16 | embargo | Parts embargo, one-click hulk | SHP-6 hulked, frigate repaired |
+| 17 | graduation | All sectors to SOP CHALLENGE; every lane opens; send a task force beyond the strait; warns that search and exclusion orders are heavy levers | any TF assigned there |
 
 - `Lesson.selectContact` opens a contact's panel on entry; `TutorialView.contacts` lets gates see contacts.
 - Worst-case political capital (weapons free incident, every lobby, the hearing) stays positive: `verify:tutorial` logs PC per lesson
@@ -212,7 +214,16 @@ The briefing now teaches everything added since it was written. 15 lessons:
   (`invisible` / a placeholder) instead of being removed.
 - `TutorialSpotlight` scrolls the lesson's anchor into view once per lesson (vendor cards sit far down the Diplomacy tab).
 - The lobby preview no longer promises a catalogue tier for a vendor with no contract (tiers need FRAMEWORK+).
-- `scripts/e2e-tutorial.mjs` plays all 15 lessons through the UI (hail/board, advance Nordvik, budget hearing).
+- `scripts/e2e-tutorial.mjs` plays all 17 lessons through the UI (hail/board, advance Nordvik, budget hearing, escort, search).
+- **Shipping lessons (14-15):** `Lesson.selectMerchant` opens a ship's panel on entry; `TutorialView.shipping`; new UI flags `SHIPPING`
+  (lanes section), `INSPECT` (Search buttons, standing search order) and `FORCE` (use of force, exclusion orders) so nothing appears
+  before its lesson (graduation reveals all). The briefing world has no lanes until lesson 14 adds one (`tutorialLane`: east to west, the
+  first 88 tiles beyond the strait); graduation restores all three lanes. **Scripted worlds now tick shipping** for hand-placed ships
+  (movement, raider attacks, rescue, escort, searches) but spawn nothing, drift no war-risk and keep the trade index at 100.
+  `verify:tutorial` plays both branches of each lesson on a cloned world (unescorted tanker is lost; a clean search still ends the
+  lesson at the cost the preview promised) and the real one (escort arrives, no warship lost). The design lesson now mentions that a
+  hull is a contract (30% deposit, cancel or sell). Checkpoint version bumped to 2. Exclusion orders are deliberately not a lesson:
+  graduation names them and points at the preview strip.
 
 ## Contractors phase 2: supply chains (done, 2026-09-30)
 
@@ -345,15 +356,14 @@ The briefing now teaches everything added since it was written. 15 lessons:
   find rates / seizure pay, standing orders, declaration refusals and costs, no force before notice (unit and a 260-day soak), each
   policy, ROE gating, exemptions, engage lawful vs gravest, polarization drain and decay, self-harm (traffic, index, forecast, recovery
   on lifting), year report, name tokens. `verify:preview` sweeps 7,900 previews including every new order.
-- **Not built:** a tutorial lesson on shipping, escorts, searches or orders; movement-faction reuse of the strike layer (design only).
+- **Not built:** a tutorial lesson on exclusion orders (shipping, escorts and searches have lessons 14-15); movement-faction reuse of the strike layer (design only).
 
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
 rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Phase 5 (cold vendors) is
 done, so the contractors plan is complete. Submarines (`docs/PLAN-submarines.md`, S1–S5) are decided but not started; enemy submarines (S3) would now hunt the shipping that T1–T6
-built. The shipping plan is complete; a tutorial lesson for shipping (escort the first tanker, read the trade line) and licensed local
-production / offsets remain optional. The Movement faction (`PLAN-asymmetric-faction.md`) can reuse the interdiction layer.
+built. The shipping plan and its tutorial lessons are complete; licensed local production / offsets remain optional. The Movement faction (`PLAN-asymmetric-faction.md`) can reuse the interdiction layer.
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

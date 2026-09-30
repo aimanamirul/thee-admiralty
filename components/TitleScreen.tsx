@@ -67,7 +67,7 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
             <GraduationCap className="h-6 w-6 shrink-0 text-phosphor" />
             <span className="flex-1">
               <span className="block text-lg uppercase tracking-[0.25em] text-phosphor">{saved ? 'Restart briefing' : 'Begin briefing'}</span>
-              <span className="block text-[0.875rem] text-slate-400">A guided scenario on a two-sector map: sectors, rotation, contacts, spares, design, R&amp;D and sanctions. About fifteen minutes.</span>
+              <span className="block text-[0.875rem] text-slate-400">A guided scenario on a two-sector map: sectors, rotation, contacts, spares, design, R&amp;D and sanctions. About twenty minutes.</span>
             </span>
             {status === 'new' && !saved && <span className="border border-emerald-accent/60 px-1 text-[0.75rem] uppercase tracking-wider text-emerald-accent">Recommended</span>}
             {status === 'done' && <span className="border border-navy px-1 text-[0.75rem] uppercase tracking-wider text-slate-500">Completed</span>}

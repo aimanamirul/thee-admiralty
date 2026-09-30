@@ -13,7 +13,7 @@ import { DEFAULT_SEED, useFleetStore } from './useFleetStore';
 const STORAGE_KEY = 'al.tutorial';
 /** Progress checkpoint taken at the start of every lesson, so a reload resumes the briefing instead of restarting it. */
 const CHECKPOINT_KEY = 'al.tutorial.checkpoint';
-const CHECKPOINT_VERSION = 1;
+const CHECKPOINT_VERSION = 2;
 const COMPLETE_DELAY_MS = 1400;
 
 export type TutorialStatus = 'new' | 'done' | 'skipped';
@@ -95,7 +95,7 @@ export function tutorialView(startSeq: number): TutorialView {
   const g = useFleetStore.getState();
   return {
     tick: g.tick, map: g.map, selectedSectorId: g.selectedSectorId, sectors: g.sectors, fleets: g.fleets, ships: g.ships,
-    vendors: g.vendors, research: g.research, resources: g.resources, spares: g.spares, contacts: g.contacts, running: g.running, log: g.log, startSeq,
+    vendors: g.vendors, research: g.research, resources: g.resources, spares: g.spares, contacts: g.contacts, shipping: g.shipping, running: g.running, log: g.log, startSeq,
   };
 }
 
@@ -121,6 +121,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       if (lesson.select !== undefined) g.selectSector(lesson.select);
       if (lesson.onEnter) g.mutate(lesson.onEnter);
       if (lesson.selectContact) g.selectContact(lesson.selectContact);
+      if (lesson.selectMerchant) g.selectMerchant(lesson.selectMerchant);
       // Ledger entries written by onEnter itself must not satisfy this lesson's own gate.
       set({ startSeq: useFleetStore.getState().logSeq });
       if (lesson.run && !lesson.run.when) {
