@@ -13,6 +13,7 @@ import { useFleetStore } from '@/store/useFleetStore';
 import TutorialCard from '@/components/tutorial/TutorialCard';
 import ActionPreview from './ActionPreview';
 import { Term } from '@/components/tutorial/Term';
+import { originView } from '@/lib/sim/supplyChain';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
 import { previewOrderShip } from '@/lib/sim/preview';
@@ -61,6 +62,10 @@ export default function ShipDesignerModal() {
   const moduleIds = useMemo(() => SLOT_ORDER.flatMap((s) => sel[s]).filter(Boolean), [sel]);
   const ev = useMemo(() => evaluateLoadout(hullId, moduleIds, bridges), [hullId, moduleIds, bridges]);
   const cms = moduleIds.map((id) => MODULE_BY_ID[id]).find((m) => m.slot === 'CMS');
+  const chain = useMemo(() => {
+    const views = moduleIds.map((id) => originView({ vendors }, MODULE_BY_ID[id]));
+    return { via: [...new Set(views.flatMap((o) => o.known))], unverified: views.filter((o) => !o.verified).length };
+  }, [moduleIds, vendors]);
 
   const blocked = useMemo(
     () =>
@@ -125,9 +130,11 @@ export default function ShipDesignerModal() {
                       {MODULES.filter((m) => m.slot === slot && vendors[m.vendorId]?.rung !== 'UNKNOWN').map((m) => {
                         const p = procurability(m, vendors, done);
                         const stat = slot === 'POWERPLANT' ? `+${m.powerGenerationMW}MW` : `${m.powerDrawMW}MW`;
+                        const o = originView({ vendors }, m);
+                        const chain = o.known.length ? ` · +${o.known.map((k) => n.vs(k)).join('+')} parts` : o.verified ? '' : ' · unverified';
                         return (
                           <option key={m.id} value={m.id} disabled={!p.ok}>
-                            {n.m(m.id)} · {n.vs(m.vendorId)} · {n.x(m.protocol)} · {stat} · {m.weightT}t · {m.cost}M{p.ok ? '' : ` — ${p.reason}`}
+                            {n.m(m.id)} · {n.vs(m.vendorId)}{chain} · {n.x(m.protocol)} · {stat} · {m.weightT}t · {m.cost}M{p.ok ? '' : ` — ${n.t(p.reason ?? '')}`}
                           </option>
                         );
                       })}
@@ -161,7 +168,7 @@ export default function ShipDesignerModal() {
                 <div key={w} className="text-[0.875rem] text-amber-radar">▲ {w}</div>
               ))}
               {blocked.map(({ m, p }) => (
-                <div key={m.id} className="text-[0.875rem] text-warn">✖ {n.m(m.id)}: {p.reason}</div>
+                <div key={m.id} className="text-[0.875rem] text-warn">✖ {n.m(m.id)}: {n.t(p.reason ?? "")}</div>
               ))}
               {ev.valid && ev.warnings.length === 0 && blocked.length === 0 && <div className="text-[0.875rem] text-emerald-accent">✔ All systems nominal</div>}
             </Section>
@@ -209,6 +216,14 @@ export default function ShipDesignerModal() {
                 {ev.vendors.map((v) => (
                   <Chip key={v} tone={vendors[v as keyof typeof vendors].status === 'ACTIVE' ? 'dim' : 'red'}>{n.vs(v)}{vendors[v as keyof typeof vendors].status === 'ACTIVE' ? '' : ` ${vendors[v as keyof typeof vendors].status}`}</Chip>
                 ))}
+                {chain.via.filter((v) => !ev.vendors.includes(v)).map((v) => (
+                  <Chip key={`via-${v}`} tone={vendors[v].status === 'ACTIVE' ? 'amber' : 'red'}>+{n.vs(v)} parts{vendors[v].status === 'ACTIVE' ? '' : ` ${vendors[v].status}`}</Chip>
+                ))}
+                {chain.unverified > 0 && (
+                  <Chip tone="dim">
+                    <Term k="DILIGENCE">{chain.unverified} UNVERIFIED</Term>
+                  </Chip>
+                )}
               </div>
             </Section>
 

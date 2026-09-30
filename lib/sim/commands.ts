@@ -8,8 +8,9 @@ import type { HullClassId } from '../types/hull';
 import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { actionBlocked, INTENT_LABEL } from './contactEngine';
 import { advanceRelationship, scoutSuppliers } from './relationsEngine';
+import { startDiligence } from './supplyChain';
 import { evaluateLoadout, procurability } from './designEngine';
-import { lobbyVendor, vendorBlocksOrders } from './diplomacyEngine';
+import { lobbyVendor, moduleOrdersBlocked } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
 import type { VendorId } from '../types/diplomacy';
 import { allTaskForces, createShip, nextShipId } from './fleetEngine';
@@ -67,7 +68,7 @@ export function buySpares(world: WorldDraft, moduleId: string, qty: number): Com
   if (!m) return fail('UNKNOWN MODULE');
   const p = procurability(m, vendorMap(world), new Set(world.research.completed));
   if (!p.ok) return fail(`${mt(m.id)}: ${p.reason}`);
-  if (vendorBlocksOrders(world.vendors[m.vendorId])) return fail('VENDOR SANCTIONED');
+  if (moduleOrdersBlocked(world, m)) return fail('VENDOR SANCTIONED');
   const cost = m.cost * 0.35 * qty;
   if (world.resources.budget < cost) return fail(`INSUFFICIENT BUDGET: ${cost.toFixed(1)} M`);
   world.resources.budget -= cost;
@@ -258,5 +259,10 @@ export function scoutSuppliersCmd(world: WorldDraft): CommandResult {
 
 export function advanceRelationshipCmd(world: WorldDraft, vendorId: VendorId): CommandResult {
   const r = advanceRelationship(world, vendorId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function dueDiligenceCmd(world: WorldDraft, vendorId: VendorId): CommandResult {
+  const r = startDiligence(world, vendorId);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

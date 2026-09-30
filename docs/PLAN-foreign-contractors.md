@@ -1,6 +1,6 @@
 # Foreign contractors — research & expansion plan
 
-Status: **plan only, nothing implemented.** Research done 2026-09-29. Claims marked *(verified)* come from the linked
+Status: **phases 0–2 implemented** (see §10 and `docs/HANDOFF.md`). Research done 2026-09-29. Claims marked *(verified)* come from the linked
 sources at the bottom; claims marked *(general knowledge)* are from memory and should be checked before we lean on them
 for flavour text.
 
@@ -182,7 +182,7 @@ Aegis Link → "Bulwark Link"), with the real name in the skin table.
 0. **Display-name layer — DONE (2026-09-29).** `displayName(id, skin)` for vendors, countries, modules, projects; tutorial text uses tokens
    (`{vendor:SARNIC}`) instead of literals; settings toggle (persisted). Do this first, before content grows.
 1. **Ladder + regimes + roster 6-8 — DONE (2026-09-30).** `rung`, regime profiles replacing the single `volatility`, catalogue gated by rung, Diplomacy tab v2.
-2. **Information game.** `origins` on modules, a due-diligence action that reveals them before purchase, warning stage kept for every hazard.
+2. **Information game — DONE (2026-09-30).** `origins` on modules, a due-diligence action that reveals them before purchase, warning stage kept for every hazard.
 3. **Contracts.** Deposits, cancellation penalties, refund/resale for hulls under construction (Mistral); incident-driven standing loss for restrictive regimes.
 4. **Economy rebalance** (its own pass): income vs upkeep, deposits, offsets; verify with `verifySim`.
 5. **Cold vendors** C1, C2, C3 in that order; then submarines as a separate track.

@@ -39,6 +39,10 @@ export interface Vendor {
   /** Tick on which a pending sanction lands (WARNING) or an active freeze lifts (FROZEN). */
   statusUntilTick: number | null;
   pendingSanction: SanctionKind | null;
+  /** Due diligence on this vendor's catalogue: when done, every sub-supplier inside its products is known. */
+  diligence?: { startTick: number; readyTick: number; done: boolean } | null;
+  /** This vendor's components inside other vendors' products are public (its state signalled or imposed a sanction). */
+  chainExposed?: boolean;
 }
 
 export interface Ministry {

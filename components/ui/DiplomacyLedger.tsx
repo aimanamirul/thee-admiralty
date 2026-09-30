@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import { MINISTRIES, MODULES } from '@/lib/data/catalog';
 import { procurability } from '@/lib/sim/designEngine';
 import { lobbyCost, ministriesRefuse } from '@/lib/sim/politicsEngine';
-import { previewAdvance, previewLobby, previewScout } from '@/lib/sim/preview';
+import { previewAdvance, previewDiligence, previewLobby, previewScout } from '@/lib/sim/preview';
+import { DILIGENCE_DAYS, diligenceBlocked, fleetExposure, originView } from '@/lib/sim/supplyChain';
 import { advanceBlocked, BLOC_LABEL, nextStep, REGIMES, RUNG_LABEL, rungAccess, sanctionRiskPerDay, scoutBlocked, sellableTier } from '@/lib/sim/relationsEngine';
 import { rungIndex, type Rung, type Vendor } from '@/lib/types/diplomacy';
 import { useFleetStore } from '@/store/useFleetStore';
@@ -28,6 +29,16 @@ const GROUPS: { title: string; rungs: Rung[] }[] = [
   { title: 'Prospective suppliers', rungs: ['TRADE_MISSION', 'CONTACT'] },
 ];
 
+/** Sub-supplier knowledge for one catalogue line: never hints at hidden origins when unverified. */
+function OriginNote({ m }: { m: (typeof MODULES)[number] }) {
+  const n = useNames();
+  const vendors = useFleetStore((s) => s.vendors);
+  if (m.vendorId === 'DOMESTIC_YARDS') return null;
+  const o = originView({ vendors }, m);
+  if (o.known.length) return <span className="text-amber-radar">contains {o.known.map((k) => n.vs(k)).join(', ')}</span>;
+  return o.verified ? <span className="text-slate-500">no sub-suppliers</span> : <span className="text-slate-600">unverified</span>;
+}
+
 function Catalogue({ v }: { v: Vendor }) {
   const n = useNames();
   const vendors = useFleetStore((s) => s.vendors);
@@ -43,7 +54,10 @@ function Catalogue({ v }: { v: Vendor }) {
             <span className={p.ok ? 'text-slate-300' : 'text-slate-500'}>
               {n.m(m.id)} <span className="text-slate-600">· T{m.requiredTier} · {n.xs(m.protocol)}</span>
             </span>
-            <span className={p.ok ? 'text-emerald-accent' : 'text-slate-600'}>{p.ok ? 'AVAILABLE' : n.t(p.reason ?? '')}</span>
+            <span className="flex shrink-0 gap-2">
+              <OriginNote m={m} />
+              <span className={p.ok ? 'text-emerald-accent' : 'text-slate-600'}>{p.ok ? 'AVAILABLE' : n.t(p.reason ?? '')}</span>
+            </span>
           </li>
         );
       })}
@@ -57,7 +71,7 @@ function VendorCard({ v }: { v: Vendor }) {
   const tension = useFleetStore((s) => s.tension);
   const pc = useFleetStore((s) => s.resources.politicalCapital);
   const tick = useFleetStore((s) => s.tick);
-  const { lobby, advanceRelationship } = useFleetStore.getState();
+  const { lobby, advanceRelationship, dueDiligence } = useFleetStore.getState();
   const [open, setOpen] = useState(false);
   const view = { politics };
   const refuse = ministriesRefuse(view);
@@ -128,6 +142,32 @@ function VendorCard({ v }: { v: Vendor }) {
           Advance: {RUNG_LABEL[step.target]}
         </Btn>
       )}
+      {!domestic && v.diligence && !v.diligence.done && (
+        <div className="mt-1.5">
+          <div className="flex justify-between text-[0.75rem] uppercase tracking-widest text-slate-500">
+            <span>Due diligence in progress</span>
+            <span>day {v.diligence.readyTick}</span>
+          </div>
+          <Meter value={tick - v.diligence.startTick} max={DILIGENCE_DAYS} tone="cyan" label={`${Math.max(0, v.diligence.readyTick - tick)}d`} />
+        </div>
+      )}
+      {!domestic && v.diligence?.done && (
+        <p className="mt-1 text-[0.75rem] uppercase tracking-widest text-emerald-accent">
+          <Term k="DILIGENCE">Supply chain verified</Term>
+        </p>
+      )}
+      {!domestic && !v.diligence && (
+        <Btn
+          data-tutorial={`diligence-${v.id}`}
+          className="mt-1.5 w-full"
+          tone="cyan"
+          disabled={!!diligenceBlocked(useFleetStore.getState().snapshotWorld(), v.id)}
+          preview={(w) => `Due diligence: ${previewDiligence(w, v.id)}`}
+          onClick={() => dueDiligence(v.id)}
+        >
+          Due diligence
+        </Btn>
+      )}
       {!domestic && (
         <div className="mt-1.5 grid grid-cols-3 gap-1">
           {MINISTRIES.map((m) => (
@@ -143,6 +183,38 @@ function VendorCard({ v }: { v: Vendor }) {
             </Btn>
           ))}
         </div>
+      )}
+    </Section>
+  );
+}
+
+/** Which vendors the fleet depends on, directly or through components, as far as the navy knows. */
+function SupplyChain() {
+  const n = useNames();
+  const ships = useFleetStore((s) => s.ships);
+  const vendors = useFleetStore((s) => s.vendors);
+  const exp = useMemo(() => fleetExposure({ ships, vendors }), [ships, vendors]);
+  const rows = (Object.entries(exp.byVendor) as [Vendor['id'], { direct: number; via: number }][]).sort((a, b) => b[1].direct + b[1].via - (a[1].direct + a[1].via));
+  return (
+    <Section anchor="supply-chain" title={<Term k="DILIGENCE">Supply-chain exposure</Term>} tone="cyan">
+      {rows.length === 0 && <p className="text-[0.8125rem] text-slate-500">The fleet carries domestic hardware only.</p>}
+      <ul className="space-y-0.5 text-[0.8125rem]">
+        {rows.map(([id, c]) => (
+          <li key={id} className="flex justify-between gap-2">
+            <span className={vendors[id].status === 'ACTIVE' ? 'text-slate-300' : 'text-warn'}>
+              {n.v(id)} {vendors[id].status !== 'ACTIVE' && `· ${vendors[id].status}`}
+            </span>
+            <span className="text-slate-500">
+              {c.direct} hull{c.direct === 1 ? '' : 's'} direct{c.via ? <span className="text-amber-radar"> · {c.via} via components</span> : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {exp.unverifiedShips > 0 && (
+        <p className="mt-1 text-[0.75rem] text-slate-500">
+          {exp.unverifiedShips} hull{exp.unverifiedShips > 1 ? 's carry' : ' carries'} unverified foreign kit ({exp.unverifiedModules.length} product
+          {exp.unverifiedModules.length > 1 ? 's' : ''}): run due diligence on the vendor to see what is inside.
+        </p>
       )}
     </Section>
   );
@@ -170,6 +242,8 @@ export default function DiplomacyLedger() {
           standing; at 65+ a pending sanction is averted outright.
         </p>
       </Section>
+
+      <SupplyChain />
 
       {GROUPS.map((g) => {
         const group = list.filter((v) => g.rungs.includes(v.rung)).sort((a, b) => rungIndex(b.rung) - rungIndex(a.rung));

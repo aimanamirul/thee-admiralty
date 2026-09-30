@@ -11,7 +11,7 @@ import type { HullClassId } from '../types/hull';
 import type { Vec2 } from '../types/map';
 import type { Bridges, WorldDraft } from '../types/world';
 import type { Combatant } from './combatSim';
-import { vendorBlocksOrders, vendorBlocksSpareUse } from './diplomacyEngine';
+import { moduleOrdersBlocked, moduleSpareUseBlocked } from './diplomacyEngine';
 import { evaluateLoadout } from './designEngine';
 import { findRoute } from './navigation';
 
@@ -115,8 +115,7 @@ export function combatantOf(ship: Ship, bridges: Bridges): Combatant {
 
 /** Consume a spare for `moduleId` from stock or, failing that, by cannibalising a parts hulk. */
 export function takeSpare(world: WorldDraft, moduleId: string): 'STOCK' | 'HULK' | null {
-  const vendor = MODULE_BY_ID[moduleId]?.vendorId;
-  const stockUsable = vendor ? !vendorBlocksSpareUse(world, vendor) : true;
+  const stockUsable = !moduleSpareUseBlocked(world, moduleId);
   if (stockUsable && (world.spares[moduleId] ?? 0) > 0) {
     world.spares[moduleId]--;
     return 'STOCK';
@@ -132,7 +131,7 @@ export function takeSpare(world: WorldDraft, moduleId: string): 'STOCK' | 'HULK'
   }
   // Standing order: rush-buy from the vendor at a premium (blocked while the vendor is sanctioned).
   const mod = MODULE_BY_ID[moduleId];
-  if (world.policy.autoSpares && mod && !vendorBlocksOrders(world.vendors[mod.vendorId]) && !(mod.unlockedBy && !world.research.completed.includes(mod.unlockedBy))) {
+  if (world.policy.autoSpares && mod && !moduleOrdersBlocked(world, mod) && !(mod.unlockedBy && !world.research.completed.includes(mod.unlockedBy))) {
     const cost = mod.cost * 0.6;
     if (world.resources.budget >= cost) {
       world.resources.budget -= cost;

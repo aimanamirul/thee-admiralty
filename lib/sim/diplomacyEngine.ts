@@ -3,9 +3,11 @@ import { MINISTRIES, MODULE_BY_ID } from '../data/catalog';
 import { vt } from '../data/tokens';
 import { adjustSupport, lobbyCost, ministriesRefuse } from './politicsEngine';
 import { REGIMES, rollSanctionKind, sanctionRiskPerDay } from './relationsEngine';
+import { embeddedInFleet, exposeChain, exposure } from './supplyChain';
 import { rungIndex } from '../types/diplomacy';
 import type { Rng } from '../generator/prng';
 import type { SanctionKind, Vendor, VendorId } from '../types/diplomacy';
+import type { EquipmentModule } from '../types/equipment';
 import type { WorldDraft } from '../types/world';
 
 export const WARNING_DAYS = 12;
@@ -34,6 +36,17 @@ export function vendorBlocksOrders(v: Vendor): boolean {
 /** Support contract terminated: even stockpiled spares of this vendor cannot be fitted by the yards. */
 export function vendorBlocksSpareUse(world: WorldDraft, vendorId: VendorId): boolean {
   return world.vendors[vendorId].status === 'REVOKED' || !!activeSanction(world, vendorId, 'PARTS_EMBARGO');
+}
+
+/** The first vendor (prime or sub-supplier) whose sanction blocks orders of this module, or null. */
+export function moduleOrdersBlocked(world: WorldDraft, m: EquipmentModule): VendorId | null {
+  return exposure(m).find((id) => world.vendors[id] && vendorBlocksOrders(world.vendors[id])) ?? null;
+}
+
+/** Stockpiled spares of this module cannot be fitted while any vendor in its supply chain embargoes parts or has revoked. */
+export function moduleSpareUseBlocked(world: WorldDraft, moduleId: string): boolean {
+  const m = MODULE_BY_ID[moduleId];
+  return !!m && exposure(m).some((id) => world.vendors[id] && vendorBlocksSpareUse(world, id));
 }
 
 /** Standing a lobbying round actually buys: regime responsiveness, +25% for strategic partners. */
@@ -83,13 +96,16 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
   world.tension = Math.max(0, Math.min(100, world.tension));
 
   for (const v of Object.values(world.vendors)) {
-    if (v.id === 'DOMESTIC_YARDS' || v.rung === 'UNKNOWN') continue;
-    if (!world.scripted) v.standing = Math.max(10, v.standing - 0.03); // goodwill decays without upkeep
+    if (v.id === 'DOMESTIC_YARDS') continue;
+    // A sub-supplier inside hulls we operate can sanction us even if we never dealt with it directly (or never heard of it).
+    const embedded = embeddedInFleet(world, v.id);
+    if (v.rung === 'UNKNOWN' && !embedded) continue;
+    if (!world.scripted && v.rung !== 'UNKNOWN') v.standing = Math.max(10, v.standing - 0.03); // goodwill decays without upkeep
 
     if (v.status === 'ACTIVE') {
       if (world.scripted) continue; // scripted worlds inject sanctions by hand
-      // Only vendors we actually buy from can sanction us.
-      if (rungIndex(v.rung) < rungIndex('FRAMEWORK')) continue;
+      // Only vendors we buy from, directly or through components in our hulls, can sanction us.
+      if (rungIndex(v.rung) < rungIndex('FRAMEWORK') && !embedded) continue;
       if (rng.chance(sanctionRiskPerDay(world, v))) {
         v.pendingSanction = rollSanctionKind(v, rng.next());
         v.status = 'WARNING';
@@ -99,6 +115,7 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
           severity: 'WARNING',
           text: `EXPORT RISK: ${vt(v.id)} signals ${v.pendingSanction.replace('_', ' ')} in ${notice} days — lobby to avert`,
         });
+        exposeChain(world, v);
       }
     } else if (v.status === 'WARNING' && v.statusUntilTick !== null && world.tick >= v.statusUntilTick) {
       const kind = v.pendingSanction ?? 'EXPORT_FREEZE';
@@ -147,14 +164,16 @@ export function syncConstructionFreezes(world: WorldDraft): void {
   for (const ship of Object.values(world.ships)) {
     if (ship.buildStatus !== 'CONSTRUCTING') continue;
     let culprit: VendorId | null = null;
-    for (const m of ship.modules) {
-      const vid = MODULE_BY_ID[m.moduleId]?.vendorId;
-      if (!vid) continue;
-      const v = world.vendors[vid];
-      const hard = v.status === 'REVOKED' || (v.status === 'FROZEN' && !!activeSanction(world, vid, 'EXPORT_FREEZE'));
-      if (hard) {
-        culprit = vid;
-        break;
+    outer: for (const m of ship.modules) {
+      const def = MODULE_BY_ID[m.moduleId];
+      if (!def) continue;
+      for (const vid of exposure(def)) {
+        const v = world.vendors[vid];
+        const hard = v.status === 'REVOKED' || (v.status === 'FROZEN' && !!activeSanction(world, vid, 'EXPORT_FREEZE'));
+        if (hard) {
+          culprit = vid;
+          break outer;
+        }
       }
     }
     if (culprit && ship.frozenBy !== culprit) {

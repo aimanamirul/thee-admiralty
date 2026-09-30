@@ -6,7 +6,7 @@ import type { HullBase, HullClassId, ShipDesign } from '../types/hull';
 // ------------------------------------------------------------------------------- vendors
 
 function v(id: VendorId, name: string, country: string, standing: number, regime: RegimeId, bloc: Bloc, rung: Rung): Vendor {
-  return { id, name, country, standing, regime, bloc, rung, rungProgress: null, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null };
+  return { id, name, country, standing, regime, bloc, rung, rungProgress: null, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null, diligence: null, chainExposed: false };
 }
 
 export const INITIAL_VENDORS: Vendor[] = [
@@ -163,6 +163,18 @@ export const MODULES: EquipmentModule[] = [
   powerplant('PP_KB_20V', 'Kessler-Brandt KB-20V Diesel', 'KESSLER_BRANDT', 16, 150, 16, 1, 0.97, 'Very reliable high-power diesel; the engine inside many foreign hulls.'),
   sensor('SEN_KB_TRS4', 'Kessler-Brandt TRS-4 AESA', 'KESSLER_BRANDT', 'TACTICOS_ETHERNET', 4.5, 22, 34, 2, 0.9, 170, 150, 'Four-face fixed AESA.'),
 ];
+
+/**
+ * Hidden sub-suppliers (contractors phase 2). Never mention these in blurbs: the player learns them through due diligence or when the
+ * origin state signals a sanction.
+ */
+const ORIGINS: Record<string, VendorId[]> = {
+  PP_NG_GT25: ['RAYTHEON'], // turbine core built under a Halcyon licence
+  SEN_ASEL_SPEAR: ['RAYTHEON'], // transmit/receive modules
+  PP_SK_ST30: ['KESSLER_BRANDT'], // reduction gear and engine controls
+  ARM_NV_RB15: ['NAVAL_GROUP_THALES'], // missile turbojet
+};
+for (const m of MODULES) if (ORIGINS[m.id]) m.origins = ORIGINS[m.id];
 
 export const MODULE_BY_ID: Record<string, EquipmentModule> = Object.fromEntries(MODULES.map((m) => [m.id, m]));
 

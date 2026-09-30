@@ -58,6 +58,11 @@ export interface EquipmentModule {
   reliability: number;
   /** R&D project that must be complete before this module exists in the catalogue. */
   unlockedBy?: string;
+  /**
+   * Hidden sub-suppliers: vendors whose components (under their state's export licence) sit inside this product. A sanction by
+   * any of them hits the module as if it were their own. Revealed by due diligence on the prime vendor, or when an origin state moves.
+   */
+  origins?: VendorId[];
   stats: ModuleStats;
   blurb: string;
 }

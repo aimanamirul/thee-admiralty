@@ -13,5 +13,6 @@ export const GLOSSARY: Record<string, string> = {
   SOP: 'Standing operating procedure: what task forces do on their own when an unknown contact comes near. Observe = shadow and identify visually. Challenge = hail, warn the silent, board runners. Assertive = hail early and board silent contacts without warning. ROE is the ceiling on firing.',
   LADDER: 'Shadow, hail, warn, board, engage. Each step reveals something about a contact and carries a risk; ROE caps engagement. Orders here override the sector SOP for this contact only.',
   RELATIONS: 'Relationship ladder: Contact → Trade mission → Framework agreement (tier-0 lines) → Signed (tiers by standing) → Strategic partner. Each step costs political capital and days; later steps also cost money and need standing. Courting the Eastern bloc costs standing with western vendors.',
+  DILIGENCE: 'Due diligence: auditors trace every foreign component inside a vendor\'s products. A product can hide another state\'s parts; if that state sanctions you, the product is frozen or embargoed too. Unverified modules may or may not hide anything.',
   TENSION: 'Global geopolitical tension. Raises the chance that vendor states revoke licences, freeze exports or embargo spares.',
 };

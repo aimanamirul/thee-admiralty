@@ -170,6 +170,12 @@ export function procurability(m: EquipmentModule, vendors: Record<string, Vendor
   const tier = sellableTier(v);
   if (tier < 0) return { ok: false, reason: v.rung === 'UNKNOWN' ? 'SUPPLIER UNKNOWN' : `NO CONTRACT (${RUNG_LABEL[v.rung]})` };
   if (tier < m.requiredTier) return { ok: false, reason: v.rung === 'FRAMEWORK' ? `FRAMEWORK: TIER 0 ONLY (NEEDS SIGNED + T${m.requiredTier})` : `NEEDS STANDING T${m.requiredTier}` };
+  // Sub-suppliers: their state's sanction reaches this product. By the time one lands, the warning has made the link public.
+  for (const o of m.origins ?? []) {
+    const ov = vendors[o];
+    if (ov?.status === 'FROZEN') return { ok: false, reason: `COMPONENT FREEZE ({vs:${o}})` };
+    if (ov?.status === 'REVOKED') return { ok: false, reason: `COMPONENT LICENCE REVOKED ({vs:${o}})` };
+  }
   return { ok: true };
 }
 

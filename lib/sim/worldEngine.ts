@@ -10,6 +10,7 @@ import { tickDiplomacy } from './diplomacyEngine';
 import { advanceFleets, allTaskForces, taskForceShipIds } from './fleetEngine';
 import { tickPolitics } from './politicsEngine';
 import { tickRelations } from './relationsEngine';
+import { tickSupplyChain } from './supplyChain';
 import { bridgeSet, BASE_RP_INCOME, tickResearch } from './researchEngine';
 
 export { ENGAGE_RANGE, IDENTIFY_RANGE } from './contactEngine';
@@ -34,6 +35,7 @@ export function advanceDay(world: WorldDraft): void {
   advanceFleets(world, rng.fork('fleets'));
   tickContacts(world, rng.fork('contacts'), bridges);
   tickRelations(world, incidentsBefore);
+  tickSupplyChain(world);
 }
 
 function progressConstruction(world: WorldDraft): void {

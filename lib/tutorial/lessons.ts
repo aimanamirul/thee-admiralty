@@ -354,6 +354,7 @@ export const LESSONS: Lesson[] = [
     body: [
       'Foreign vendors climb a ladder: contact, trade mission, framework agreement (tier-0 lines only), signed (tiers by standing), strategic partner. Each step costs political capital, later money, and takes days.',
       'Each vendor state has its own export regime: {v:NORDVIK} is stable but punishes every incident your navy causes. Deals with the Eastern bloc cost standing in the West. Scout for suppliers to find ones you do not know yet.',
+      'A product can hide another state\'s components, and that state\'s sanctions reach it too. Due diligence on a vendor reveals what is inside before you buy.',
     ],
     objective: 'Open a trade mission with {v:NORDVIK}.',
     anchor: 'vendor-NORDVIK',

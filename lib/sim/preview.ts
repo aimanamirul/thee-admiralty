@@ -19,6 +19,7 @@ import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, 
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
+import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './supplyChain';
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
@@ -224,12 +225,17 @@ export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; module
   const hull = HULLS[a.hullId];
   const wait = building >= w.resources.industrialCapacity ? ` · all ${w.resources.industrialCapacity} slipways busy: queued behind ${building - w.resources.industrialCapacity + 1}` : '';
   const foreign = [...new Set(a.moduleIds.map((id) => MODULE_BY_ID[id].vendorId))].filter((v) => v !== 'DOMESTIC_YARDS' && w.vendors[v].status !== 'ACTIVE');
+  const views = a.moduleIds.map((id) => originView(w, MODULE_BY_ID[id]));
+  const via = [...new Set(views.flatMap((o) => o.known))];
+  const unverified = views.filter((o) => !o.verified).length;
   return [
     `−${M(ev.cost)} (budget ${M(w.resources.budget)} → ${M(w.resources.budget - ev.cost)})`,
     `commissions in ${hull.buildDays} days${wait}`,
     `running cost +${hullDailyCost(a.hullId, 'TRANSIT_WORKUP').toFixed(2)}–${hullDailyCost(a.hullId, 'ACTIVE_PATROL').toFixed(2)}M/day once commissioned`,
     ...(ev.frictionIndex > 0 ? [`integration friction ${ev.frictionIndex.toFixed(2)}`] : []),
     ...(foreign.length ? [`sanction exposure: ${foreign.map(vt).join(', ')}`] : []),
+    ...(via.length ? [`sub-suppliers inside: ${via.map(vt).join(', ')}`] : []),
+    ...(unverified ? [`${unverified} foreign module${unverified > 1 ? 's' : ''} unverified (no due diligence)`] : []),
   ].join(' · ');
 }
 
@@ -340,4 +346,10 @@ export function previewAdvance(w: WorldDraft, vendorId: VendorId): Preview {
     ...(fallout.length ? [`bloc politics: ${fallout.map((f) => `${vt(f.id)} −${f.loss}`).join(', ')} standing`] : []),
     `stalls if ${REGIMES[v.regime].label.toLowerCase()} regime imposes sanctions`,
   ].join(' · ');
+}
+
+export function previewDiligence(w: WorldDraft, vendorId: VendorId): Preview {
+  const b = diligenceBlocked(w, vendorId);
+  if (b) return blocked(b);
+  return `−${M(DILIGENCE_COST)} · report in ${DILIGENCE_DAYS} days (day ${w.tick + DILIGENCE_DAYS}) · reveals every foreign sub-supplier inside ${vt(vendorId)} products, and identifies unknown ones`;
 }

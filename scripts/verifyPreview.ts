@@ -47,7 +47,10 @@ function agree(label: string, w: WorldDraft, preview: string, run: (c: WorldDraf
 function sweep(tag: string, w: WorldDraft) {
   for (const v of Object.keys(w.vendors) as VendorId[]) {
     for (const m of MINISTRIES) agree(`${tag} lobby ${v}/${m.id}`, w, pv.previewLobby(w, v, m.id), (c) => cmd.lobbyVendorCmd(c, v, m.id));
+    agree(`${tag} diligence ${v}`, w, pv.previewDiligence(w, v), (c) => cmd.dueDiligenceCmd(c, v));
+    agree(`${tag} advance ${v}`, w, pv.previewAdvance(w, v), (c) => cmd.advanceRelationshipCmd(c, v));
   }
+  agree(`${tag} scout`, w, pv.previewScout(w), (c) => cmd.scoutSuppliersCmd(c));
   for (const s of w.map.sectors) for (const roe of ['HOLD_FIRE', 'RETURN_FIRE', 'WEAPONS_FREE'] as const) text(`${tag} roe`, pv.previewRoe(w, s.id, roe));
   for (const tf of w.fleets.flatMap((f) => f.taskForces)) {
     text(`${tag} recall ${tf.id}`, pv.previewAssign(w, tf.id, null));

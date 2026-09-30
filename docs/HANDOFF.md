@@ -214,10 +214,34 @@ The briefing now teaches everything added since it was written. 15 lessons:
 - The lobby preview no longer promises a catalogue tier for a vendor with no contract (tiers need FRAMEWORK+).
 - `scripts/e2e-tutorial.mjs` plays all 15 lessons through the UI (hail/board, advance Nordvik, budget hearing).
 
+## Contractors phase 2: supply chains (done, 2026-09-30)
+
+- **Hidden sub-suppliers:** `EquipmentModule.origins` (set in the `ORIGINS` table in `lib/data/catalog.ts`, never mentioned in blurbs):
+  `PP_NG_GT25` and `SEN_ASEL_SPEAR` carry Halberd (RAYTHEON) parts, `PP_SK_ST30` Kessler-Brandt gear, `ARM_NV_RB15` a Meridian turbojet.
+  Domestic kit has none (checked). Starting fleets carry none of these; the tutorial corvette's SPEAR radar does (a free-play surprise that
+  due diligence reveals).
+- **Engine:** `lib/sim/supplyChain.ts`. `exposure(m)` = prime + origins. A sanction by any of them hits the module: `procurability`
+  ("COMPONENT FREEZE"), `syncConstructionFreezes` (`frozenBy` = the sub-supplier), `moduleOrdersBlocked` / `moduleSpareUseBlocked`
+  (spares purchase, fitting, rush orders).
+- **Who can sanction:** vendors at FRAMEWORK+ as before, **plus any vendor whose components sit in a hull we operate**, even if UNKNOWN.
+- **Fairness (decided: fully avoidable with information):**
+  - *Due diligence* (`dueDiligenceCmd`, 12M, 10 days, Diplomacy vendor card): reveals every sub-supplier in that vendor's catalogue;
+    an unknown sub-supplier becomes a CONTACT (a second discovery path besides scouting).
+  - When a state signals a sanction, `exposeChain` makes its reach public during the warning (and identifies it, so it can be lobbied).
+    `tickSupplyChain` also exposes any non-ACTIVE vendor, covering scripted sanctions.
+  - No leak by absence: `originView` returns the same "unverified" for a module whether or not it hides anything.
+- **UI:** Diplomacy "Supply-chain exposure" section (hulls per vendor, direct vs via components, unverified count); catalogue lines show
+  "contains X / no sub-suppliers / unverified"; vendor cards get Due diligence (button, progress, "Supply chain verified"); designer
+  options and chips show "+X parts" / "N UNVERIFIED"; Order of Battle module rows show "+X" chips; the lay-down preview lists
+  sub-suppliers and unverified modules. Glossary term `DILIGENCE`. The suppliers lesson mentions due diligence (text only).
+- `npm run verify:supply`: data rules, no leak, audit timing/cost/reveal, freeze/embargo through components, substitution un-stalls, an
+  embedded unknown sub-supplier warns at high tension in 12/12 theatres and every warning exposed the link with the full notice period;
+  a non-embedded unknown vendor never acts. `verify:preview` now also sweeps diligence, advance and scout previews.
+
 ## What to build next
 
-Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phase 1 and the tutorial pass are done. Next: contractors
-phase 2 (hidden sub-suppliers + due diligence).
+Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–2 and the tutorial pass are done. Next: contractors
+phase 3 (contracts: deposits, cancellation penalties, refund/resale for hulls under construction; Mistral case).
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

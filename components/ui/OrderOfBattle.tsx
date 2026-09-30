@@ -6,6 +6,7 @@ import { HULLS, MODULE_BY_ID, MODULES } from '@/lib/data/catalog';
 import { evaluateLoadout, procurability } from '@/lib/sim/designEngine';
 import { OP_STATE_LABEL, PATROL_LIMIT_DAYS, stateCounts, taskForceShipIds } from '@/lib/sim/fleetEngine';
 import { bridgeSet } from '@/lib/sim/researchEngine';
+import { exposure, originView } from '@/lib/sim/supplyChain';
 import type { HierarchyKind, OpState, Ship, TaskForce } from '@/lib/types/fleet';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
@@ -131,7 +132,8 @@ function ShipDetail({ ship }: { ship: Ship }) {
       <ul className="space-y-1">
         {ship.modules.map((m, i) => {
           const def = MODULE_BY_ID[m.moduleId];
-          const frozen = ship.buildStatus === 'CONSTRUCTING' && ship.frozenBy === def.vendorId;
+          const frozen = ship.buildStatus === 'CONSTRUCTING' && !!ship.frozenBy && exposure(def).includes(ship.frozenBy);
+          const known = originView({ vendors }, def).known;
           const alternatives = frozen
             ? MODULES.filter((x) => x.slot === m.slot && x.id !== m.moduleId && procurability(x, vendors, done).ok)
             : [];
@@ -142,6 +144,11 @@ function ShipDetail({ ship }: { ship: Ship }) {
                 <span className="flex items-center gap-1">
                   {m.failed && <Chip tone="red">FAILED</Chip>}
                   <Chip tone="dim">{n.vs(def.vendorId)}</Chip>
+                  {known.map((o) => (
+                    <Chip key={o} tone={vendors[o].status === 'ACTIVE' ? 'amber' : 'red'}>
+                      <span title={`Contains ${n.v(o)} components`}>+{n.vs(o)}</span>
+                    </Chip>
+                  ))}
                   <Chip tone="dim">{n.x(def.protocol)}</Chip>
                 </span>
               </div>
