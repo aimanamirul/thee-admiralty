@@ -139,6 +139,7 @@ function incident(w: WorldDraft, c: Contact, text: string, severity: { pc: numbe
   w.tension = clamp(w.tension + severity.tension);
   adjustSupport(w, -severity.support);
   w.stats.incidents++;
+  w.stats.lastIncidentTick = w.tick;
 }
 
 type StepResult = 'KEEP' | 'REMOVE' | { engage: string; surprise: boolean };

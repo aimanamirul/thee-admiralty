@@ -1,6 +1,6 @@
 # Foreign contractors — research & expansion plan
 
-Status: **phases 0–3 implemented** (see §10 and `docs/HANDOFF.md`). Research done 2026-09-29. Claims marked *(verified)* come from the linked
+Status: **phases 0–3 and 5 implemented** (4 superseded) (see §10 and `docs/HANDOFF.md`). Research done 2026-09-29. Claims marked *(verified)* come from the linked
 sources at the bottom; claims marked *(general knowledge)* are from memory and should be checked before we lean on them
 for flavour text.
 
@@ -185,7 +185,7 @@ Aegis Link → "Bulwark Link"), with the real name in the skin table.
 2. **Information game — DONE (2026-09-30).** `origins` on modules, a due-diligence action that reveals them before purchase, warning stage kept for every hazard.
 3. **Contracts — DONE (2026-09-30).** Deposits, cancellation penalties, refund/resale for hulls under construction (Mistral); incident-driven standing loss for restrictive regimes.
 4. **Economy rebalance — superseded** by the fiscal year (`PLAN-command-and-economy.md`); offsets not built. Original scope: income vs upkeep, deposits, offsets; verify with `verifySim`.
-5. **Cold vendors** C1, C2, C3 in that order; then submarines as a separate track.
+5. **Cold vendors — DONE (2026-09-30).** C1, C2, C3 in that order; then submarines as a separate track.
 
 
 ## Sources

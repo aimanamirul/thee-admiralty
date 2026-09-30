@@ -5,7 +5,7 @@
  * hand the engines a structured clone of the world, commit the result, and keep UI-only state.
  */
 import { create } from 'zustand';
-import { STARTER_DESIGNS } from '../lib/data/catalog';
+import { INITIAL_VENDORS, STARTER_DESIGNS } from '../lib/data/catalog';
 import { DEFAULT_SKIN, type Skin } from '../lib/data/names';
 import * as cmd from '../lib/sim/commands';
 import type { CommandResult } from '../lib/sim/commands';
@@ -212,6 +212,8 @@ export const useFleetStore = create<GameState>((set, get) => {
       }),
     snapshotWorld: () => pickWorld(get()),
     loadWorld: (w, ledger) => {
+      // Checkpoints saved before a vendor existed: add it in its starting state.
+      for (const v of INITIAL_VENDORS) if (!w.vendors[v.id]) w.vendors[v.id] = structuredClone(v);
       const { log, logSeq } = appendLog(ledger?.log ?? [], ledger?.logSeq ?? 0, w.tick, w.events);
       w.events = [];
       set({

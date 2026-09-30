@@ -18,6 +18,10 @@ export const INITIAL_VENDORS: Vendor[] = [
   v('NORDVIK', 'Nordvik Systems', 'KINGDOM OF VINTERLAND', 30, 'VINTERLAND', 'NORDIC', 'CONTACT'),
   v('SEORAK', 'Seorak Consortium', 'REPUBLIC OF SEORYEONG', 30, 'SEORYEONG', 'ASIA_PAC', 'CONTACT'),
   v('KESSLER_BRANDT', 'Kessler-Brandt Antriebe', 'FEDERAL REPUBLIC OF RHEINMARK', 25, 'RHEINMARK', 'EURO', 'UNKNOWN'),
+  // Cold vendors (phase 5): hidden until their gate opens (coldVendors.ts).
+  { ...v('MITSURUGI', 'Mitsurugi Heavy Industries', 'AKITSU FEDERATION', 35, 'AKITSU', 'ASIA_PAC', 'UNKNOWN'), closed: true, opening: null },
+  { ...v('DAHAI', 'Dahai Marine Group', 'DAHAI REPUBLIC', 30, 'DAHAI', 'EAST', 'UNKNOWN'), closed: true, opening: null },
+  { ...v('VAYU_SARATH', 'Vayu-Sarath Aerospace', 'BHARATVAR / EASTERN BLOC', 30, 'BHARATVAR', 'NON_ALIGNED', 'UNKNOWN'), closed: true, opening: null, jvPartners: ['ZVEZDA_NORD'] },
 ];
 
 export const VENDOR_SHORT: Record<VendorId, string> = {
@@ -29,6 +33,9 @@ export const VENDOR_SHORT: Record<VendorId, string> = {
   NORDVIK: 'NORDV',
   SEORAK: 'SEORAK',
   KESSLER_BRANDT: 'K-B',
+  MITSURUGI: 'MITSU',
+  DAHAI: 'DAHAI',
+  VAYU_SARATH: 'VAYU',
 };
 
 export const MINISTRIES: Ministry[] = [
@@ -162,6 +169,18 @@ export const MODULES: EquipmentModule[] = [
   // Kessler-Brandt Antriebe (Rheinmark): engines and radars; slow licences.
   powerplant('PP_KB_20V', 'Kessler-Brandt KB-20V Diesel', 'KESSLER_BRANDT', 16, 150, 16, 1, 0.97, 'Very reliable high-power diesel; the engine inside many foreign hulls.'),
   sensor('SEN_KB_TRS4', 'Kessler-Brandt TRS-4 AESA', 'KESSLER_BRANDT', 'TACTICOS_ETHERNET', 4.5, 22, 34, 2, 0.9, 170, 150, 'Four-face fixed AESA.'),
+  // Mitsurugi Heavy Industries (Akitsu): closed until a policy shift; premium and very reliable.
+  powerplant('PP_MH_CX34', 'Mitsurugi CX-34 Combined Plant', 'MITSURUGI', 34, 260, 34, 1, 0.97, 'Combined diesel/turbine plant built for long, quiet patrols.'),
+  sensor('SEN_MH_OPX2', 'Mitsurugi OPX-2 AESA', 'MITSURUGI', 'NATO_LINK16', 5, 24, 38, 1, 0.95, 210, 160, 'Integrated mast AESA with very low failure rates.'),
+  arm('ARM_MH_VLS16', 'Mitsurugi 16-Cell VLS', 'MITSURUGI', 'NATO_LINK16', 1, 70, 40, 2, 0.95, 'SAM', 16, 34, 55, 'Sixteen-cell launcher with medium-range SAMs.'),
+  // Dahai Marine Group (Dahai Republic): volume builder, cheap, few references; introduced through the Eastern bloc.
+  powerplant('PP_DH_D24', 'Dahai 24-Cyl Diesel Pack', 'DAHAI', 24, 220, 12, 0, 0.82, 'High-output diesel pack at a very low price.'),
+  cms('CMS_DH_H11', 'Dahai H-11 CMS', 'DAHAI', 'EASTERN_ANALOG', 2, 12, 12, 0, 0.84, 5, 12, 'Digital-core CMS on an analog-compatible bus.'),
+  sensor('SEN_DH_346', 'Dahai DH-460 AESA', 'DAHAI', 'EASTERN_ANALOG', 7, 30, 22, 1, 0.82, 190, 150, 'Large four-face AESA; cheap, but few navies have tested it.'),
+  arm('ARM_DH_VLS32', 'Dahai 32-Cell VLS', 'DAHAI', 'EASTERN_ANALOG', 1, 95, 26, 1, 0.83, 'SAM', 32, 26, 50, 'Thirty-two medium-range SAMs for the price of sixteen.'),
+  // Vayu-Sarath Aerospace (JV): supersonic anti-ship missiles; either parent state can stop deliveries.
+  arm('ARM_VS_SEAWIND', 'Vayu-Sarath Seawind SSM Quad', 'VAYU_SARATH', 'DOMESTIC_OPEN', 0.4, 30, 30, 1, 0.9, 'SSM', 4, 110, 290, 'Supersonic sea-skimmer; plugs into open-bus combat systems.'),
+  arm('ARM_VS_SEAWIND8', 'Vayu-Sarath Seawind VL x8', 'VAYU_SARATH', 'DOMESTIC_OPEN', 0.8, 64, 56, 2, 0.9, 'SSM', 8, 110, 290, 'Eight-cell vertical Seawind launcher.'),
 ];
 
 /**
@@ -173,6 +192,10 @@ const ORIGINS: Record<string, VendorId[]> = {
   SEN_ASEL_SPEAR: ['RAYTHEON'], // transmit/receive modules
   PP_SK_ST30: ['KESSLER_BRANDT'], // reduction gear and engine controls
   ARM_NV_RB15: ['NAVAL_GROUP_THALES'], // missile turbojet
+  ARM_MH_VLS16: ['RAYTHEON'], // launcher built under a Halcyon licence
+  // Joint venture: the Eastern parent's components are in every Seawind (public, see Vendor.jvPartners).
+  ARM_VS_SEAWIND: ['ZVEZDA_NORD'],
+  ARM_VS_SEAWIND8: ['ZVEZDA_NORD'],
 };
 for (const m of MODULES) if (ORIGINS[m.id]) m.origins = ORIGINS[m.id];
 

@@ -7,7 +7,8 @@ import { procurability } from '@/lib/sim/designEngine';
 import { lobbyCost, ministriesRefuse } from '@/lib/sim/politicsEngine';
 import { previewAdvance, previewDiligence, previewLobby, previewScout } from '@/lib/sim/preview';
 import { DILIGENCE_DAYS, diligenceBlocked, fleetExposure, originView } from '@/lib/sim/supplyChain';
-import { advanceBlocked, BLOC_LABEL, nextStep, REGIMES, RUNG_LABEL, rungAccess, sanctionRiskPerDay, scoutBlocked, sellableTier } from '@/lib/sim/relationsEngine';
+import { advanceBlocked, BLOC_LABEL, nextStep, REGIMES, RUNG_LABEL, rungAccess, sanctionRiskPerDay, scoutable, scoutBlocked, sellableTier } from '@/lib/sim/relationsEngine';
+import { marketWatch } from '@/lib/sim/coldVendors';
 import { rungIndex, type Rung, type Vendor } from '@/lib/types/diplomacy';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
@@ -229,7 +230,8 @@ export default function DiplomacyLedger() {
   const sanctions = useFleetStore((s) => s.sanctions);
   const { scoutSuppliers } = useFleetStore.getState();
   const list = Object.values(vendors);
-  const unknown = list.filter((v) => v.rung === 'UNKNOWN').length;
+  const unknown = list.filter(scoutable).length;
+  const watch = marketWatch(useFleetStore.getState().snapshotWorld());
   const scoutBlock = scoutBlocked(useFleetStore.getState().snapshotWorld());
 
   return (
@@ -268,6 +270,16 @@ export default function DiplomacyLedger() {
         <Btn className="mt-1.5 w-full" tone="cyan" disabled={!!scoutBlock} preview={previewScout} onClick={() => scoutSuppliers()}>
           Scout for suppliers
         </Btn>
+        {watch.length > 0 && (
+          <div className="mt-1.5 border-t border-navy pt-1">
+            <div className="text-[0.75rem] uppercase tracking-widest text-slate-500">Market watch</div>
+            <ul className="text-[0.8125rem] text-amber-radar">
+              {watch.map((l) => (
+                <li key={l}>› {n.t(l)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Section>
 
       <Section title="Sanction register" tone="red">

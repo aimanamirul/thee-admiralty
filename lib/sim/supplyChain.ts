@@ -33,7 +33,9 @@ export interface OriginView {
 export function originView(w: Pick<WorldDraft, 'vendors'>, m: EquipmentModule): OriginView {
   if (m.vendorId === 'DOMESTIC_YARDS') return { verified: true, known: [] };
   const verified = !!w.vendors[m.vendorId]?.diligence?.done;
-  return { verified, known: (m.origins ?? []).filter((o) => verified || !!w.vendors[o]?.chainExposed) };
+  // Joint-venture partners are public knowledge: no due diligence needed to see them.
+  const jv = w.vendors[m.vendorId]?.jvPartners ?? [];
+  return { verified, known: (m.origins ?? []).filter((o) => verified || jv.includes(o) || !!w.vendors[o]?.chainExposed) };
 }
 
 /** Modules whose products carry this vendor's components (not counting its own catalogue). */

@@ -8,7 +8,10 @@ export type VendorId =
   | 'ZVEZDA_NORD'
   | 'NORDVIK'
   | 'SEORAK'
-  | 'KESSLER_BRANDT';
+  | 'KESSLER_BRANDT'
+  | 'MITSURUGI'
+  | 'DAHAI'
+  | 'VAYU_SARATH';
 
 /**
  * Relationship ladder. UNKNOWN vendors are hidden; CONTACT and TRADE_MISSION show the catalogue read-only; FRAMEWORK buys tier-0
@@ -19,8 +22,8 @@ export const RUNGS: Rung[] = ['UNKNOWN', 'CONTACT', 'TRADE_MISSION', 'FRAMEWORK'
 export const rungIndex = (r: Rung) => RUNGS.indexOf(r);
 
 /** Export-control regime of the vendor's home state: drives how sanctions behave. */
-export type RegimeId = 'HOME' | 'AURELLE' | 'HALCYON' | 'SARNIA' | 'EASTERN' | 'VINTERLAND' | 'SEORYEONG' | 'RHEINMARK';
-export type Bloc = 'HOME' | 'WEST' | 'EURO' | 'NORDIC' | 'EAST' | 'ASIA_PAC';
+export type RegimeId = 'HOME' | 'AURELLE' | 'HALCYON' | 'SARNIA' | 'EASTERN' | 'VINTERLAND' | 'SEORYEONG' | 'RHEINMARK' | 'AKITSU' | 'DAHAI' | 'BHARATVAR';
+export type Bloc = 'HOME' | 'WEST' | 'EURO' | 'NORDIC' | 'EAST' | 'ASIA_PAC' | 'NON_ALIGNED';
 
 export type LicenseStatus = 'ACTIVE' | 'WARNING' | 'FROZEN' | 'REVOKED';
 
@@ -43,6 +46,14 @@ export interface Vendor {
   diligence?: { startTick: number; readyTick: number; done: boolean } | null;
   /** This vendor's components inside other vendors' products are public (its state signalled or imposed a sanction). */
   chainExposed?: boolean;
+  /**
+   * Cold vendor (phase 5): hidden from scouting until its gate opens (policy shift, introduction, export drive). See coldVendors.ts.
+   */
+  closed?: boolean;
+  /** Foreshadowed opening: the day a pending policy vote / export drive lands (and the day it was announced). */
+  opening?: { announcedTick: number; tick: number; incidentsAtAnnounce: number } | null;
+  /** Joint-venture partners: public co-owners whose state's sanctions reach this vendor's products. */
+  jvPartners?: VendorId[];
 }
 
 export interface Ministry {

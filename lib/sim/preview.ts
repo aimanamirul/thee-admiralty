@@ -21,7 +21,7 @@ import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
 import { cancelBlocked, cancellationTerms, DEPOSIT_RATE, RESALE_RATE, resaleBlocked, resaleProceeds, BREACH_STANDING } from './contracts';
 import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './supplyChain';
-import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
+import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
 
@@ -332,7 +332,7 @@ export function previewContactOrder(w: WorldDraft, contactId: string, action: La
 export function previewScout(w: WorldDraft): Preview {
   const b = scoutBlocked(w);
   if (b) return blocked(b);
-  const unknown = Object.values(w.vendors).filter((v) => v.rung === 'UNKNOWN').length;
+  const unknown = Object.values(w.vendors).filter(scoutable).length;
   return `−${lobbyCost(w, SCOUT_PC)} PC · trade attachés identify 1 of ${unknown} unknown supplier${unknown > 1 ? 's' : ''} · its catalogue becomes visible (not yet purchasable)`;
 }
 

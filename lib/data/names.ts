@@ -25,6 +25,9 @@ const REAL_VENDOR: Record<string, RealVendor> = {
   NORDVIK: { name: 'Saab', country: 'SWEDEN', short: 'SAAB' },
   SEORAK: { name: 'Hanwha / HD HHI', country: 'SOUTH KOREA', short: 'K-YARDS' },
   KESSLER_BRANDT: { name: 'TKMS / MTU', country: 'GERMANY', short: 'TKMS' },
+  MITSURUGI: { name: 'Mitsubishi Heavy Industries', country: 'JAPAN', short: 'MHI' },
+  DAHAI: { name: 'CSSC / NORINCO', country: 'CHINA', short: 'CSSC' },
+  VAYU_SARATH: { name: 'BrahMos Aerospace', country: 'INDIA / RUSSIA', short: 'BRAHMOS' },
 };
 
 const REAL_MODULE: Record<string, string> = {
@@ -45,6 +48,15 @@ const REAL_MODULE: Record<string, string> = {
   ARM_SK_KVLS16: 'K-VLS 16-Cell',
   PP_KB_20V: 'MTU 20V 4000 Diesel',
   SEN_KB_TRS4: 'Hensoldt TRS-4D AESA',
+  PP_MH_CX34: 'MHI CODAG Plant (Mogami)',
+  SEN_MH_OPX2: 'MHI OPY-2 AESA',
+  ARM_MH_VLS16: 'Mk 41 16-Cell VLS (Mogami)',
+  PP_DH_D24: 'CSSC 16PA6 STC Diesel Pack',
+  CMS_DH_H11: 'ZKJ-series CMS',
+  SEN_DH_346: 'Type 346A AESA',
+  ARM_DH_VLS32: 'HHQ-16 32-Cell VLS',
+  ARM_VS_SEAWIND: 'BrahMos SSM Quad',
+  ARM_VS_SEAWIND8: 'BrahMos VL x8',
 };
 
 const REAL_PROJECT: Record<string, string> = {

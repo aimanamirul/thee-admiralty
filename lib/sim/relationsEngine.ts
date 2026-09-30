@@ -41,9 +41,12 @@ export const REGIMES: Record<RegimeId, Regime> = {
   VINTERLAND: { label: 'RESTRICTIVE', hazard: 0.25, warningDays: 14, freezeDays: [60, 120], mix: [0.6, 0.1, 0.3], lobbyEffect: 1, incidentPenalty: 6, refundRate: 0.8, blurb: 'Stable in peacetime, but every incident your navy causes costs standing.' },
   SEORYEONG: { label: 'BUSINESS-FRIENDLY', hazard: 0.2, warningDays: 14, freezeDays: [20, 40], mix: [0.7, 0.25, 0.05], lobbyEffect: 1.2, incidentPenalty: 0, refundRate: 0.75, blurb: 'Consortium sales, quick deliveries, rarely political.' },
   RHEINMARK: { label: 'COMMITTEE-DRIVEN', hazard: 0.3, warningDays: 20, freezeDays: [60, 120], mix: [0.6, 0.3, 0.1], lobbyEffect: 0.9, incidentPenalty: 2, refundRate: 0.7, blurb: 'Slow approvals and long notice; component licences reach into other vendors’ products.' },
+  AKITSU: { label: 'CAUTIOUS', hazard: 0.1, warningDays: 30, freezeDays: [30, 60], mix: [0.8, 0.2, 0], lobbyEffect: 0.8, incidentPenalty: 4, refundRate: 0.9, blurb: 'Opened only by a change in the law; once open, the most reliable partner there is. Incidents embarrass it.' },
+  DAHAI: { label: 'VOLUME EXPORTER', hazard: 0.5, warningDays: 10, freezeDays: [30, 60], mix: [0.5, 0.4, 0.1], lobbyEffect: 0.9, incidentPenalty: 0, refundRate: 0.4, blurb: 'Cheap and fast, but few navies have tested its kit; courting it costs standing in the West.' },
+  BHARATVAR: { label: 'JOINT VENTURE', hazard: 0.3, warningDays: 14, freezeDays: [30, 60], mix: [0.7, 0.25, 0.05], lobbyEffect: 1.1, incidentPenalty: 0, refundRate: 0.7, blurb: 'Co-owned with the Eastern bloc: a sanction by either parent state stops deliveries.' },
 };
 
-export const BLOC_LABEL: Record<Bloc, string> = { HOME: 'HOME', WEST: 'WESTERN', EURO: 'EUROPEAN', NORDIC: 'NORDIC', EAST: 'EASTERN BLOC', ASIA_PAC: 'ASIA-PACIFIC' };
+export const BLOC_LABEL: Record<Bloc, string> = { HOME: 'HOME', WEST: 'WESTERN', EURO: 'EUROPEAN', NORDIC: 'NORDIC', EAST: 'EASTERN BLOC', ASIA_PAC: 'ASIA-PACIFIC', NON_ALIGNED: 'NON-ALIGNED' };
 const WESTERN: Bloc[] = ['WEST', 'EURO', 'NORDIC'];
 
 // ------------------------------------------------------------------------------------------ sanction hazard
@@ -121,10 +124,13 @@ export function sellableTier(v: Vendor): number {
 
 export const SCOUT_PC = 6;
 
+/** Unknown and not a cold vendor still waiting for its gate. */
+export const scoutable = (v: Vendor) => v.rung === 'UNKNOWN' && !v.closed;
+
 export function scoutBlocked(w: WorldDraft): string | null {
   const refuse = ministriesRefuse(w);
   if (refuse) return refuse;
-  if (!Object.values(w.vendors).some((v) => v.rung === 'UNKNOWN')) return 'NO UNKNOWN SUPPLIERS LEFT TO SCOUT';
+  if (!Object.values(w.vendors).some(scoutable)) return 'NO UNKNOWN SUPPLIERS LEFT TO SCOUT';
   const cost = lobbyCost(w, SCOUT_PC);
   if (w.resources.politicalCapital < cost) return `NEEDS ${cost} POLITICAL CAPITAL`;
   return null;
@@ -134,7 +140,7 @@ export function scoutBlocked(w: WorldDraft): string | null {
 export function scoutSuppliers(w: WorldDraft): { ok: boolean; reason?: string; vendorId?: VendorId } {
   const b = scoutBlocked(w);
   if (b) return { ok: false, reason: b };
-  const v = Object.values(w.vendors).find((x) => x.rung === 'UNKNOWN')!;
+  const v = Object.values(w.vendors).find(scoutable)!;
   w.resources.politicalCapital -= lobbyCost(w, SCOUT_PC);
   v.rung = 'CONTACT';
   w.events.push({ severity: 'ADVISORY', text: `TRADE ATTACHÉS: new supplier identified — ${vt(v.id)} (${REGIMES[v.regime].label}); catalogue now visible` });

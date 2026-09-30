@@ -261,11 +261,35 @@ The briefing now teaches everything added since it was written. 15 lessons:
   refunds by basis (breach / fault via sub-supplier / yard salvage), standing and support effects, resale threshold and re-export block.
   `verify:preview` now sweeps hulls under construction (cancel, resell).
 
+## Contractors phase 5: cold vendors (done, 2026-09-30)
+
+- Three vendors start `closed` (UNKNOWN and not scoutable; `scoutable()` in relationsEngine; not counted in "Unknown suppliers"):
+  `MITSURUGI` (Akitsu Federation; skin Mitsubishi Heavy Industries / JAPAN), `DAHAI` (Dahai Republic; skin CSSC / NORINCO / CHINA),
+  `VAYU_SARATH` (Bharatvar / Eastern bloc JV; skin BrahMos Aerospace). New regimes AKITSU (cautious, 30-day notice, refunds 90%,
+  incidents −4), DAHAI (volume exporter, refunds 40%), BHARATVAR (joint venture); new bloc NON_ALIGNED. Nine new modules.
+- Gates (`lib/sim/coldVendors.ts`, `tickColdVendors`, skipped in scripted worlds):
+  - **C1 policy shift:** daily chance `policyDebateChance` (×1.5 support ≥ 50, ×1.5 tension ≥ 60, ×0.25 if an incident in the last 180
+    days; `stats.lastIncidentTick` is new). A debate is announced with a vote 30 days out; an incident before the vote sinks it (it can
+    come round again); otherwise Mitsurugi becomes a CONTACT. Its VLS hides Halberd parts (due diligence reveals).
+  - **C2 introduction:** Zvezda-Nord at standing ≥ 70 on SIGNED+ introduces Dahai as a CONTACT (player lever: lobby Zvezda). Dahai is
+    EAST bloc, so each rung costs western standing (existing `blocFallout`). Cheap, low-reliability kit on the Eastern protocol.
+  - **C3 export drive:** `exportDriveDay(seed)` in days 200–399, announced 30 days ahead; then Vayu-Sarath is scoutable. Its Seawind
+    missiles carry `origins: ['ZVEZDA_NORD']`, and `Vendor.jvPartners` makes that link public (no due diligence), so a Zvezda sanction
+    stops them through the phase-2 component rules.
+- UI: "Market watch" under Unknown suppliers lists the pending vote, the Zvezda introduction threshold (never naming the hidden vendor)
+  and the export drive date.
+- Old checkpoints: `loadWorld` backfills vendors missing from a saved world.
+- `npm run verify:cold`: hidden at start, scouting ignores closed vendors, the vote is foreshadowed and an incident sinks it, a clean
+  record passes it, introduction thresholds (standing and rung) and the lobbying path, western fallout, export drive announcement and
+  scouting, JV exposure, skins, scripted worlds stay closed; soak: in 10 theatres × 900 days the reform passed 10/10, drive open 10/10.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
-rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Next: phase 5, cold vendors
-C1 (policy-shift event), C2 (bloc-gated), C3 (JV, two parent states).
+rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Phase 5 (cold vendors) is
+done, so the contractors plan is complete. Candidates next (not yet requested): submarines (new hull class; makes Seorak, Kessler-Brandt
+and Dahai meaningful and gives abyssal water a role), licensed local production at STRATEGIC, offsets, a tutorial or advisor nudge for
+the contract / due-diligence tools, the Movement faction (design only).
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

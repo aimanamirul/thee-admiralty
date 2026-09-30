@@ -132,7 +132,7 @@ export interface WorldDraft {
   policy: { autoSpares: boolean };
   politics: PoliticsState;
   /** Running statistics for the ledger. */
-  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number };
+  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number };
 }
 
 export type Bridges = ReadonlySet<BridgeKey>;
