@@ -59,7 +59,10 @@ await page.getByLabel('New name').fill('Anvil Force');
 await page.getByLabel('New name').press('Enter');
 await waitLesson(5); await shot('05-thirds');
 await waitLesson(6, 60000); await shot('06-contact');
+// lesson 6 waits for an ROE decision; weapons free also fires on the unidentified merchant (incident)
+await page.getByRole('button', { name: 'Weapons free' }).click();
 await waitLesson(7, 60000); await shot('07-spares');
+if (!/INCIDENT: weapons-free fire on neutral/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('contact: expected a weapons-free incident in the ledger');
 await page.getByRole('button', { name: /SHOW/ }).click();
 await page.locator('li', { hasText: 'DSR-2D Surface Search' }).getByRole('button', { name: '+1' }).click();
 await waitLesson(8, 30000); await shot('08-design');
@@ -78,8 +81,7 @@ await page.locator('li', { hasText: 'VL-41 ↔ TACTIS Protocol Bridge' }).getByR
 await waitLesson(10, 60000); await shot('10-sanctions');
 await page.locator('section', { hasText: 'Sarnic Defence · REPUBLIC OF SARNIA' }).getByRole('button', { name: /Foreign/ }).click();
 await waitLesson(11, 20000); await shot('11-embargo');
-await page.locator('[data-tutorial="ship-SHP-6"] [role=button]').first().click();
-await page.getByRole('button', { name: /Designate parts hulk/ }).click();
+await page.locator('[data-tutorial="hulk-SHP-6"]').click();
 await waitLesson(12, 60000); await shot('12-graduation');
 await page.mouse.click(...at(0.72, 0.5));
 await page.locator('div', { hasText: /^TF 12 / }).filter({ has: page.getByRole('button', { name: 'Assign' }) }).last().getByRole('button', { name: 'Assign' }).click();

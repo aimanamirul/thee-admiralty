@@ -118,6 +118,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       }));
       g.setDesignerPreset(lesson.preset ?? null);
       if (lesson.tab) g.setTab(lesson.tab);
+      if (lesson.select !== undefined) g.selectSector(lesson.select);
       if (lesson.onEnter) g.mutate(lesson.onEnter);
       // Ledger entries written by onEnter itself must not satisfy this lesson's own gate.
       set({ startSeq: useFleetStore.getState().logSeq });

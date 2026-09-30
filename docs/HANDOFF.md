@@ -71,8 +71,15 @@ Review fixes (post first implementation):
 
 Lessons that need the player to do something with the clock (2 press play; 6 buy a spare) start it automatically once the action is done.
 
-Known limits / ideas (from the review, not yet done): lesson 6 (contact) is passive — no ROE choice; the layout jumps as panels unlock
-(reserve space up front); hulk button is two clicks deep. Also: Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
+- **Lesson 6 is a decision now:** it opens the sector panel with two unidentified tracks inbound (a raider and a neutral merchant) and
+  starts the clock only once the player sets an ROE (`setRoe` now logs `ROE SECTOR n: ...`; `Lesson.select` opens a sector on entry).
+  WEAPONS FREE engages the merchant while unidentified: an incident (-8 PC, +5 tension). `verify:tutorial` plays the raid under all three
+  ROEs and asserts no ship is lost and that only WEAPONS FREE causes the incident. Identified neutrals stop pursuing.
+- **Hulk in one click:** docked rows show a skull button (`data-tutorial="hulk-<id>"`). Hulk controls are hidden behind a new `HULK` UI flag,
+  revealed by the embargo lesson, so the corvette in the spares lesson cannot be hulked by mistake (that would soft-lock lesson 7).
+
+Known limits / ideas (from the review, not yet done): the layout jumps as panels unlock (reserve space up front) — deliberately deferred
+until after contractors phase 1 and the economy rebalance, which change the top bar and Diplomacy tab. Also: Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
 contacts are engaged at 12 tiles before the 10-tile identification, so hostiles are never seen turning red first.
 
 ## Contractors phase 0: display-name layer (done)

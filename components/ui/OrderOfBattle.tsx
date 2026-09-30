@@ -93,6 +93,7 @@ function ThirdsGauge({ ships }: { ships: Ship[] }) {
 }
 
 function ShipDetail({ ship }: { ship: Ship }) {
+  const showHulk = useUiFlag('HULK');
   const n = useNames();
   const research = useFleetStore((s) => s.research);
   const vendors = useFleetStore((s) => s.vendors);
@@ -180,7 +181,7 @@ function ShipDetail({ ship }: { ship: Ship }) {
             {ship.holdStation ? 'Holding station' : 'Hold station'}
           </Btn>
         )}
-        {ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && (
+        {showHulk && ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && (
           <Btn tone="red" disabled={ship.state !== 'MAINTENANCE_DOCK'} title="Only a docked hull can become a parts hulk" onClick={() => st.designateHulk(ship.id)}>
             <Skull className="mr-1 inline h-3 w-3" />
             Designate parts hulk
@@ -210,6 +211,7 @@ function ShipDetail({ ship }: { ship: Ship }) {
 }
 
 function ShipRow({ ship }: { ship: Ship }) {
+  const showHulk = useUiFlag('HULK');
   const selected = useFleetStore((s) => s.selectedShipId === ship.id);
   const select = useFleetStore((s) => s.selectShip);
   const hull = HULLS[ship.hullId];
@@ -225,6 +227,20 @@ function ShipRow({ ship }: { ship: Ship }) {
         </span>
         {failed > 0 && !ship.isPartsHulk && <Chip tone="red">{failed}× FAULT</Chip>}
         {ship.holdStation && <Chip tone="amber">HOLD</Chip>}
+        {showHulk && ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && ship.state === 'MAINTENANCE_DOCK' && (
+          <button
+            data-tutorial={`hulk-${ship.id}`}
+            aria-label={`Designate ${ship.name} as parts hulk`}
+            title="Designate as Parts Hulk (reversible: Restore to service)"
+            onClick={(e) => {
+              e.stopPropagation();
+              useFleetStore.getState().designateHulk(ship.id);
+            }}
+            className="border border-warn/50 p-0.5 text-warn hover:bg-warn/15"
+          >
+            <Skull className="h-3 w-3" />
+          </button>
+        )}
         {ship.isPartsHulk ? (
           <Chip tone="red">PARTS HULK</Chip>
         ) : ship.buildStatus === 'CONSTRUCTING' ? (

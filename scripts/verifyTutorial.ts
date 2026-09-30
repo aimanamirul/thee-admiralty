@@ -49,7 +49,27 @@ const actions: Record<string, () => void> = {
   station: () => ok(cmd.assignTaskForce(w, 'TF-1', HOME_SECTOR), 'assign TF-1'),
   command: () => ok(cmd.renameNode(w, 'TASKFORCE', 'TF-1', 'Anvil Force'), 'rename'),
   thirds: () => {},
-  contact: () => {},
+  contact: () => {
+    // Every ROE choice must be survivable: later lessons need all six hulls.
+    for (const roe of ['HOLD_FIRE', 'RETURN_FIRE', 'WEAPONS_FREE'] as const) {
+      const c = structuredClone(w);
+      c.events = [];
+      cmd.setRoe(c, HOME_SECTOR, roe);
+      let outcome = '';
+      for (let d = 0; d < 60 && !outcome; d++) {
+        advanceDay(c);
+        outcome = c.events.find((e) => e.text.startsWith('ENGAGEMENT'))?.text ?? '';
+        if (outcome && process.env.DEBUG_RAID) for (const e of c.events.filter((x) => x.severity === 'COMBAT')) console.log(`     ${roe}: ${e.text.trim()}`);
+        c.events = [];
+      }
+      check(!!outcome, `[contact/${roe}] no engagement within 60 days`);
+      check(c.stats.shipsLost === 0, `[contact/${roe}] lost ${c.stats.shipsLost} ship(s)`);
+      // The merchant teaches the WEAPONS FREE trade-off: exactly that ROE produces the incident.
+      check(c.stats.incidents === (roe === 'WEAPONS_FREE' ? 1 : 0), `[contact/${roe}] incidents ${c.stats.incidents}`);
+      console.log(`  contact under ${roe.padEnd(12)} -> ${outcome.replace(/^.*: /, '')}, incidents ${c.stats.incidents}, PC ${c.resources.politicalCapital.toFixed(1)}`);
+    }
+    ok(cmd.setRoe(w, HOME_SECTOR, 'RETURN_FIRE'), 'choose ROE');
+  },
   spares: () => ok(cmd.buySpares(w, 'SEN_DOM_DSR2', 1), 'buy spare'),
   design: () => {
     const bad = evaluateLoadout(TUTORIAL_PRESET.hullId, TUTORIAL_PRESET.moduleIds, bridgeSet([]));

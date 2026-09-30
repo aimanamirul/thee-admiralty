@@ -16,7 +16,7 @@ export type UiFlag =
   | 'PANEL' | 'TAB_SECTOR' | 'TAB_FLEET' | 'TAB_RND' | 'TAB_DIPLO'
   | 'DATE' | 'CLOCK' | 'TICKER'
   | 'READOUT_BUDGET' | 'READOUT_INDUSTRY' | 'READOUT_RP' | 'READOUT_PC' | 'READOUT_TENSION'
-  | 'THIRDS' | 'SPARES' | 'ORGANISE' | 'DESIGN_BTN' | 'LAYERS';
+  | 'THIRDS' | 'SPARES' | 'ORGANISE' | 'DESIGN_BTN' | 'LAYERS' | 'HULK';
 
 /** Plain subset of game state the gates read, so they also run in Node. */
 export interface TutorialView {
@@ -46,6 +46,8 @@ export interface Lesson {
   anchor?: string;
   reveals: UiFlag[];
   tab?: 'SECTOR' | 'FLEET' | 'RND' | 'DIPLO';
+  /** Sector to select on entry (opens its panel). */
+  select?: number;
   /** Sector that gets the pulsing objective ring on the plot. */
   target?: number;
   preset?: ShipDesign;
@@ -81,6 +83,49 @@ function dock(w: WorldDraft, id: string, readiness: number, failed?: string) {
       w.events.push({ severity: 'WARNING', text: `${shipLabel(s)}: ${mt(failed)} FAILED — hull in dock` });
     }
   }
+}
+
+/**
+ * Pick a water cell in HOME_SECTOR about `dist` tiles from task force `tfId` whose straight approach stays clear of every
+ * other task force and at least `minBearing` radians away from the bearings of `avoid` points.
+ */
+function spawnPursuer(w: WorldDraft, tfId: string, dist: number, avoid: { x: number; y: number }[], minBearing = 0): { x: number; y: number } {
+  const all = w.fleets.flatMap((f) => f.taskForces);
+  const t = all.find((x) => x.id === tfId)!;
+  const others = all.filter((x) => x !== t);
+  const map = w.map;
+  const clearOfOthers = (x: number, y: number) =>
+    others.every((o) => {
+      for (let k = 0; k <= 20; k++) {
+        const px = x + ((t.position.x - x) * k) / 20;
+        const py = y + ((t.position.y - y) * k) / 20;
+        // Only the approach matters: once inside TF 11's engagement radius the contact is dealt with there.
+        if (Math.hypot(px - t.position.x, py - t.position.y) < 12) continue;
+        if (Math.hypot(px - o.position.x, py - o.position.y) < 15) return false;
+      }
+      return true;
+    });
+  const bearing = (x: number, y: number) => Math.atan2(y - t.position.y, x - t.position.x);
+  const apart = (x: number, y: number) =>
+    avoid.every((a) => {
+      let d = Math.abs(bearing(x, y) - bearing(a.x, a.y)) % (2 * Math.PI);
+      if (d > Math.PI) d = 2 * Math.PI - d;
+      return d >= minBearing;
+    });
+  let best = -1;
+  let bestErr = Infinity;
+  for (let i = 0; i < map.sectorGrid.length; i++) {
+    if (map.sectorGrid[i] !== HOME_SECTOR) continue;
+    const x = i % map.width;
+    const y = Math.floor(i / map.width);
+    const err = Math.abs(Math.hypot(x - t.position.x, y - t.position.y) - dist);
+    if (err < bestErr && clearOfOthers(x, y) && apart(x, y)) {
+      bestErr = err;
+      best = i;
+    }
+  }
+  if (best < 0) throw new Error('tutorial: no clear spawn point for a scripted contact');
+  return { x: best % map.width, y: Math.floor(best / map.width) };
 }
 
 export const LESSONS: Lesson[] = [
@@ -173,52 +218,29 @@ export const LESSONS: Lesson[] = [
     id: 'contact',
     title: 'Contact and engagement',
     body: [
-      'A track is closing on TF 11. Amber means unidentified; a hostile that comes within 12 tiles of a task force forces an engagement.',
-      'The result depends on the detection window minus CMS reaction and tracking lag, then interceptors in flight. Read the ticker.',
+      'Two unidentified tracks are closing on TF 11. One is a raider; the other may not be. Decide how your ships may fire in HOME APPROACHES.',
+      'HOLD FIRE: the raider fires first and halves your engagement window. RETURN FIRE: engage tracks once identified hostile. WEAPONS FREE: the longest window, but anything unidentified in range is engaged, civilians included (an incident costs political capital and raises tension).',
+      'The clock starts once you choose. Compare the "window" seconds in the ticker to see what your ROE bought.',
     ],
-    objective: 'Run the clock and watch the engagement.',
-    anchor: 'ticker',
+    objective: 'Set the ROE for HOME APPROACHES (any option), then watch the engagement.',
+    anchor: 'roe',
     reveals: [],
-    tab: 'FLEET',
+    tab: 'SECTOR',
+    select: HOME_SECTOR,
     target: HOME_SECTOR,
-    run: { speed: 4 },
+    run: { speed: 4, when: (v) => newLog(v, /^ROE SECTOR 1:/) },
     onEnter: (w) => {
-      const all = w.fleets.flatMap((f) => f.taskForces);
-      const t = all.find((x) => x.id === 'TF-1')!;
-      const others = all.filter((x) => x !== t);
-      const map = w.map;
-      // Start ~28 tiles out, on a straight approach that stays well clear of every other task force (e.g. the one in port).
-      const clearOfOthers = (x: number, y: number) =>
-        others.every((o) => {
-          for (let k = 0; k <= 20; k++) {
-            const px = x + ((t.position.x - x) * k) / 20;
-            const py = y + ((t.position.y - y) * k) / 20;
-            // Only the approach matters: once inside TF 11's engagement radius the raid is fought there.
-            if (Math.hypot(px - t.position.x, py - t.position.y) < 12) continue;
-            if (Math.hypot(px - o.position.x, py - o.position.y) < 15) return false;
-          }
-          return true;
-        });
-      let best = -1;
-      let bestErr = Infinity;
-      for (let i = 0; i < map.sectorGrid.length; i++) {
-        if (map.sectorGrid[i] !== HOME_SECTOR) continue;
-        const x = i % map.width;
-        const y = Math.floor(i / map.width);
-        const err = Math.abs(Math.hypot(x - t.position.x, y - t.position.y) - 28);
-        if (err < bestErr && clearOfOthers(x, y)) {
-          bestErr = err;
-          best = i;
-        }
-      }
-      if (best < 0) throw new Error('tutorial: no clear spawn point for the scripted contact');
-      const x = best % map.width;
-      const y = Math.floor(best / map.width);
-      w.contacts.push({
-        id: 'CT-TUT-1', sectorId: HOME_SECTOR, position: { x, y }, heading: Math.atan2(t.position.y - y, t.position.x - x),
-        cls: 'UNKNOWN', hostile: true, strength: 20, bornTick: w.tick, expiresTick: w.tick + 40, pursue: t.id,
-      });
-      w.events.push({ severity: 'WARNING', text: 'NEW CONTACT: unidentified track in HOME APPROACHES, closing on TF 11' });
+      // Hostile raider ~28 tiles out, plus a neutral merchant ~24 tiles out on another bearing: under WEAPONS FREE the
+      // merchant is fired on while still unidentified (an incident); under the other ROEs it is identified and ignored.
+      const raider = spawnPursuer(w, 'TF-1', 28, []);
+      w.contacts.push(
+        { id: 'CT-TUT-RAID', sectorId: HOME_SECTOR, position: raider, heading: 0, cls: 'UNKNOWN', hostile: true, strength: 20, bornTick: w.tick, expiresTick: w.tick + 40, pursue: 'TF-1' },
+      );
+      const merchant = spawnPursuer(w, 'TF-1', 24, [raider], 0.9);
+      w.contacts.push(
+        { id: 'CT-TUT-MERCH', sectorId: HOME_SECTOR, position: merchant, heading: 0, cls: 'UNKNOWN', hostile: false, strength: 0, bornTick: w.tick, expiresTick: w.tick + 40, pursue: 'TF-1' },
+      );
+      w.events.push({ severity: 'WARNING', text: 'NEW CONTACTS: two unidentified tracks in HOME APPROACHES, closing on TF 11' });
     },
     gate: (v) => newLog(v, /ENGAGEMENT/),
   },
@@ -298,11 +320,11 @@ export const LESSONS: Lesson[] = [
     title: 'Parts embargo and cannibalisation',
     body: [
       "The government behind {v:NAVAL_GROUP_THALES} has embargoed spares: stock cannot be bought or fitted. The frigate in dock needs a new CMS.",
-      'The worn reserve frigate in dock has a dead power plant but a working CMS. Open it and designate it a Parts Hulk; its CMS is cannibalised for the repair. A hulk can be restored to service later, once parts flow again.',
+      'The worn reserve frigate in dock has a dead power plant but a working CMS. Press the skull on its row to designate it a Parts Hulk; its CMS is cannibalised for the repair. A hulk can be restored to service later, once parts flow again.',
     ],
     objective: 'Repair the frigate by cannibalising a Parts Hulk.',
-    anchor: 'ship-SHP-6',
-    reveals: [],
+    anchor: 'hulk-SHP-6',
+    reveals: ['HULK'],
     tab: 'FLEET',
     run: { speed: 4, when: (v) => Object.values(v.ships).some((s) => s.isPartsHulk) },
     onEnter: (w) => {

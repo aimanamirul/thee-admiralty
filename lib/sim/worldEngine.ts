@@ -163,6 +163,7 @@ function tickContacts(world: WorldDraft, rng: Rng, bridges: Bridges): void {
     // Identification
     if (c.cls === 'UNKNOWN' && nearestTf(c.position.x, c.position.y, IDENTIFY_RANGE)) {
       c.cls = c.hostile ? 'HOSTILE' : 'NEUTRAL';
+      if (!c.hostile) c.pursue = undefined; // identified merchants resume their own course
       world.events.push({
         severity: c.hostile ? 'WARNING' : 'INFO',
         text: `CONTACT ${c.id.slice(3, 9)} in ${map.sectors[c.sectorId].name}: identified ${c.cls}`,

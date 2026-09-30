@@ -125,6 +125,7 @@ export function expandIndustry(world: WorldDraft): CommandResult {
 export function setRoe(world: WorldDraft, sectorId: number, roe: Roe): CommandResult {
   if (!world.sectors[sectorId]) return fail('NO SUCH SECTOR');
   world.sectors[sectorId].roe = roe;
+  world.events.push({ severity: 'INFO', text: `ROE ${world.map.sectors[sectorId].name}: ${roe.replace('_', ' ')}` });
   return done(`ROE ${roe}`);
 }
 
