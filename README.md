@@ -26,7 +26,7 @@ node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the
 
 Free play is complete; the guided tutorial is designed but not built. Start with [`docs/HANDOFF.md`](docs/HANDOFF.md) for the
 current state and next task, then the plans: [tutorial](docs/PLAN-tutorial.md), [foreign contractors](docs/PLAN-foreign-contractors.md),
-[asymmetric faction](docs/PLAN-asymmetric-faction.md), [submarines](docs/PLAN-submarines.md).
+[asymmetric faction](docs/PLAN-asymmetric-faction.md), [submarines](docs/PLAN-submarines.md), [civilian shipping](docs/PLAN-shipping.md).
 
 UI: Share Tech Mono font; use **A− / A+** in the top bar to scale the whole interface (saved in the browser).
 

@@ -61,7 +61,7 @@ Conventional submarines only (no nuclear boats).
 
 - New hostile contact intent `SUBMARINE`, spawned more often in abyssal/shelf sectors and at high tension. **Not drawn as a marker**
   until detected; the plot shows a **"possible submarine" datum**: a dashed circle that shrinks as sonar holds contact.
-- While undetected it attacks shipping (merchant losses → support) or a patrolling hull (torpedo damage, possible loss).
+- While undetected it attacks shipping (lane ships from `PLAN-shipping.md`: losses → support and trade volume) or a patrolling hull (torpedo damage, possible loss).
 - **Detection** by ships with sonar (surface hull sonar / towed array) and friendly boats; better sonar, bridged protocols and deeper
   water help. **Prosecution** with ASW weapons (`ARM_DOM_TORP` finally matters) or a friendly boat.
 - **Ladder for submerged contacts:** SHADOW (hold sonar contact), WARN (active pinging / underwater signal: most intruders leave),

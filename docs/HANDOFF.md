@@ -287,7 +287,9 @@ The briefing now teaches everything added since it was written. 15 lessons:
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
 rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Phase 5 (cold vendors) is
-done, so the contractors plan is complete. Submarines are brainstormed and decided in `docs/PLAN-submarines.md` (build phases S1–S5, not started). Other candidates: licensed local production at STRATEGIC, offsets, a tutorial or advisor nudge for
+done, so the contractors plan is complete. Submarines and civilian shipping are brainstormed and decided in `docs/PLAN-submarines.md` (S1–S5) and
+`docs/PLAN-shipping.md` (T1–T6, incl. deliberate trade interdiction via exclusion zones); neither started. Recommended: shipping
+T1–T3 before submarine S3. Other candidates: licensed local production at STRATEGIC, offsets, a tutorial or advisor nudge for
 the contract / due-diligence tools, the Movement faction (design only).
 
 ## Design backlog (do not build yet)
