@@ -7,6 +7,7 @@ import type { Roe } from '@/lib/types/world';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
+import { previewAssign, previewRoe } from '@/lib/sim/preview';
 
 const ROES: { id: Roe; label: string; hint: string }[] = [
   { id: 'HOLD_FIRE', label: 'Hold fire', hint: 'Never fire first. Hostile raids get a surprise opening salvo.' },
@@ -89,7 +90,7 @@ export default function SectorPanel() {
         </div>
         <div className="mt-1 flex gap-1">
           {ROES.map((r) => (
-            <Btn key={r.id} tone={st.roe === r.id ? (r.id === 'WEAPONS_FREE' ? 'red' : r.id === 'HOLD_FIRE' ? 'amber' : 'cyan') : 'dim'} onClick={() => setRoe(selected, r.id)} className="flex-1">
+            <Btn key={r.id} tone={st.roe === r.id ? (r.id === 'WEAPONS_FREE' ? 'red' : r.id === 'HOLD_FIRE' ? 'amber' : 'cyan') : 'dim'} preview={(w) => `${r.label}: ${previewRoe(w, selected, r.id)}`} onClick={() => setRoe(selected, r.id)} className="flex-1">
               {r.label}
             </Btn>
           ))}
@@ -141,7 +142,7 @@ export default function SectorPanel() {
                   {list.length} hulls · {patrol} on patrol{deep ? ` · ${deep} deep-draft` : ''}
                 </span>
               </div>
-              {onStation ? <Btn tone="dim" onClick={() => assignTaskForce(tf.id, null)}>Recall</Btn> : <Btn tone="emerald" onClick={() => assignTaskForce(tf.id, selected)}>Assign</Btn>}
+              {onStation ? <Btn tone="dim" preview={(w) => `Recall: ${previewAssign(w, tf.id, null)}`} onClick={() => assignTaskForce(tf.id, null)}>Recall</Btn> : <Btn tone="emerald" preview={(w) => `Assign: ${previewAssign(w, tf.id, selected)}`} onClick={() => assignTaskForce(tf.id, selected)}>Assign</Btn>}
             </div>
           );
         })}

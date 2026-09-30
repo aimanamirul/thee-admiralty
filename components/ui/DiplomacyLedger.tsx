@@ -7,6 +7,7 @@ import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, Meter, Section } from './kit';
+import { previewLobby } from '@/lib/sim/preview';
 
 function statusChip(v: Vendor, tick: number) {
   switch (v.status) {
@@ -60,7 +61,7 @@ export default function DiplomacyLedger() {
             {v.id !== 'DOMESTIC_YARDS' && (
               <div className="mt-1.5 grid grid-cols-3 gap-1">
                 {MINISTRIES.map((m) => (
-                  <Btn key={m.id} tone="amber" disabled={pc < m.cost} title={`${m.name} — ${m.description}`} onClick={() => lobby(v.id, m.id)}>
+                  <Btn key={m.id} tone="amber" disabled={pc < m.cost} title={`${m.name} — ${m.description}`} preview={(w) => `${m.name.split(' — ')[0]}: ${previewLobby(w, v.id, m.id)}`} onClick={() => lobby(v.id, m.id)}>
                     {m.name.split(' — ')[0].replace('Ministry of ', '')} · {m.cost}PC
                   </Btn>
                 ))}

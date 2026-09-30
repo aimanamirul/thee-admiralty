@@ -11,7 +11,9 @@ import { ENGAGE_RANGE, IDENTIFY_RANGE } from '@/lib/sim/worldEngine';
 import { tierOf, type MapData, type Polyline } from '@/lib/types/map';
 import { LESSONS } from '@/lib/tutorial/lessons';
 import { useFleetStore } from '@/store/useFleetStore';
+import { usePreviewStore } from '@/store/usePreviewStore';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
+import { previewAssign } from '@/lib/sim/preview';
 
 const C = {
   void: '#050811',
@@ -200,10 +202,21 @@ export default function TacticalMap() {
       canvas.setPointerCapture(e.pointerId);
       drag = { x: e.offsetX, y: e.offsetY, moved: 0 };
     };
+    // With a task force selected, hovering a sector previews the right-click order.
+    let previewKey = '';
+    const mapPreview = (sector: number) => {
+      const tfId = useFleetStore.getState().selectedTaskForceId;
+      const key = `${tfId}|${sector}`;
+      if (key === previewKey) return;
+      previewKey = key;
+      if (tfId && sector >= 0) usePreviewStore.getState().show((w) => `Right-click: ${previewAssign(w, tfId, sector)}`, 'map');
+      else usePreviewStore.getState().clear('map');
+    };
     const onMove = (e: PointerEvent) => {
       cursor.x = e.offsetX;
       cursor.y = e.offsetY;
       cursor.inside = true;
+      if (!drag) mapPreview(sectorAt(e.offsetX, e.offsetY));
       if (drag) {
         const dx = e.offsetX - drag.x;
         const dy = e.offsetY - drag.y;
@@ -244,6 +257,7 @@ export default function TacticalMap() {
     };
     const onLeave = () => {
       cursor.inside = false;
+      mapPreview(-1);
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();

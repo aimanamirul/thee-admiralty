@@ -10,6 +10,7 @@ import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, Meter, Section } from './kit';
+import { previewExpandIndustry, previewFundBureau, previewStartResearch, previewStopResearch } from '@/lib/sim/preview';
 
 
 function BridgeMatrix() {
@@ -62,7 +63,7 @@ export default function RDBureauPanel() {
             <div className="text-[0.8125rem] leading-snug text-slate-500">{n.t(p.blurb)}</div>
           </div>
           <div className="shrink-0 text-right">
-            {done ? <Chip tone="emerald">COMPLETE</Chip> : active ? <Btn tone="amber" onClick={() => stopResearch(p.id)}>Pause</Btn> : <Btn tone="emerald" disabled={!can.ok} title={can.reason ? n.t(can.reason) : undefined} onClick={() => startResearch(p.id)}>Start</Btn>}
+            {done ? <Chip tone="emerald">COMPLETE</Chip> : active ? <Btn tone="amber" preview={(w) => previewStopResearch(w, p.id)} onClick={() => stopResearch(p.id)}>Pause</Btn> : <Btn tone="emerald" disabled={!can.ok} preview={(w) => `Start: ${previewStartResearch(w, p.id)}`} onClick={() => startResearch(p.id)}>Start</Btn>}
             <div className="mt-0.5 text-[0.75rem] text-slate-500">{p.costRP} RP</div>
           </div>
         </div>
@@ -84,8 +85,8 @@ export default function RDBureauPanel() {
         </div>
         <div className="text-[0.8125rem] text-slate-500">Engineering slots {research.active.length}/{RESEARCH_SLOTS} · each absorbs up to {RP_THROUGHPUT_PER_PROJECT} RP/day</div>
         <div className="mt-2 flex gap-1">
-          <Btn tone="emerald" disabled={budget < FUND_BUREAU_COST} onClick={() => fundBureau()}>Fund bureau: {FUND_BUREAU_COST}M → +{FUND_BUREAU_RP} RP</Btn>
-          <Btn tone="amber" disabled={ic >= 8 || budget < 150 * ic} onClick={() => expandIndustry()}>Slipway +1 ({150 * ic}M)</Btn>
+          <Btn tone="emerald" disabled={budget < FUND_BUREAU_COST} preview={previewFundBureau} onClick={() => fundBureau()}>Fund bureau: {FUND_BUREAU_COST}M → +{FUND_BUREAU_RP} RP</Btn>
+          <Btn tone="amber" disabled={ic >= 8 || budget < 150 * ic} preview={previewExpandIndustry} onClick={() => expandIndustry()}>Slipway +1 ({150 * ic}M)</Btn>
         </div>
       </Section>
 

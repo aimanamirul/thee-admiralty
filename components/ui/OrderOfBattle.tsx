@@ -10,8 +10,10 @@ import type { HierarchyKind, OpState, Ship, TaskForce } from '@/lib/types/fleet'
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
+import { usePreviewStore } from '@/store/usePreviewStore';
 import { useUiFlag } from '@/store/useTutorialStore';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
+import { previewBuySpare, previewHold, previewHulk, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
 
 const STATE_TONE: Record<OpState, 'emerald' | 'cyan' | 'amber'> = { ACTIVE_PATROL: 'emerald', TRANSIT_WORKUP: 'cyan', MAINTENANCE_DOCK: 'amber' };
 
@@ -177,20 +179,20 @@ function ShipDetail({ ship }: { ship: Ship }) {
 
       <div className="flex flex-wrap items-center gap-1 border-t border-navy pt-1">
         {ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && (
-          <Btn tone={ship.holdStation ? 'amber' : 'dim'} onClick={() => st.toggleHold(ship.id)} title="Suppress automatic rotation for this hull">
+          <Btn tone={ship.holdStation ? 'amber' : 'dim'} preview={(w) => previewHold(w, ship.id)} onClick={() => st.toggleHold(ship.id)}>
             {ship.holdStation ? 'Holding station' : 'Hold station'}
           </Btn>
         )}
         {showHulk && ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && (
-          <Btn tone="red" disabled={ship.state !== 'MAINTENANCE_DOCK'} title="Only a docked hull can become a parts hulk" onClick={() => st.designateHulk(ship.id)}>
+          <Btn tone="red" disabled={ship.state !== 'MAINTENANCE_DOCK'} preview={(w) => previewHulk(w, ship.id)} onClick={() => st.designateHulk(ship.id)}>
             <Skull className="mr-1 inline h-3 w-3" />
             Designate parts hulk
           </Btn>
         )}
         {ship.isPartsHulk && (
           <>
-            <Btn tone="red" onClick={() => st.stripHulk(ship.id)}>Strip to spares & scrap</Btn>
-            <Btn tone="dim" onClick={() => st.restoreHulk(ship.id)}>Restore to service</Btn>
+            <Btn tone="red" preview={(w) => previewStrip(w, ship.id)} onClick={() => st.stripHulk(ship.id)}>Strip to spares & scrap</Btn>
+            <Btn tone="dim" preview={(w) => previewRestore(w, ship.id)} onClick={() => st.restoreHulk(ship.id)}>Restore to service</Btn>
           </>
         )}
         <select
@@ -236,6 +238,10 @@ function ShipRow({ ship }: { ship: Ship }) {
               e.stopPropagation();
               useFleetStore.getState().designateHulk(ship.id);
             }}
+            onPointerEnter={() => usePreviewStore.getState().show((w) => previewHulk(w, ship.id), `hulk-${ship.id}`)}
+            onPointerLeave={() => usePreviewStore.getState().clear(`hulk-${ship.id}`)}
+            onFocus={() => usePreviewStore.getState().show((w) => previewHulk(w, ship.id), `hulk-${ship.id}`)}
+            onBlur={() => usePreviewStore.getState().clear(`hulk-${ship.id}`)}
             className="border border-warn/50 p-0.5 text-warn hover:bg-warn/15"
           >
             <Skull className="h-3 w-3" />
@@ -295,8 +301,8 @@ function TaskForceNode({ tf }: { tf: TaskForce }) {
               ))}
             </select>
             <span className="text-[0.8125rem] uppercase tracking-widest text-slate-500"><Term k="TEMPO">Tempo</Term></span>
-            <Btn tone={tf.tempo === 'ROTATE_THIRDS' ? 'cyan' : 'dim'} onClick={() => setTempo(tf.id, 'ROTATE_THIRDS')} title="Automatic Rule of Thirds rotation">Rotate ⅓</Btn>
-            <Btn tone={tf.tempo === 'SURGE' ? 'red' : 'dim'} onClick={() => setTempo(tf.id, 'SURGE')} title="Suspend rotation: max presence, breakdowns follow">Surge</Btn>
+            <Btn tone={tf.tempo === 'ROTATE_THIRDS' ? 'cyan' : 'dim'} preview={(w) => `Rotate ⅓: ${previewTempo(w, tf.id, 'ROTATE_THIRDS')}`} onClick={() => setTempo(tf.id, 'ROTATE_THIRDS')}>Rotate ⅓</Btn>
+            <Btn tone={tf.tempo === 'SURGE' ? 'red' : 'dim'} preview={(w) => `Surge: ${previewTempo(w, tf.id, 'SURGE')}`} onClick={() => setTempo(tf.id, 'SURGE')}>Surge</Btn>
           </div>
           {tf.squadrons.length === 0 && <div className="text-[0.8125rem] text-slate-600">No squadrons.</div>}
           {tf.squadrons.map((sq) => (
@@ -349,7 +355,7 @@ function SparesYard() {
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-5 text-right tabular-nums text-amber-radar">{spares[m.id] ?? 0}</span>
-                  <Btn tone="amber" disabled={!p.ok} title={p.reason ?? `${(m.cost * 0.35).toFixed(1)}M`} onClick={() => buySpares(m.id, 1)}>+1</Btn>
+                  <Btn tone="amber" disabled={!p.ok} preview={(w) => `Buy spare: ${previewBuySpare(w, m.id)}`} onClick={() => buySpares(m.id, 1)}>+1</Btn>
                 </span>
               </li>
             );

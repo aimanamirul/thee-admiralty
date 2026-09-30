@@ -16,6 +16,9 @@ import { createTutorialWorld } from '../lib/sim/tutorialScenario';
 import { advanceDay } from '../lib/sim/worldEngine';
 import type { MapArchetype } from '../lib/types/map';
 
+/** Whole-word match, so a short code like "DOM" does not match inside "DOMESTIC". */
+const wordIn = (text: string, word: string) => new RegExp(`(^|[^A-Za-z0-9])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^A-Za-z0-9])`).test(text);
+
 let failures = 0;
 const check = (ok: boolean, msg: string) => {
   if (!ok) {
@@ -88,7 +91,7 @@ for (const { where, text } of strings) {
   for (const skin of ['FICTIONAL', 'REAL'] as const) {
     const out = resolveText(text, skin);
     check(!/\{[a-z]+:[A-Z0-9_]+\}/.test(out), `[${where}] unresolved token in ${skin}: ${out.slice(0, 80)}`);
-    if (skin === 'FICTIONAL') for (const b of banned) check(!out.includes(b), `[${where}] real name "${b}" shown in fictional skin: ${out.slice(0, 90)}`);
+    if (skin === 'FICTIONAL') for (const b of banned) check(!wordIn(out, b), `[${where}] real name "${b}" shown in fictional skin: ${out.slice(0, 90)}`);
   }
 }
 

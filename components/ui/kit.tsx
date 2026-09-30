@@ -1,6 +1,7 @@
 'use client';
 /** Tiny terminal-styled UI kit shared by the panels. */
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { previewOwner, usePreviewStore, type PreviewFn } from '@/store/usePreviewStore';
 
 export function Section({ title, right, children, tone = 'cyan', anchor }: { title: ReactNode; right?: ReactNode; children: ReactNode; tone?: 'cyan' | 'amber' | 'red' | 'emerald'; anchor?: string }) {
   const t = { cyan: 'text-phosphor border-phosphor/40', amber: 'text-amber-radar border-amber-radar/40', red: 'text-warn border-warn/40', emerald: 'text-emerald-accent border-emerald-accent/40' }[tone];
@@ -15,7 +16,14 @@ export function Section({ title, right, children, tone = 'cyan', anchor }: { tit
   );
 }
 
-export function Btn({ tone = 'cyan', className = '', ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'cyan' | 'amber' | 'red' | 'emerald' | 'dim' }) {
+export function Btn({
+  tone = 'cyan',
+  className = '',
+  preview,
+  disabled,
+  onClick,
+  ...p
+}: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'cyan' | 'amber' | 'red' | 'emerald' | 'dim'; preview?: PreviewFn }) {
   const t = {
     cyan: 'border-phosphor/60 text-phosphor hover:bg-phosphor/15',
     amber: 'border-amber-radar/60 text-amber-radar hover:bg-amber-radar/15',
@@ -23,10 +31,24 @@ export function Btn({ tone = 'cyan', className = '', ...p }: ButtonHTMLAttribute
     emerald: 'border-emerald-accent/60 text-emerald-accent hover:bg-emerald-accent/15',
     dim: 'border-navy text-slate-400 hover:border-phosphor/50 hover:text-phosphor',
   }[tone];
+  const [owner] = useState(previewOwner);
+  const base = `border px-2 py-0.5 text-[0.8125rem] uppercase tracking-widest transition ${t} ${className}`;
+  if (!preview) {
+    return <button {...p} disabled={disabled} onClick={onClick} className={`${base} disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent`} />;
+  }
+  // Browsers fire no pointer events on disabled buttons, but a blocked action is exactly when the preview (the reason) matters:
+  // keep the button hoverable and focusable, mark it aria-disabled and swallow the click instead.
+  const { show, clear } = usePreviewStore.getState();
   return (
     <button
       {...p}
-      className={`border px-2 py-0.5 text-[0.8125rem] uppercase tracking-widest transition disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent ${t} ${className}`}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? (e) => e.preventDefault() : onClick}
+      onPointerEnter={() => show(preview, owner)}
+      onPointerLeave={() => clear(owner)}
+      onFocus={() => show(preview, owner)}
+      onBlur={() => clear(owner)}
+      className={`${base} ${disabled ? 'cursor-not-allowed opacity-35 hover:bg-transparent' : ''}`}
     />
   );
 }

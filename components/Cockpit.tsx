@@ -5,6 +5,7 @@ import CRTOverlay from '@/components/map/CRTOverlay';
 import TacticalMap from '@/components/map/TacticalMap';
 import CommandBar from '@/components/ui/CommandBar';
 import DiplomacyLedger from '@/components/ui/DiplomacyLedger';
+import ActionPreview from '@/components/ui/ActionPreview';
 import EventFeed from '@/components/ui/EventFeed';
 import OrderOfBattle from '@/components/ui/OrderOfBattle';
 import RDBureauPanel from '@/components/ui/RDBureauPanel';
@@ -126,6 +127,7 @@ export default function Cockpit() {
               <EventFeed />
             </div>
           )}
+          <ActionPreview />
         </div>
         {showPanel && (
           <aside data-tutorial="panel" className="flex h-[46vh] shrink-0 flex-col border-t border-phosphor/30 bg-panel lg:h-auto lg:w-[34rem] lg:border-l lg:border-t-0">

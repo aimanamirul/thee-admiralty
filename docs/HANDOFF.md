@@ -25,6 +25,7 @@ Not committed on purpose: the `dev` script in `package.json` was locally changed
 | Tutorial scenario | **Fixed scenario on a fixed 2-sector map**, teaching the game "A to Z". Launched from a **title-screen** choice (Begin briefing / Free play). |
 | Order of work | **Tutorial first.** Contractors, submarines and the Movement faction are for later brainstorming/design, not to be built yet. |
 | Contractors (2026-09-29) | Curated 8 vendors + 3 staged cold vendors (Japan-, China-, India-type); hazards fully avoidable via information (due diligence reveals `origins`); soft bloc affinity; rebalance economy so budget bites; fictional names by default with a real-name skin. Roster, aliases, phases: `docs/PLAN-foreign-contractors.md` §8-10. Alias set approved; no extra protocol tags in v1 (open to refinement later). |
+| Command & economy (2026-09-30) | Action preview strip; domestic support with graduated effects; 360-day fiscal year in quarterly tranches with 15% carryover; contact SOP per sector with per-contact override. Runs before contractors phase 1. `docs/PLAN-command-and-economy.md`. |
 | Movement faction | Fictional setting; invented geography recommended (still open); guardrails in its doc are mandatory. |
 
 Defaults chosen by the assistant for things the user has not answered (change freely): **terse military-briefing voice**; **Codex deferred**.
@@ -99,10 +100,27 @@ title screen; persisted in `localStorage` `al.skin`).
 - Not yet aliased: the 4 vendors that do not exist yet (Nordvik, Seorak, Kessler-Brandt, cold vendors); add them to `catalog.ts` (fictional) and
   `names.ts` (real) when phase 1 lands. Tutorial anchors (`vendor-ASELSAN`) still use internal ids on purpose.
 
+## Action preview strip (done, 2026-09-30)
+
+A one-line strip under the tactical ticker (and at the bottom of the designer modal) shows the **predicted effect** of whatever action is
+hovered or keyboard-focused: costs, before -> after values, time to effect, risks, and the reason when blocked.
+- `lib/sim/preview.ts`: pure preview functions over a world snapshot; several dry-run the real command on a copy, so a preview cannot
+  disagree with its command. Text uses name tokens.
+- `Btn` takes `preview={(w) => ...}` (kit.tsx). Buttons with a preview use `aria-disabled` instead of `disabled`, because browsers fire no
+  hover events on disabled buttons and the blocked reason is exactly what the strip should show. `store/usePreviewStore.ts` holds the
+  preview *function*, so the strip recomputes live while the pointer rests on an action. The map previews the right-click order when a task
+  force is selected.
+- **Rule: every new player action gets a `preview`.**
+- `npm run verify:preview`: ~2,900 previews across every tutorial lesson and three free-play theatres; a preview says BLOCKED exactly when the
+  command refuses, never shows NaN/undefined, resolves tokens, and leaks no real names. Banned-name matching in `verify:names` and
+  `verify:preview` is whole-word ("DOM" no longer matches "DOMESTIC").
+
 ## What to build next
 
-Contractors phase 1 (`docs/PLAN-foreign-contractors.md` §10): relationship ladder + regime profiles + vendors 6-8 + Diplomacy tab v2. Submarines and
-the Movement faction remain design-only. Confirm with the user before starting.
+Per `docs/PLAN-command-and-economy.md` (user feedback 2026-09-30; decisions recorded there): **step 2, domestic support + fiscal year**
+(360-day year, quarterly tranches, forecast range, budget hearings, partial 15% carryover, graduated support effects, real running costs),
+then step 3, the contact SOP ladder (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
+after those.
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

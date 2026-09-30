@@ -11,9 +11,11 @@ import type { NamingTradition } from '@/lib/types/fleet';
 import type { HullClassId, ShipDesign } from '@/lib/types/hull';
 import { useFleetStore } from '@/store/useFleetStore';
 import TutorialCard from '@/components/tutorial/TutorialCard';
+import ActionPreview from './ActionPreview';
 import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
+import { previewOrderShip } from '@/lib/sim/preview';
 
 type Sel = Record<ModuleSlot, string[]>;
 
@@ -237,6 +239,7 @@ export default function ShipDesignerModal() {
                   tone="emerald"
                   className="flex-1"
                   disabled={!ev.valid || blocked.length > 0}
+                  preview={(w) => `Lay down: ${previewOrderShip(w, { hullId, moduleIds, squadronId })}`}
                   onClick={() => {
                     const r = orderShip({ designName: name.trim() || 'Unnamed', hullId, moduleIds, squadronId, tradition, customName: custom });
                     setMsg({ ok: r.ok, text: r.ok ? r.message ?? 'Laid down' : r.reason ?? 'Refused' });
@@ -250,6 +253,7 @@ export default function ShipDesignerModal() {
             </Section>
           </div>
         </div>
+        <ActionPreview inModal />
       </div>
     </div>
   );

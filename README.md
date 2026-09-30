@@ -12,6 +12,7 @@ npm run verify:map     # determinism / connectivity / tier checks for all archet
 npx tsx scripts/verifySim.ts 730 [seed] [CHOKEPOINT|CORRIDOR|RIMLAND] [--surge]   # headless soak test of the sim
 npm run verify:tutorial   # headless bot plays every briefing lesson and checks its gate
 npm run verify:names      # fictional skin never shows a real vendor/product name (data, events, lessons, UI source)
+npm run verify:preview    # every action preview agrees with its command (blocked iff refused), no NaN, no leaks
 node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the file header)
 ```
 
