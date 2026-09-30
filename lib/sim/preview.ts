@@ -5,7 +5,7 @@
  */
 import { HULLS, MINISTRIES, MODULE_BY_ID, PROJECT_BY_ID } from '../data/catalog';
 import { mt, pt, vt } from '../data/tokens';
-import { standingTier, type VendorId } from '../types/diplomacy';
+import { type VendorId } from '../types/diplomacy';
 import { bridgeKey } from '../types/equipment';
 import type { Tempo } from '../types/fleet';
 import type { HullClassId } from '../types/hull';
@@ -19,7 +19,7 @@ import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, 
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
-import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutBlocked, SCOUT_PC } from './relationsEngine';
+import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
 
@@ -66,7 +66,8 @@ export function previewLobby(w: WorldDraft, vendorId: VendorId, ministryId: stri
   if (!res.ok) return blocked(`${res.reason} (have ${w.resources.politicalCapital.toFixed(1)} PC)`);
   const after = c.vendors[vendorId];
   const parts = [`−${lobbyCost(w, m.cost)} PC`, `${vt(vendorId)} standing ${v.standing.toFixed(0)} → ${after.standing.toFixed(0)}`];
-  if (standingTier(after.standing) > standingTier(v.standing)) parts.push(`reaches catalogue tier T${standingTier(after.standing)}`);
+  if (sellableTier(after) > sellableTier(v)) parts.push(`reaches catalogue tier T${sellableTier(after)}`);
+  else if (sellableTier(v) < 0) parts.push(`no contract yet: standing counts once the relationship reaches ${RUNG_LABEL.FRAMEWORK}`);
   if (v.status === 'WARNING') {
     parts.push(
       after.standing >= AVERT_STANDING

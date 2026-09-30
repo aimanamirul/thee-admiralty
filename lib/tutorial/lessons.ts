@@ -8,7 +8,7 @@ import type { Vendor } from '../types/diplomacy';
 import type { Fleet, Ship } from '../types/fleet';
 import type { ShipDesign } from '../types/hull';
 import type { MapData } from '../types/map';
-import type { GameEvent, ResearchState, Resources, SectorState, WorldDraft } from '../types/world';
+import type { Contact, GameEvent, ResearchState, Resources, SectorState, WorldDraft } from '../types/world';
 import { HOME_SECTOR, BEYOND_SECTOR, TUTORIAL_TF1_NAME } from '../sim/tutorialScenario';
 
 export type UiFlag =
@@ -30,6 +30,7 @@ export interface TutorialView {
   research: ResearchState;
   resources: Resources;
   spares: Record<string, number>;
+  contacts: Contact[];
   running: boolean;
   log: GameEvent[];
   /** Ledger ids above this belong to the current lesson. */
@@ -48,6 +49,8 @@ export interface Lesson {
   tab?: 'SECTOR' | 'FLEET' | 'RND' | 'DIPLO';
   /** Sector to select on entry (opens its panel). */
   select?: number;
+  /** Contact to select on entry (opens its ladder panel). */
+  selectContact?: string;
   /** Sector that gets the pulsing objective ring on the plot. */
   target?: number;
   preset?: ShipDesign;
@@ -148,6 +151,7 @@ export const LESSONS: Lesson[] = [
     body: [
       'Threat is how hard the enemy probes a sector. Rules of engagement (ROE) decide when your ships open fire.',
       'HOME APPROACHES is on HOLD FIRE: a hostile raid would get the first salvo.',
+      'Hover any button before you press it: the strip under the ticker predicts its effect (costs, timings, risks, and why an action is blocked).',
     ],
     objective: 'Select HOME APPROACHES and set its ROE to RETURN FIRE.',
     anchor: 'roe',
@@ -245,6 +249,35 @@ export const LESSONS: Lesson[] = [
     gate: (v) => newLog(v, /ENGAGEMENT/),
   },
   {
+    id: 'challenge',
+    title: 'Challenge the unknown',
+    body: [
+      'A second track is closing on TF 11 and it does not transmit. ROE only decides when to shoot; before that you can work a contact up the ladder: shadow, hail, warn, board, engage.',
+      'Its panel is open. Hover each step to see its range and what each kind of vessel does in response, then order a HAIL. If it stays silent, BOARD it. The clock starts when you give an order.',
+      'The sector procedure (SOP) CHALLENGE does this on its own: hail, warn the silent, board runners. You are on OBSERVE for now.',
+    ],
+    objective: 'Hail the silent contact, then board it.',
+    anchor: 'contact-panel',
+    reveals: [],
+    tab: 'SECTOR',
+    select: HOME_SECTOR,
+    selectContact: 'CT-TUT-SMUG',
+    target: HOME_SECTOR,
+    run: { speed: 1, when: (v) => v.contacts.some((c) => c.id === 'CT-TUT-SMUG' && (!!c.order || !!c.hailed)) },
+    onEnter: (w) => {
+      // Clear left-overs from the raid lesson (e.g. the merchant) so the plot shows one track.
+      w.contacts = w.contacts.filter((c) => c.id !== 'CT-TUT-MERCH');
+      const at = spawnPursuer(w, 'TF-1', 24, []);
+      w.contacts.push({
+        id: 'CT-TUT-SMUG', sectorId: HOME_SECTOR, position: at, heading: 0, cls: 'UNKNOWN', hostile: false, intent: 'SMUGGLER',
+        strength: 0, bornTick: w.tick, expiresTick: w.tick + 60, pursue: 'TF-1', order: null,
+      });
+      w.events.push({ severity: 'WARNING', text: 'NEW CONTACT: silent track in HOME APPROACHES, closing on TF 11' });
+    },
+    // Seized, escaped or otherwise gone: every outcome teaches the ladder.
+    gate: (v) => !v.contacts.some((c) => c.id === 'CT-TUT-SMUG'),
+  },
+  {
     id: 'spares',
     title: 'Breakdowns and spares',
     body: [
@@ -314,6 +347,32 @@ export const LESSONS: Lesson[] = [
       w.events.push({ severity: 'WARNING', text: 'EXPORT RISK: {v:ASELSAN} signals EXPORT FREEZE in 12 days — lobby to avert' });
     },
     gate: (v) => v.vendors.ASELSAN.standing >= 65,
+  },
+  {
+    id: 'suppliers',
+    title: 'Opening a supplier',
+    body: [
+      'Foreign vendors climb a ladder: contact, trade mission, framework agreement (tier-0 lines only), signed (tiers by standing), strategic partner. Each step costs political capital, later money, and takes days.',
+      'Each vendor state has its own export regime: {v:NORDVIK} is stable but punishes every incident your navy causes. Deals with the Eastern bloc cost standing in the West. Scout for suppliers to find ones you do not know yet.',
+    ],
+    objective: 'Open a trade mission with {v:NORDVIK}.',
+    anchor: 'vendor-NORDVIK',
+    reveals: [],
+    tab: 'DIPLO',
+    gate: (v) => v.vendors.NORDVIK.rung !== 'CONTACT' || v.vendors.NORDVIK.rungProgress !== null,
+  },
+  {
+    id: 'homefront',
+    title: 'The home front',
+    body: [
+      'The civilian government funds the navy: an annual appropriation paid in four quarterly tranches, spent on running costs (crews are paid even in dock) and purchases. At year end only 15% carries over; the rest returns to the Treasury, and spending too slowly shrinks next year\'s budget.',
+      'Domestic support sets that budget and your political-capital income. Incidents, losses and unopposed raids cost support. Below 40 lobbying costs more; below 25 ministries stop taking your calls. A budget hearing can win more money; the strip shows the odds.',
+    ],
+    objective: 'Hold a budget hearing (Home front, at the top of Diplomacy).',
+    anchor: 'home-front',
+    reveals: ['READOUT_SUPPORT'],
+    tab: 'DIPLO',
+    gate: (v) => newLog(v, /BUDGET HEARING/),
   },
   {
     id: 'embargo',

@@ -122,11 +122,16 @@ export default function Cockpit() {
             <CRTOverlay />
           </div>
           <TutorialCard />
-          {showTicker && (
-            <div data-tutorial="ticker" className="h-48 shrink-0 lg:h-56">
+          <div data-tutorial="ticker" className="h-48 shrink-0 lg:h-56">
+            {showTicker ? (
               <EventFeed />
-            </div>
-          )}
+            ) : (
+              // Reserve the ticker's space while the briefing keeps it locked, so the map does not resize when it appears.
+              <div className="flex h-full items-center justify-center border-t border-phosphor/20 bg-panel text-[0.75rem] uppercase tracking-[0.3em] text-slate-700">
+                Tactical ticker — unlocks during the briefing
+              </div>
+            )}
+          </div>
           <ActionPreview />
         </div>
         {showPanel && (

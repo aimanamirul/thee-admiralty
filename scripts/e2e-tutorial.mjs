@@ -22,8 +22,8 @@ await page.waitForTimeout(800);
 
 const lessonNo = async () => {
   const t = await page.locator('[data-testid=tutorial-card]').innerText().catch(() => '');
-  const m = t.match(/BRIEFING (\d+)\/12/i);
-  return m ? Number(m[1]) : t.includes('BRIEFING COMPLETE') ? 13 : 0;
+  const m = t.match(/BRIEFING (\d+)\/15/i);
+  return m ? Number(m[1]) : t.includes('BRIEFING COMPLETE') ? 16 : 0;
 };
 const waitLesson = async (n, ms = 30000) => {
   const t0 = Date.now();
@@ -61,33 +61,51 @@ await waitLesson(5); await shot('05-thirds');
 await waitLesson(6, 60000); await shot('06-contact');
 // lesson 6 waits for an ROE decision; weapons free also fires on the unidentified merchant (incident)
 await page.getByRole('button', { name: 'Weapons free' }).click();
-await waitLesson(7, 60000); await shot('07-spares');
+await waitLesson(7, 60000); await shot('07-challenge');
 if (!/INCIDENT: fire opened on a merchant/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('contact: expected a weapons-free incident in the ledger');
+// lesson 7: work the silent contact up the ladder from its panel (hail, then board once the hail is done)
+const panel = page.locator('[data-tutorial="contact-panel"]');
+await panel.getByRole('button', { name: 'Hail', exact: true }).click();
+{
+  const t0 = Date.now();
+  while (Date.now() - t0 < 30000 && (await lessonNo()) === 7) {
+    const cls = (await panel.getByRole('button', { name: 'Hail', exact: true }).getAttribute('class').catch(() => '')) ?? '';
+    if (cls.includes('line-through')) break;
+    await page.waitForTimeout(200);
+  }
+}
+await shot('07b-hailed');
+if ((await lessonNo()) === 7) await panel.getByRole('button', { name: 'Board', exact: true }).click().catch(() => {});
+await waitLesson(8, 60000); await shot('08-spares');
+if (!/CT-TUT-SMUG|smuggl|boarded|seized|contact/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('challenge: expected the contact outcome in the ledger');
 await page.getByRole('button', { name: /SHOW/ }).click();
 await page.locator('li', { hasText: 'DSR-2D Surface Search' }).getByRole('button', { name: '+1' }).click();
-await waitLesson(8, 30000); await shot('08-design');
+await waitLesson(9, 30000); await shot('09-design');
 await page.getByRole('button', { name: /Design bureau/i }).click();
-await page.waitForTimeout(500); await shot('08b-designer');
+await page.waitForTimeout(500); await shot('09b-designer');
 await page.getByLabel('POWER PLANT socket 1').selectOption({ label: /CODAD-12/ }).catch(async () => {
-  const opts = await page.getByLabel('POWER PLANT socket 1').locator('option').allTextContents();
   const v = await page.getByLabel('POWER PLANT socket 1').locator('option', { hasText: 'CODAD-12' }).getAttribute('value');
   await page.getByLabel('POWER PLANT socket 1').selectOption(v);
 });
 await page.getByRole('button', { name: 'Lay down hull' }).click();
 await page.waitForTimeout(300);
 await page.getByLabel('Close designer').click();
-await waitLesson(9); await shot('09-friction');
+await waitLesson(10); await shot('10-friction');
 await page.locator('li', { hasText: 'VL-41 ↔ TACTIS Protocol Bridge' }).getByRole('button', { name: 'Start' }).click();
-await waitLesson(10, 60000); await shot('10-sanctions');
+await waitLesson(11, 60000); await shot('11-sanctions');
 await page.locator('section', { hasText: 'Sarnic Defence · REPUBLIC OF SARNIA' }).getByRole('button', { name: /Foreign/ }).click();
-await waitLesson(11, 20000); await shot('11-embargo');
+await waitLesson(12, 20000); await page.waitForTimeout(600); await shot('12-suppliers');
+await page.locator('[data-tutorial="vendor-NORDVIK"]').getByRole('button', { name: /Advance/ }).click();
+await waitLesson(13, 20000); await page.waitForTimeout(600); await shot('13-homefront');
+await page.getByRole('button', { name: /Budget hearing: demand more/ }).click();
+await waitLesson(14, 20000); await shot('14-embargo');
 await page.locator('[data-tutorial="hulk-SHP-6"]').click();
-await waitLesson(12, 60000); await shot('12-graduation');
+await waitLesson(15, 60000); await shot('15-graduation');
 await page.mouse.click(...at(0.72, 0.5));
-await page.locator('div', { hasText: /^TF 12 / }).filter({ has: page.getByRole('button', { name: 'Assign' }) }).last().getByRole('button', { name: 'Assign' }).click();
-await waitLesson(13, 20000); await shot('13-final');
+await page.getByRole('button', { name: 'Assign' }).first().click();
+await waitLesson(16, 20000); await shot('16-final');
 await page.getByRole('button', { name: 'Keep this scenario' }).click();
-await page.waitForTimeout(500); await shot('14-free');
+await page.waitForTimeout(500); await shot('17-free');
 // name skin: fictional by default, real on toggle, applied to ledger text and panels
 await page.getByRole('tab', { name: /Diplomacy/i }).click();
 // innerText applies CSS text-transform (uppercase headings), so compare case-insensitively

@@ -1,6 +1,6 @@
 # Handoff — where the project stands
 
-Read this first in a new session. Last updated 2026-09-29 (tutorial implemented).
+Read this first in a new session. Last updated 2026-09-30 (tutorial pass: 15 lessons covering the SOP ladder, supplier ladder and home front).
 
 ## State of the code
 
@@ -43,7 +43,7 @@ How it is built (spec/lesson table: `docs/PLAN-tutorial.md`):
 - **Scenario:** `lib/sim/tutorialScenario.ts` — `generateMap('BRIEFING-01','CHOKEPOINT')` split at the narrow strait into
   sector 0 HOME APPROACHES / sector 1 BEYOND THE STRAIT, one chokepoint THE NARROWS, 5 ships in TF 11 / TF 12. Throws if the split is
   not two connected, mutually reachable sectors.
-- **Lessons:** `lib/tutorial/lessons.ts` (12 lessons, pure data; gates take a plain `TutorialView` so they also run in Node).
+- **Lessons:** `lib/tutorial/lessons.ts` (15 lessons, pure data; gates take a plain `TutorialView` so they also run in Node).
   `lib/tutorial/glossary.ts` + `components/tutorial/Term.tsx` give hover definitions for jargon.
 - **State machine:** `store/useTutorialStore.ts` (imports the game store, never the reverse). `evaluate()` runs on every game-store change
   (subscription in `Cockpit.tsx`); a met gate shows "objective complete" for 1.4 s, pauses the clock, then advances. `run: {speed, when?}`
@@ -53,7 +53,7 @@ How it is built (spec/lesson table: `docs/PLAN-tutorial.md`):
   (`compact`), which would otherwise cover it. `TutorialSpotlight` dims the page and pulses an outline on the lesson's `data-tutorial`
   anchor (hidden while the designer is open). `TacticalMap` draws a pulsing OBJECTIVE ring on the lesson's target sector. Store additions:
   `loadWorld`, `mutate`, `designerPreset` (the designer opens on it).
-- **Verification:** `npm run verify:tutorial` (headless bot plays all 12 gates with the real commands; fails on soft-locks, gates open on
+- **Verification:** `npm run verify:tutorial` (headless bot plays all 15 gates with the real commands; fails on soft-locks, gates open on
   entry, lost ships, disconnected sectors, presets that are not broken/fixable as taught). `scripts/e2e-tutorial.mjs` plays the same path
   through the real UI with Playwright (see its header). Both pass.
 
@@ -79,8 +79,7 @@ Lessons that need the player to do something with the clock (2 press play; 6 buy
 - **Hulk in one click:** docked rows show a skull button (`data-tutorial="hulk-<id>"`). Hulk controls are hidden behind a new `HULK` UI flag,
   revealed by the embargo lesson, so the corvette in the spares lesson cannot be hulked by mistake (that would soft-lock lesson 7).
 
-Known limits / ideas (from the review, not yet done): the layout jumps as panels unlock (reserve space up front) — deliberately deferred
-until after contractors phase 1 and the economy rebalance, which change the top bar and Diplomacy tab. Also: Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
+Known limits / ideas (from the review, not yet done): Codex tab deferred; advisor nudges and early-game pacing (docs/PLAN-tutorial.md §4) not done; engine detail: hostile
 contacts are engaged at 12 tiles before the 10-tile identification, so hostiles are never seen turning red first.
 
 ## Contractors phase 0: display-name layer (done)
@@ -184,10 +183,41 @@ hovered or keyboard-focused: costs, before -> after values, time to effect, risk
   mixes, strategic risk halving, no sanctions from non-contract vendors over 1,500 high-tension days, open-architecture friction.
 - Not yet (phases 2-5): hidden sub-suppliers / due diligence, contracts (deposits, cancel/resale), cold vendors, licensed production.
 
+## Tutorial pass after the new systems (done, 2026-09-30)
+
+The briefing now teaches everything added since it was written. 15 lessons:
+
+| # | id | Teaches | Gate |
+|---|---|---|---|
+| 1 | plot | Reading the plot | select a sector |
+| 2 | sectors | Threat, ROE, **the preview strip** (hover any action) | set ROE |
+| 3 | station | Assign TF 11, run the clock | TF on station |
+| 4 | command | Renaming / command | rename TF |
+| 5 | thirds | Rule of Thirds | a hull rotates to dock |
+| 6 | contact | Raid under ROE (weapons free = incident on the merchant) | ROE decision + raid resolved |
+| 7 | **challenge** | SOP ladder: a silent smuggler (`CT-TUT-SMUG`) closes on TF 11; its Contact panel opens; hail, then board | contact gone (seized, escaped or sunk) |
+| 8 | spares | Breakdowns, buying spares | corvette repaired |
+| 9 | design | Power grid in the designer | corvette laid down |
+| 10 | friction | Protocol friction, R&D bridge | bridge started |
+| 11 | sanctions | Sanction warning, lobbying | sanction averted |
+| 12 | **suppliers** | Supplier ladder, regimes, blocs: open a trade mission with Nordvik | Nordvik advancing past CONTACT |
+| 13 | **homefront** | Appropriation, tranches, 15% carryover, support thresholds; reveals the Support readout | budget hearing held |
+| 14 | embargo | Parts embargo, one-click hulk | SHP-6 hulked, frigate repaired |
+| 15 | graduation | All sectors to SOP CHALLENGE; send a task force beyond the strait | any TF assigned there |
+
+- `Lesson.selectContact` opens a contact's panel on entry; `TutorialView.contacts` lets gates see contacts.
+- Worst-case political capital (weapons free incident, every lobby, the hearing) stays positive: `verify:tutorial` logs PC per lesson
+  under all three lesson-6 ROE choices (`TUTORIAL_ROE`).
+- **Layout no longer jumps:** locked top-bar readouts, the design button, the ticker and the map's layer toolbar keep their space
+  (`invisible` / a placeholder) instead of being removed.
+- `TutorialSpotlight` scrolls the lesson's anchor into view once per lesson (vendor cards sit far down the Diplomacy tab).
+- The lobby preview no longer promises a catalogue tier for a vendor with no contract (tiers need FRAMEWORK+).
+- `scripts/e2e-tutorial.mjs` plays all 15 lessons through the UI (hail/board, advance Nordvik, budget hearing).
+
 ## What to build next
 
-Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phase 1 is done. Next: the tutorial pass (in progress), then contractors phase 2 (hidden sub-suppliers + due diligence). (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
-after those.
+Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phase 1 and the tutorial pass are done. Next: contractors
+phase 2 (hidden sub-suppliers + due diligence).
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

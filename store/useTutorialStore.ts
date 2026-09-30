@@ -95,7 +95,7 @@ export function tutorialView(startSeq: number): TutorialView {
   const g = useFleetStore.getState();
   return {
     tick: g.tick, map: g.map, selectedSectorId: g.selectedSectorId, sectors: g.sectors, fleets: g.fleets, ships: g.ships,
-    vendors: g.vendors, research: g.research, resources: g.resources, spares: g.spares, running: g.running, log: g.log, startSeq,
+    vendors: g.vendors, research: g.research, resources: g.resources, spares: g.spares, contacts: g.contacts, running: g.running, log: g.log, startSeq,
   };
 }
 
@@ -120,6 +120,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       if (lesson.tab) g.setTab(lesson.tab);
       if (lesson.select !== undefined) g.selectSector(lesson.select);
       if (lesson.onEnter) g.mutate(lesson.onEnter);
+      if (lesson.selectContact) g.selectContact(lesson.selectContact);
       // Ledger entries written by onEnter itself must not satisfy this lesson's own gate.
       set({ startSeq: useFleetStore.getState().logSeq });
       if (lesson.run && !lesson.run.when) {

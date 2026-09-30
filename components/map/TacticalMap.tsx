@@ -768,7 +768,7 @@ export default function TacticalMap() {
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-void">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
       <div ref={overlayRef} className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
-        {showLayers && <div className="pointer-events-auto flex gap-1">
+        {<div aria-hidden={!showLayers || undefined} className={`pointer-events-auto flex gap-1 ${showLayers ? '' : 'invisible'}`}>
           {(['grid', 'bathy', 'sectors', 'threat'] as const).map((k) => (
             <button
               key={k}

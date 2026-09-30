@@ -30,9 +30,15 @@ export default function TutorialSpotlight() {
       setBox(null);
       return;
     }
+    // Bring the anchor into view once per lesson (e.g. a vendor card far down a scrolled panel); after that the player scrolls freely.
+    let scrolled = false;
     const measure = () => {
       const el = document.querySelector(`[data-tutorial="${anchor}"]`);
       if (!el) return setBox((b) => (b === null ? b : null));
+      if (!scrolled) {
+        scrolled = true;
+        el.scrollIntoView({ block: 'nearest' });
+      }
       const r = el.getBoundingClientRect();
       setBox((b) => (b && Math.abs(b.x - r.left) < 0.5 && Math.abs(b.y - r.top) < 0.5 && Math.abs(b.w - r.width) < 0.5 && Math.abs(b.h - r.height) < 0.5 ? b : { x: r.left, y: r.top, w: r.width, h: r.height }));
     };

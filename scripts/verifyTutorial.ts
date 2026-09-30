@@ -39,7 +39,7 @@ let selectedSectorId: number | null = null;
 let startSeq = 0;
 const view = (): TutorialView => ({
   tick: w.tick, map: w.map, selectedSectorId, sectors: w.sectors, fleets: w.fleets, ships: w.ships, vendors: w.vendors,
-  research: w.research, resources: w.resources, spares: w.spares, running: true, log, startSeq,
+  research: w.research, resources: w.resources, spares: w.spares, contacts: w.contacts, running: true, log, startSeq,
 });
 const ok = (r: { ok: boolean; reason?: string }, what: string) => check(r.ok, `${what}: ${r.reason ?? ''}`);
 
@@ -68,7 +68,18 @@ const actions: Record<string, () => void> = {
       check(c.stats.incidents === (roe === 'WEAPONS_FREE' ? 1 : 0), `[contact/${roe}] incidents ${c.stats.incidents}`);
       console.log(`  contact under ${roe.padEnd(12)} -> ${outcome.replace(/^.*: /, '')}, incidents ${c.stats.incidents}, PC ${c.resources.politicalCapital.toFixed(1)}`);
     }
-    ok(cmd.setRoe(w, HOME_SECTOR, 'RETURN_FIRE'), 'choose ROE');
+    // TUTORIAL_ROE=WEAPONS_FREE plays the costliest path (incident: −8 PC) through every later lesson.
+    ok(cmd.setRoe(w, HOME_SECTOR, (process.env.TUTORIAL_ROE as 'HOLD_FIRE' | 'RETURN_FIRE' | 'WEAPONS_FREE') ?? 'RETURN_FIRE'), 'choose ROE');
+  },
+  challenge: () => {
+    ok(cmd.orderContact(w, 'CT-TUT-SMUG', 'HAIL'), 'order hail');
+    for (let d = 0; d < 20 && !w.contacts.find((c) => c.id === 'CT-TUT-SMUG')?.hailed; d++) {
+      advanceDay(w);
+      flush();
+    }
+    const c = w.contacts.find((x) => x.id === 'CT-TUT-SMUG');
+    check(!!c?.suspicious, 'challenge: the smuggler stays silent when hailed');
+    ok(cmd.orderContact(w, 'CT-TUT-SMUG', 'BOARD'), 'order board');
   },
   spares: () => ok(cmd.buySpares(w, 'SEN_DOM_DSR2', 1), 'buy spare'),
   design: () => {
@@ -84,6 +95,8 @@ const actions: Record<string, () => void> = {
     ok(cmd.startResearch(w, 'BR_L16_TAC'), 'start bridge');
   },
   sanctions: () => ok(cmd.lobbyVendorCmd(w, 'ASELSAN', 'MIN_FOREIGN'), 'lobby'),
+  suppliers: () => ok(cmd.advanceRelationshipCmd(w, 'NORDVIK'), 'trade mission'),
+  homefront: () => ok(cmd.holdBudgetHearing(w), 'budget hearing'),
   embargo: () => ok(designateHulk(w, 'SHP-6'), 'designate hulk'),
   graduation: () => {
     check(!w.scripted, 'graduation must turn scripted off');
@@ -111,7 +124,7 @@ for (const lesson of LESSONS) {
     check(c.ACTIVE_PATROL === 2 && c.TRANSIT_WORKUP === 2 && c.MAINTENANCE_DOCK === 2, `thirds lesson should end 2/2/2, got ${JSON.stringify(c)}`);
   }
   if (lesson.id === 'contact') check(w.stats.hostilesDestroyed + w.stats.shipsLost >= 0 && Object.keys(w.ships).length === 6, 'no ships lost in the raid');
-  console.log(`lesson ${lesson.id.padEnd(10)} done in ${String(days).padStart(3)} days (day ${w.tick})`);
+  console.log(`lesson ${lesson.id.padEnd(10)} PC ${w.resources.politicalCapital.toFixed(1).padStart(5)} done in ${String(days).padStart(3)} days (day ${w.tick})`);
 }
 
 check(w.stats.shipsLost === 0, `no ships may be lost (lost ${w.stats.shipsLost})`);

@@ -15,9 +15,9 @@ const dateOf = (tick: number) => new Date(START + tick * 86400000).toISOString()
 
 function Readout({ icon, label, value, sub, tone = 'text-phosphor', flag, anchor }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: string; flag: UiFlag; anchor: string }) {
   const visible = useUiFlag(flag);
-  if (!visible) return null;
+  // Locked readouts keep their space (invisible) so the layout does not jump as the briefing reveals them.
   return (
-    <div data-tutorial={anchor} className="flex items-center gap-2 border-l border-navy px-3">
+    <div data-tutorial={anchor} aria-hidden={!visible || undefined} className={`flex items-center gap-2 border-l border-navy px-3 ${visible ? '' : 'invisible'}`}>
       <span className={tone}>{icon}</span>
       <div className="leading-tight">
         <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">{label}</div>
@@ -70,27 +70,27 @@ export default function CommandBar() {
       <Readout icon={<Factory className="h-4 w-4" />} flag="READOUT_INDUSTRY" anchor="readout-industry" label="Industry" value={`${building}/${res.industrialCapacity}`} sub="slipways busy" />
       <Readout icon={<FlaskConical className="h-4 w-4" />} flag="READOUT_RP" anchor="readout-rp" label="Research" value={`${res.researchPoints.toFixed(0)} RP`} tone="text-emerald-accent" />
       <Readout icon={<Landmark className="h-4 w-4" />} flag="READOUT_PC" anchor="readout-pc" label="Pol. Capital" value={res.politicalCapital.toFixed(1)} tone="text-amber-radar" />
-      {showSupport && (
-        <div data-tutorial="readout-support" className="flex w-32 flex-col justify-center border-l border-navy px-3" title="Domestic support for the navy">
+      {(
+        <div data-tutorial="readout-support" aria-hidden={!showSupport || undefined} className={`flex w-32 flex-col justify-center border-l border-navy px-3 ${showSupport ? '' : 'invisible'}`} title="Domestic support for the navy">
           <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500"><Term k="SUPPORT">Support</Term></div>
           <Meter value={politics.support} tone={politics.support < SUPPORT_HOSTILE ? 'red' : politics.support < SUPPORT_STRAINED ? 'amber' : 'emerald'} label={politics.support.toFixed(0)} />
         </div>
       )}
-      {showTension && (
-        <div data-tutorial="readout-tension" className="flex w-28 flex-col justify-center border-l border-navy px-3">
+      {(
+        <div data-tutorial="readout-tension" aria-hidden={!showTension || undefined} className={`flex w-28 flex-col justify-center border-l border-navy px-3 ${showTension ? '' : 'invisible'}`}>
           <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500"><Term k="TENSION">Tension</Term></div>
           <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
         </div>
       )}
 
       <div className="ml-auto flex items-center gap-2">
-        {showDate && (
-          <div className="text-right leading-tight">
+        {(
+          <div aria-hidden={!showDate || undefined} className={`text-right leading-tight ${showDate ? '' : 'invisible'}`}>
             <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500">DAY {tick}</div>
             <div className="text-xs tabular-nums text-phosphor">{dateOf(tick)}</div>
           </div>
         )}
-        {showClock && <div data-tutorial="clock" className="flex items-center gap-1">
+        {<div data-tutorial="clock" aria-hidden={!showClock || undefined} className={`flex items-center gap-1 ${showClock ? '' : 'invisible'}`}>
           <Btn onClick={() => setRunning(!running)} aria-label={running ? 'Pause' : 'Run'} tone={running ? 'amber' : 'emerald'}>
             {running ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
           </Btn>
@@ -117,8 +117,8 @@ export default function CommandBar() {
         >
           Names: {skin === 'FICTIONAL' ? 'Fictional' : 'Real'}
         </Btn>
-        {showDesign && (
-          <Btn data-tutorial="design-btn" tone="emerald" onClick={() => setDesignerOpen(true)}>
+        {(
+          <Btn data-tutorial="design-btn" aria-hidden={!showDesign || undefined} className={showDesign ? '' : 'invisible'} tone="emerald" onClick={() => setDesignerOpen(true)}>
             <Wrench className="mr-1 inline h-3 w-3" />
             Design bureau
           </Btn>

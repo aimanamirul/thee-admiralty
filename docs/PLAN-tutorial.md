@@ -1,6 +1,6 @@
 # Tutorial stage — plan
 
-Status: **implemented** (see `docs/HANDOFF.md` for how it is built; the shipped script has 12 lessons, the table below is the original 9-lesson plan). Launched from the title screen.
+Status: **implemented** (see `docs/HANDOFF.md` for how it is built; the shipped script has 15 lessons — table in HANDOFF.md; the table below is the original 9-lesson plan). Launched from the title screen.
 
 ## 1. Diagnosis: why it feels like too much
 
