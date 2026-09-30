@@ -19,6 +19,7 @@ import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, 
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
+import { cancelBlocked, cancellationTerms, DEPOSIT_RATE, RESALE_RATE, resaleBlocked, resaleProceeds, BREACH_STANDING } from './contracts';
 import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './supplyChain';
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
@@ -220,7 +221,8 @@ export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; module
     const p = procurability(MODULE_BY_ID[id], vendors, done);
     if (!p.ok) return blocked(`${mt(id)}: ${p.reason}`);
   }
-  if (w.resources.budget < ev.cost) return blocked(`needs ${M(ev.cost)}, have ${M(w.resources.budget)}`);
+  const deposit = ev.cost * DEPOSIT_RATE;
+  if (w.resources.budget < deposit) return blocked(`deposit ${M(deposit)} needed, have ${M(w.resources.budget)}`);
   const building = Object.values(w.ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length;
   const hull = HULLS[a.hullId];
   const wait = building >= w.resources.industrialCapacity ? ` · all ${w.resources.industrialCapacity} slipways busy: queued behind ${building - w.resources.industrialCapacity + 1}` : '';
@@ -229,7 +231,8 @@ export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; module
   const via = [...new Set(views.flatMap((o) => o.known))];
   const unverified = views.filter((o) => !o.verified).length;
   return [
-    `−${M(ev.cost)} (budget ${M(w.resources.budget)} → ${M(w.resources.budget - ev.cost)})`,
+    `${M(ev.cost)} contract: −${M(deposit)} deposit now (budget ${M(w.resources.budget)} → ${M(w.resources.budget - deposit)})`,
+    `balance ${M(ev.cost - deposit)} at ${M((ev.cost - deposit) / hull.buildDays)}/day while building`,
     `commissions in ${hull.buildDays} days${wait}`,
     `running cost +${hullDailyCost(a.hullId, 'TRANSIT_WORKUP').toFixed(2)}–${hullDailyCost(a.hullId, 'ACTIVE_PATROL').toFixed(2)}M/day once commissioned`,
     ...(ev.frictionIndex > 0 ? [`integration friction ${ev.frictionIndex.toFixed(2)}`] : []),
@@ -352,4 +355,27 @@ export function previewDiligence(w: WorldDraft, vendorId: VendorId): Preview {
   const b = diligenceBlocked(w, vendorId);
   if (b) return blocked(b);
   return `−${M(DILIGENCE_COST)} · report in ${DILIGENCE_DAYS} days (day ${w.tick + DILIGENCE_DAYS}) · reveals every foreign sub-supplier inside ${vt(vendorId)} products, and identifies unknown ones`;
+}
+
+// ------------------------------------------------------------------------------------------ build contracts
+
+export function previewCancel(w: WorldDraft, shipId: string): Preview {
+  const b = cancelBlocked(w, shipId);
+  if (b) return blocked(b);
+  const t = cancellationTerms(w, w.ships[shipId]);
+  const basis = { DOMESTIC: 'yard salvage', FAULT: 'refund owed', BREACH: 'breach' } as const;
+  return [
+    `+${M(t.refund)} of ${M(t.paid)} paid`,
+    ...t.lines.map((l) => `${vt(l.vendorId)} ${M(l.refund)}/${M(l.paid)} (${basis[l.basis]})`),
+    ...(t.breaches.length ? [`breach of contract: ${t.breaches.map(vt).join(', ')} standing −${BREACH_STANDING}`] : []),
+    ...(t.supportLoss ? [`support −${t.supportLoss} (money wasted)`] : []),
+    'hull scrapped',
+  ].join(' · ');
+}
+
+export function previewResell(w: WorldDraft, shipId: string): Preview {
+  const b = resaleBlocked(w, shipId);
+  if (b) return blocked(b);
+  const s = w.ships[shipId];
+  return `+${M(resaleProceeds(s))} (${Math.round(RESALE_RATE * 100)}% of ${M(s.contract?.paid ?? 0)} paid) · a third-party navy takes over the hull and its contract · no standing or support cost`;
 }

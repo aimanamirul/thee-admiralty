@@ -11,6 +11,7 @@ import { advanceFleets, allTaskForces, taskForceShipIds } from './fleetEngine';
 import { tickPolitics } from './politicsEngine';
 import { tickRelations } from './relationsEngine';
 import { tickSupplyChain } from './supplyChain';
+import { payInstalment } from './contracts';
 import { bridgeSet, BASE_RP_INCOME, tickResearch } from './researchEngine';
 
 export { ENGAGE_RANGE, IDENTIFY_RANGE } from './contactEngine';
@@ -44,9 +45,11 @@ function progressConstruction(world: WorldDraft): void {
     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
     .slice(0, world.resources.industrialCapacity);
   for (const s of building) {
+    if (!payInstalment(world, s)) continue; // the slipway waits for money
     s.buildProgressDays += 1;
     if (s.buildProgressDays >= s.buildTotalDays) {
       s.buildStatus = 'COMMISSIONED';
+      s.contract = null;
       s.state = 'TRANSIT_WORKUP';
       s.stateDays = 0;
       s.readiness = 55;

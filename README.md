@@ -17,6 +17,7 @@ npm run verify:economy    # fiscal year, carryover, support: an idle navy cannot
 npm run verify:contacts   # every contact intent vs every SOP / ROE behaves as documented
 npm run verify:relations  # vendor ladder, regimes, bloc affinity, open-architecture CMS
 npm run verify:supply     # hidden sub-suppliers, due diligence, sanctions through components (always foreshadowed)
+npm run verify:contracts  # build contracts: deposit, instalments, cancellation refunds by fault, resale
 node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the file header)
 ```
 

@@ -9,6 +9,7 @@ import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { actionBlocked, INTENT_LABEL } from './contactEngine';
 import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { startDiligence } from './supplyChain';
+import { cancelContract, newContract, resellHull } from './contracts';
 import { evaluateLoadout, procurability } from './designEngine';
 import { lobbyVendor, moduleOrdersBlocked } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
@@ -43,8 +44,9 @@ export function orderShip(
     const p = procurability(m, vendorMap(world), done_);
     if (!p.ok) return fail(`${mt(m.id)}: ${p.reason}`);
   }
-  if (world.resources.budget < ev.cost) return fail(`INSUFFICIENT BUDGET: ${ev.cost.toFixed(0)} M REQUIRED`);
-  world.resources.budget -= ev.cost;
+  const contract = newContract(a.hullId, a.moduleIds, ev.cost);
+  if (world.resources.budget < contract.paid) return fail(`INSUFFICIENT BUDGET: ${contract.paid.toFixed(0)} M DEPOSIT REQUIRED`);
+  world.resources.budget -= contract.paid;
 
   const used = new Set(Object.values(world.ships).map((s) => s.name));
   const pennants = new Set(Object.values(world.ships).map((s) => s.pennant));
@@ -56,10 +58,14 @@ export function orderShip(
     id, name, pennant: generatePennant(rng.fork('pen'), a.hullId, pennants), hullId: a.hullId,
     designName: a.designName, moduleIds: a.moduleIds, constructing: true, tick: world.tick,
   });
+  ship.contract = contract;
   world.ships[id] = ship;
   sq.shipIds.push(id);
   syncConstructionFreezes(world);
-  world.events.push({ severity: 'INFO', text: `LAID DOWN: ${ship.pennant} ${name.toUpperCase()} (${HULLS[a.hullId].name}) — ${ev.cost.toFixed(0)} M, ${ship.buildTotalDays} days` });
+  world.events.push({
+    severity: 'INFO',
+    text: `LAID DOWN: ${ship.pennant} ${name.toUpperCase()} (${HULLS[a.hullId].name}) — ${ev.cost.toFixed(0)} M contract, ${contract.paid.toFixed(0)} M deposit, balance paid over ${ship.buildTotalDays} days`,
+  });
   return done(`${name} laid down`);
 }
 
@@ -264,5 +270,15 @@ export function advanceRelationshipCmd(world: WorldDraft, vendorId: VendorId): C
 
 export function dueDiligenceCmd(world: WorldDraft, vendorId: VendorId): CommandResult {
   const r = startDiligence(world, vendorId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function cancelContractCmd(world: WorldDraft, shipId: string): CommandResult {
+  const r = cancelContract(world, shipId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function resellHullCmd(world: WorldDraft, shipId: string): CommandResult {
+  const r = resellHull(world, shipId);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

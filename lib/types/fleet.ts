@@ -11,6 +11,15 @@ export type NamingTradition = 'VIRTUES' | 'GEOGRAPHIC' | 'CELESTIAL';
 
 export type BuildStatus = 'CONSTRUCTING' | 'COMMISSIONED';
 
+export interface BuildContract {
+  price: number;
+  paid: number;
+  /** Money already sent to each vendor (hull work counts as the domestic yards). */
+  paidByVendor: Partial<Record<VendorId, number>>;
+  /** Construction waits because the budget cannot cover today's instalment. */
+  awaitingFunds: boolean;
+}
+
 export interface Ship {
   id: string;
   name: string;
@@ -32,6 +41,8 @@ export interface Ship {
   buildTotalDays: number;
   /** Vendor whose sanction is stalling construction. */
   frozenBy: VendorId | null;
+  /** Build contract while under construction: deposit at lay-down, balance paid as the hull builds. Absent = fully paid. */
+  contract?: BuildContract | null;
   isPartsHulk: boolean;
   /** Player override: keep on station regardless of rotation. */
   holdStation: boolean;

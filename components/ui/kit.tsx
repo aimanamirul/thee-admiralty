@@ -80,7 +80,7 @@ export function Chip({ children, tone = 'cyan' }: { children: ReactNode; tone?: 
 
 export const fmtM = (n: number) => `${n >= 1000 ? (n / 1000).toFixed(2) + 'B' : n.toFixed(0) + 'M'}`;
 
-export function Stat({ k, v, tone }: { k: string; v: ReactNode; tone?: string }) {
+export function Stat({ k, v, tone }: { k: ReactNode; v: ReactNode; tone?: string }) {
   return (
     <div className="flex justify-between gap-2 text-[0.875rem]">
       <span className="text-slate-500">{k}</span>

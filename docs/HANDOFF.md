@@ -238,10 +238,34 @@ The briefing now teaches everything added since it was written. 15 lessons:
   embedded unknown sub-supplier warns at high tension in 12/12 theatres and every warning exposed the link with the full notice period;
   a non-embedded unknown vendor never acts. `verify:preview` now also sweeps diligence, advance and scout previews.
 
+## Contractors phase 3: build contracts (done, 2026-09-30)
+
+- `lib/sim/contracts.ts`; `Ship.contract` (`BuildContract`: price, paid, paidByVendor, awaitingFunds). Absent = fully paid (scenario
+  ships and old checkpoints).
+- **Payment:** `orderShip` charges a 30% deposit (the lay-down budget check is the deposit, not the price). `progressConstruction` pays
+  the remaining balance evenly over the remaining build days (`instalment`); a hull that cannot pay waits on its slipway ("AWAITING
+  FUNDS", logged once); a frozen hull pays nothing. Payments are split by vendor share (modules by prime vendor, the hull to the
+  domestic yards) and accumulate in `paidByVendor`. The contract closes on commissioning.
+- **Cancel** (any hull under construction): per vendor share paid —
+  - domestic yards: 50% salvage;
+  - vendor that **cannot deliver** (a product of theirs on the hull is hit by a sanction, theirs or a sub-supplier's; or they revoked):
+    `Regime.refundRate` (Aurelle 85% "refunds owed", Vinterland 80%, Seoryeong 75%, Sarnia/Rheinmark 70%, Halcyon 60%, Eastern 30%);
+  - vendor that could still deliver: **breach**, 40% refund and −6 standing;
+  - a voluntary cancellation (no vendor at fault) costs support −1; a forced one costs nothing.
+- **Sell hull** (Mistral case): from 40% built, a third-party navy takes over for 70% of what has been paid; no standing/support cost;
+  blocked while any state in the hull's supply chain has revoked (re-export not approved).
+- UI: Order of Battle construction panel shows contract paid/price, instalment, awaiting funds, and Cancel contract / Sell hull buttons
+  with previews (refund breakdown per vendor). The lay-down preview quotes deposit and daily balance. Glossary term `CONTRACT`.
+- "Incident-driven standing loss for restrictive regimes" (the other half of plan phase 3) already shipped in phase 1 (`incidentPenalty`).
+- `npm run verify:contracts`: deposit, deposit + instalments = price, on-schedule commissioning, awaiting funds, frozen hulls pay nothing,
+  refunds by basis (breach / fault via sub-supplier / yard salvage), standing and support effects, resale threshold and re-export block.
+  `verify:preview` now sweeps hulls under construction (cancel, resell).
+
 ## What to build next
 
-Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–2 and the tutorial pass are done. Next: contractors
-phase 3 (contracts: deposits, cancellation penalties, refund/resale for hulls under construction; Mistral case).
+Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
+rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Next: phase 5, cold vendors
+C1 (policy-shift event), C2 (bloc-gated), C3 (JV, two parent states).
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

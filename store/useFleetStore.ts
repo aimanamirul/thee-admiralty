@@ -118,6 +118,8 @@ interface Actions {
   scoutSuppliers: () => CommandResult;
   advanceRelationship: (vendorId: VendorId) => CommandResult;
   dueDiligence: (vendorId: VendorId) => CommandResult;
+  cancelContract: (shipId: string) => CommandResult;
+  resellHull: (shipId: string) => CommandResult;
   orderContact: (contactId: string, action: LadderAction | 'AUTO') => CommandResult;
 }
 
@@ -279,6 +281,8 @@ export const useFleetStore = create<GameState>((set, get) => {
     scoutSuppliers: () => run((w) => cmd.scoutSuppliersCmd(w)),
     advanceRelationship: (vendorId) => run((w) => cmd.advanceRelationshipCmd(w, vendorId)),
     dueDiligence: (vendorId) => run((w) => cmd.dueDiligenceCmd(w, vendorId)),
+    cancelContract: (shipId) => run((w) => cmd.cancelContractCmd(w, shipId)),
+    resellHull: (shipId) => run((w) => cmd.resellHullCmd(w, shipId)),
     orderContact: (contactId, action) => run((w) => cmd.orderContact(w, contactId, action)),
   };
 });

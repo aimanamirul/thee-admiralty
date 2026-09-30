@@ -27,18 +27,20 @@ export interface Regime {
   lobbyEffect: number;
   /** Standing lost per incident caused anywhere by the navy (restrictive export regimes). */
   incidentPenalty: number;
+  /** Share of payments refunded when this state's sanction stops a contract being delivered and the contract is cancelled. */
+  refundRate: number;
   blurb: string;
 }
 
 export const REGIMES: Record<RegimeId, Regime> = {
-  HOME: { label: 'DOMESTIC', hazard: 0, warningDays: 0, freezeDays: [0, 0], mix: [1, 0, 0], lobbyEffect: 1, incidentPenalty: 0, blurb: 'Your own industry: never sanctioned.' },
-  AURELLE: { label: 'POLITICALLY STEERED', hazard: 0.35, warningDays: 12, freezeDays: [45, 90], mix: [0.7, 0.2, 0.1], lobbyEffect: 1, incidentPenalty: 0, blurb: 'Decisions are taken at head-of-state level: long freezes, revocations rare.' },
-  HALCYON: { label: 'STRICT EXPORT CONTROL', hazard: 0.6, warningDays: 8, freezeDays: [60, 120], mix: [0.45, 0.2, 0.35], lobbyEffect: 0.8, incidentPenalty: 1, blurb: 'Deepest catalogue, strictest licences: short notice and frequent revocations.' },
-  SARNIA: { label: 'TRANSACTIONAL', hazard: 0.45, warningDays: 12, freezeDays: [20, 45], mix: [0.6, 0.3, 0.1], lobbyEffect: 1.3, incidentPenalty: 0, blurb: 'Eager for customers: short freezes, and lobbying goes further.' },
-  EASTERN: { label: 'STATE MONOPOLY', hazard: 0.8, warningDays: 10, freezeDays: [30, 90], mix: [0.4, 0.45, 0.15], lobbyEffect: 1, incidentPenalty: 0, blurb: 'One counterparty, cheap hardware; spares embargoes are its favourite lever.' },
-  VINTERLAND: { label: 'RESTRICTIVE', hazard: 0.25, warningDays: 14, freezeDays: [60, 120], mix: [0.6, 0.1, 0.3], lobbyEffect: 1, incidentPenalty: 6, blurb: 'Stable in peacetime, but every incident your navy causes costs standing.' },
-  SEORYEONG: { label: 'BUSINESS-FRIENDLY', hazard: 0.2, warningDays: 14, freezeDays: [20, 40], mix: [0.7, 0.25, 0.05], lobbyEffect: 1.2, incidentPenalty: 0, blurb: 'Consortium sales, quick deliveries, rarely political.' },
-  RHEINMARK: { label: 'COMMITTEE-DRIVEN', hazard: 0.3, warningDays: 20, freezeDays: [60, 120], mix: [0.6, 0.3, 0.1], lobbyEffect: 0.9, incidentPenalty: 2, blurb: 'Slow approvals and long notice; component licences reach into other vendors’ products.' },
+  HOME: { label: 'DOMESTIC', hazard: 0, warningDays: 0, freezeDays: [0, 0], mix: [1, 0, 0], lobbyEffect: 1, incidentPenalty: 0, refundRate: 0.5, blurb: 'Your own industry: never sanctioned.' },
+  AURELLE: { label: 'POLITICALLY STEERED', hazard: 0.35, warningDays: 12, freezeDays: [45, 90], mix: [0.7, 0.2, 0.1], lobbyEffect: 1, incidentPenalty: 0, refundRate: 0.85, blurb: 'Decisions are taken at head-of-state level: long freezes, revocations rare.' },
+  HALCYON: { label: 'STRICT EXPORT CONTROL', hazard: 0.6, warningDays: 8, freezeDays: [60, 120], mix: [0.45, 0.2, 0.35], lobbyEffect: 0.8, incidentPenalty: 1, refundRate: 0.6, blurb: 'Deepest catalogue, strictest licences: short notice and frequent revocations.' },
+  SARNIA: { label: 'TRANSACTIONAL', hazard: 0.45, warningDays: 12, freezeDays: [20, 45], mix: [0.6, 0.3, 0.1], lobbyEffect: 1.3, incidentPenalty: 0, refundRate: 0.7, blurb: 'Eager for customers: short freezes, and lobbying goes further.' },
+  EASTERN: { label: 'STATE MONOPOLY', hazard: 0.8, warningDays: 10, freezeDays: [30, 90], mix: [0.4, 0.45, 0.15], lobbyEffect: 1, incidentPenalty: 0, refundRate: 0.3, blurb: 'One counterparty, cheap hardware; spares embargoes are its favourite lever.' },
+  VINTERLAND: { label: 'RESTRICTIVE', hazard: 0.25, warningDays: 14, freezeDays: [60, 120], mix: [0.6, 0.1, 0.3], lobbyEffect: 1, incidentPenalty: 6, refundRate: 0.8, blurb: 'Stable in peacetime, but every incident your navy causes costs standing.' },
+  SEORYEONG: { label: 'BUSINESS-FRIENDLY', hazard: 0.2, warningDays: 14, freezeDays: [20, 40], mix: [0.7, 0.25, 0.05], lobbyEffect: 1.2, incidentPenalty: 0, refundRate: 0.75, blurb: 'Consortium sales, quick deliveries, rarely political.' },
+  RHEINMARK: { label: 'COMMITTEE-DRIVEN', hazard: 0.3, warningDays: 20, freezeDays: [60, 120], mix: [0.6, 0.3, 0.1], lobbyEffect: 0.9, incidentPenalty: 2, refundRate: 0.7, blurb: 'Slow approvals and long notice; component licences reach into other vendors’ products.' },
 };
 
 export const BLOC_LABEL: Record<Bloc, string> = { HOME: 'HOME', WEST: 'WESTERN', EURO: 'EUROPEAN', NORDIC: 'NORDIC', EAST: 'EASTERN BLOC', ASIA_PAC: 'ASIA-PACIFIC' };

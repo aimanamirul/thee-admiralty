@@ -13,8 +13,9 @@ import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { usePreviewStore } from '@/store/usePreviewStore';
 import { useUiFlag } from '@/store/useTutorialStore';
-import { Btn, Chip, Meter, Section, Stat } from './kit';
-import { previewBuySpare, previewHold, previewHulk, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
+import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
+import { previewBuySpare, previewCancel, previewHold, previewHulk, previewResell, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
+import { cancelBlocked, instalment, resaleBlocked } from '@/lib/sim/contracts';
 
 const STATE_TONE: Record<OpState, 'emerald' | 'cyan' | 'amber'> = { ACTIVE_PATROL: 'emerald', TRANSIT_WORKUP: 'cyan', MAINTENANCE_DOCK: 'amber' };
 
@@ -124,7 +125,26 @@ function ShipDetail({ ship }: { ship: Ship }) {
         <div>
           <div className="text-[0.8125rem] text-slate-500">CONSTRUCTION · {ship.buildProgressDays}/{ship.buildTotalDays} days</div>
           <Meter value={ship.buildProgressDays} max={ship.buildTotalDays} tone={ship.frozenBy ? 'red' : 'cyan'} label={`${Math.round((ship.buildProgressDays / ship.buildTotalDays) * 100)}%`} />
-          {ship.frozenBy && <div className="mt-1 text-warn">⚠ STALLED — {n.v(ship.frozenBy)} sanction. Substitute their hardware below.</div>}
+          {ship.frozenBy && (
+            <div className="mt-1 text-warn">⚠ STALLED — {n.v(ship.frozenBy)} sanction. Substitute their hardware below, or cancel / sell the hull.</div>
+          )}
+          {ship.contract && (
+            <div className="mt-1" data-tutorial={`contract-${ship.id}`}>
+              <Stat k={<Term k="CONTRACT">Contract</Term>} v={`${fmtM(ship.contract.paid)} of ${fmtM(ship.contract.price)} paid`} />
+              {!ship.frozenBy && instalment(ship) > 0 && (
+                <Stat k="Instalment" v={`${instalment(ship).toFixed(1)} M/day`} tone={ship.contract.awaitingFunds ? 'text-warn' : undefined} />
+              )}
+              {ship.contract.awaitingFunds && <div className="text-warn">⚠ AWAITING FUNDS — the slipway waits until the budget covers the instalment.</div>}
+              <div className="mt-1 grid grid-cols-2 gap-1">
+                <Btn tone="red" disabled={!!cancelBlocked(st.snapshotWorld(), ship.id)} preview={(w) => `Cancel contract: ${previewCancel(w, ship.id)}`} onClick={() => st.cancelContract(ship.id)}>
+                  Cancel contract
+                </Btn>
+                <Btn tone="amber" disabled={!!resaleBlocked(st.snapshotWorld(), ship.id)} preview={(w) => `Sell hull: ${previewResell(w, ship.id)}`} onClick={() => st.resellHull(ship.id)}>
+                  Sell hull
+                </Btn>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

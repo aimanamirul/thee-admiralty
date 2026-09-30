@@ -60,6 +60,10 @@ function sweep(tag: string, w: WorldDraft) {
   }
   for (const s of Object.values(w.ships)) {
     text(`${tag} hold ${s.id}`, pv.previewHold(w, s.id));
+    if (s.buildStatus === 'CONSTRUCTING') {
+      agree(`${tag} cancel ${s.id}`, w, pv.previewCancel(w, s.id), (c) => cmd.cancelContractCmd(c, s.id));
+      agree(`${tag} resell ${s.id}`, w, pv.previewResell(w, s.id), (c) => cmd.resellHullCmd(c, s.id));
+    }
     if (s.buildStatus === 'COMMISSIONED' && !s.isPartsHulk) agree(`${tag} hulk ${s.id}`, w, pv.previewHulk(w, s.id), (c) => designateHulk(c, s.id));
     if (s.isPartsHulk) {
       text(`${tag} strip ${s.id}`, pv.previewStrip(w, s.id));
@@ -100,6 +104,8 @@ for (const arch of ['CHOKEPOINT', 'CORRIDOR', 'RIMLAND'] as const) {
       w.tension = 95;
       sweep(`${arch}/day${w.tick}`, w);
     }
+    // hulls under construction at each sweep (cancel / resell previews), some old enough to be sold
+    if (d % 100 === 30 || d % 100 === 95) cmd.orderShip(w, { designName: 'X', hullId: 'CORVETTE', moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_NG_SMARTS', 'ARM_DOM_GUN76'], squadronId: 'SQ-1-1', tradition: 'VIRTUES' });
     if (d === 150) for (const s of Object.values(w.ships)) if (s.state === 'MAINTENANCE_DOCK') designateHulk(w, s.id);
     if (d === 50) w.resources.politicalCapital = 0; // exercise blocked lobbying
     if (d === 250) w.politics.support = 20; // exercise refused lobbying / hearings
