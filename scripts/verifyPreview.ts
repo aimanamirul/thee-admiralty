@@ -69,6 +69,7 @@ function sweep(tag: string, w: WorldDraft) {
     else agree(`${tag} research ${p.id}`, w, pv.previewStartResearch(w, p.id), (c) => cmd.startResearch(c, p.id));
   }
   agree(`${tag} fund`, w, pv.previewFundBureau(w), (c) => cmd.fundBureau(c));
+  agree(`${tag} hearing`, w, pv.previewHearing(w), (c) => cmd.holdBudgetHearing(c));
   agree(`${tag} industry`, w, pv.previewExpandIndustry(w), (c) => cmd.expandIndustry(c));
   const design = { hullId: 'CORVETTE' as const, moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_ASEL_SPEAR', 'ARM_NG_SYLVER8'], squadronId: 'SQ-1-1' };
   agree(`${tag} order`, w, pv.previewOrderShip(w, design), (c) => cmd.orderShip(c, { ...design, designName: 'X', tradition: 'VIRTUES' }));
@@ -93,6 +94,8 @@ for (const arch of ['CHOKEPOINT', 'CORRIDOR', 'RIMLAND'] as const) {
     }
     if (d === 150) for (const s of Object.values(w.ships)) if (s.state === 'MAINTENANCE_DOCK') designateHulk(w, s.id);
     if (d === 50) w.resources.politicalCapital = 0; // exercise blocked lobbying
+    if (d === 250) w.politics.support = 20; // exercise refused lobbying / hearings
+    if (d === 350) w.politics.support = 35; // exercise the strained cost multiplier
     advanceDay(w);
     w.events = [];
   }

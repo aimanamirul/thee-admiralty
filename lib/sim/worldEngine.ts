@@ -9,42 +9,23 @@ import type { Bridges, Contact, WorldDraft } from '../types/world';
 import { resolveEngagement } from './combatSim';
 import { tickDiplomacy } from './diplomacyEngine';
 import { advanceFleets, allTaskForces, combatantOf, removeShip, taskForceShipIds } from './fleetEngine';
+import { adjustSupport, tickPolitics } from './politicsEngine';
 import { bridgeSet, BASE_RP_INCOME, tickResearch } from './researchEngine';
 
-export const BASE_INCOME_PER_DAY = 8;
-/** Scales the per-hull upkeep figures in the catalogue into daily budget drain. */
-export const UPKEEP_SCALE = 2.5;
 export const IDENTIFY_RANGE = 10;
 export const ENGAGE_RANGE = 12;
 
 const clamp = (v: number, lo = 0, hi = 100) => (v < lo ? lo : v > hi ? hi : v);
 const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
 
-export function computeFinance(ships: Iterable<Ship>): { income: number; upkeep: number; net: number } {
-  let upkeep = 0;
-  for (const s of ships) {
-    if (s.buildStatus !== 'COMMISSIONED') continue;
-    const base = HULLS[s.hullId].upkeepPerDay * UPKEEP_SCALE;
-    if (s.isPartsHulk) upkeep += base * 0.05;
-    else upkeep += base * (s.state === 'ACTIVE_PATROL' ? 1 : s.state === 'TRANSIT_WORKUP' ? 0.6 : 0.8);
-  }
-  return { income: BASE_INCOME_PER_DAY, upkeep, net: BASE_INCOME_PER_DAY - upkeep };
-}
-
 export function advanceDay(world: WorldDraft): void {
   world.tick += 1;
   const rng = new Rng(`${world.seed}:day:${world.tick}`);
   const bridges = bridgeSet(world.research.completed);
 
-  // Economy
-  const fin = computeFinance(Object.values(world.ships));
-  world.resources.budget += fin.net;
-  world.resources.politicalCapital = clamp(world.resources.politicalCapital + 0.35, 0, 60);
+  // Economy & domestic politics: appropriation tranches, running costs, support, political capital.
+  tickPolitics(world, rng.fork('politics'));
   world.resources.researchPoints = clamp(world.resources.researchPoints + BASE_RP_INCOME, 0, 999);
-  if (world.resources.budget < 0) {
-    world.resources.politicalCapital = clamp(world.resources.politicalCapital - 0.5, 0, 60);
-    if (world.tick % 10 === 0) world.events.push({ severity: 'WARNING', text: 'TREASURY IN DEFICIT — political capital eroding' });
-  }
 
   tickDiplomacy(world, rng.fork('diplomacy'));
   progressConstruction(world);
@@ -182,6 +163,7 @@ function tickContacts(world: WorldDraft, rng: Rng, bridges: Bridges): void {
         world.events.push({ severity: 'CRITICAL', text: `INCIDENT: weapons-free fire on neutral vessel in ${map.sectors[c.sectorId].label} — diplomatic fallout` });
         world.resources.politicalCapital = clamp(world.resources.politicalCapital - 8, 0, 60);
         world.tension = clamp(world.tension + 5);
+        adjustSupport(world, -6);
         world.stats.incidents++;
         continue;
       }
@@ -206,11 +188,13 @@ function tickContacts(world: WorldDraft, rng: Rng, bridges: Bridges): void {
           world.events.push({ severity: 'CRITICAL', text: `LOST: ${ship.pennant} ${ship.name.toUpperCase()} sunk in action` });
           removeShip(world, ship.id);
           world.stats.shipsLost++;
+          adjustSupport(world, -8);
         }
       }
       if (res.outcome === 'DESTROYED') {
         st.threat = clamp(st.threat - 8);
         world.stats.hostilesDestroyed++;
+        adjustSupport(world, 2);
         world.resources.politicalCapital = clamp(world.resources.politicalCapital + 1.5, 0, 60);
       } else if (res.outcome === 'REPELLED') st.threat = clamp(st.threat - 3);
       else st.threat = clamp(st.threat + 6);
@@ -222,6 +206,7 @@ function tickContacts(world: WorldDraft, rng: Rng, bridges: Bridges): void {
         st.threat = clamp(st.threat + 8);
         world.resources.politicalCapital = clamp(world.resources.politicalCapital - 3, 0, 60);
         world.tension = clamp(world.tension + 2);
+        adjustSupport(world, -1.5);
         world.events.push({ severity: 'CRITICAL', text: `HOSTILE PROBE UNOPPOSED in ${map.sectors[c.sectorId].name} — no forces on station` });
       }
       continue;

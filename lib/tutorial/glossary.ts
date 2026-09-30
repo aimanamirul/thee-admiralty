@@ -8,5 +8,7 @@ export const GLOSSARY: Record<string, string> = {
   THIRDS: 'Rule of Thirds: about a third of the fleet on patrol, a third working up or in transit, a third in overhaul.',
   STANDING: 'Diplomatic standing with a vendor state (0-100). Tier = standing / 25 gates catalogue lines; 65+ averts a pending sanction.',
   THREAT: 'How hard the enemy probes a sector. Rises with tension and when a sector is left uncovered; more hostile contacts appear.',
+  SUPPORT: 'Domestic support: how willing the civilian government is to back the navy. It sets next year\'s appropriation and political capital income. Below 40 lobbying costs more; below 25 ministries refuse contact and political capital drains; below 10 a parliamentary inquiry freezes procurement and cuts the budget.',
+  FISCAL: 'The navy is funded by an annual appropriation paid in four quarterly tranches. Unspent money above 15% of the appropriation returns to the Treasury at year end, and spending too slowly shrinks next year\'s forecast.',
   TENSION: 'Global geopolitical tension. Raises the chance that vendor states revoke licences, freeze exports or embargo spares.',
 };

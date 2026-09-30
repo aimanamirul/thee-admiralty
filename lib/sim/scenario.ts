@@ -9,9 +9,13 @@ import type { HullClassId } from '../types/hull';
 import type { MapArchetype } from '../types/map';
 import type { SectorState, WorldDraft } from '../types/world';
 import { createShip } from './fleetEngine';
+import { initialPolitics } from './politicsEngine';
 import { initialResearch } from './researchEngine';
 
-export const START_RESOURCES = { budget: 1800, industrialCapacity: 3, researchPoints: 60, politicalCapital: 20 };
+/** Fiscal year 1: carried-over balance plus the first quarterly tranche. */
+export const START_APPROPRIATION = 3120;
+export const START_OPENING_BALANCE = 600;
+export const START_RESOURCES = { budget: START_OPENING_BALANCE + START_APPROPRIATION / 4, industrialCapacity: 3, researchPoints: 60, politicalCapital: 20 };
 
 export function initialSectorStates(world: Pick<WorldDraft, 'map'>, rng: Rng): Record<number, SectorState> {
   const map = world.map;
@@ -105,6 +109,7 @@ export function createInitialWorld(seed: string, archetype?: MapArchetype): Worl
     sanctions: [], research: initialResearch(), contacts: [], tension: 30, events: [],
     scripted: false,
     policy: { autoSpares: true },
+    politics: initialPolitics({ support: 55, appropriation: START_APPROPRIATION, openingBalance: START_OPENING_BALANCE, scripted: false }),
     stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0 },
   };
   world.sectors = initialSectorStates(world, rng.fork('threat'));

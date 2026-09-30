@@ -1,6 +1,7 @@
 /** Headless soak test: run the world engine for N days and report. Usage: tsx scripts/verifySim.ts [days] [seed] [ARCH] */
 import { createInitialWorld } from '../lib/sim/scenario';
-import { advanceDay, computeFinance } from '../lib/sim/worldEngine';
+import { advanceDay } from '../lib/sim/worldEngine';
+import { forecast, runningCosts } from '../lib/sim/politicsEngine';
 import { stateCounts } from '../lib/sim/fleetEngine';
 import { assignTaskForce, setTempo, orderShip, startResearch, buySpares } from '../lib/sim/commands';
 import type { MapArchetype } from '../lib/types/map';
@@ -33,5 +34,5 @@ for (let d = 0; d < days; d++) {
   for (const e of world.events) if (e.severity === 'CRITICAL' || e.severity === 'COMBAT' && e.text.startsWith('ENGAGEMENT')) console.log(`  [d${world.tick}] ${e.severity}: ${e.text}`);
   world.events.length = 0;
 }
-console.log(`\n${days} days in ${(performance.now() - t0).toFixed(0)}ms`, counts, world.stats, computeFinance(Object.values(world.ships)));
+console.log(`\n${days} days in ${(performance.now() - t0).toFixed(0)}ms`, counts, world.stats, { costsPerDay: +runningCosts(Object.values(world.ships), world.tick).total.toFixed(2), support: +world.politics.support.toFixed(1), fy: world.politics.fiscal.year, forecast: Math.round(forecast(world).mid) });
 for (const v of Object.values(world.vendors)) console.log(`  ${v.name.padEnd(22)} ${v.status} standing ${v.standing.toFixed(0)}`);

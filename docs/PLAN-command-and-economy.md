@@ -1,6 +1,6 @@
 # Command agency & civil-military economy — plan
 
-Status: **decided 2026-09-30, build in progress: step 1 (preview strip) done.** Source: user feedback after the tutorial review.
+Status: **decided 2026-09-30, build in progress: steps 1 (preview strip) and 2 (support + fiscal year) done.** Source: user feedback after the tutorial review.
 This plan supersedes the "economy rebalance" phase in `PLAN-foreign-contractors.md` §10 and runs **before** contractors phase 1,
 so vendors can be priced against a budget that actually bites.
 

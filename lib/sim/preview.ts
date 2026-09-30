@@ -15,6 +15,7 @@ import { evaluateLoadout, procurability } from './designEngine';
 import { AVERT_STANDING, REINSTATE_STANDING } from './diplomacyEngine';
 import { allTaskForces, DEEP_DRAFT_M, PATROL_LIMIT_DAYS, taskForceShipIds } from './fleetEngine';
 import { findRoute } from './navigation';
+import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, HEARING_COOLDOWN_DAYS, HEARING_PC, lobbyCost, procurementFrozen } from './politicsEngine';
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
 
@@ -43,7 +44,7 @@ export function previewLobby(w: WorldDraft, vendorId: VendorId, ministryId: stri
   const { res, c } = dryRun(w, (x) => cmd.lobbyVendorCmd(x, vendorId, ministryId));
   if (!res.ok) return blocked(`${res.reason} (have ${w.resources.politicalCapital.toFixed(1)} PC)`);
   const after = c.vendors[vendorId];
-  const parts = [`−${m.cost} PC`, `${vt(vendorId)} standing ${v.standing.toFixed(0)} → ${after.standing.toFixed(0)}`];
+  const parts = [`−${lobbyCost(w, m.cost)} PC`, `${vt(vendorId)} standing ${v.standing.toFixed(0)} → ${after.standing.toFixed(0)}`];
   if (standingTier(after.standing) > standingTier(v.standing)) parts.push(`reaches catalogue tier T${standingTier(after.standing)}`);
   if (v.status === 'WARNING') {
     parts.push(
@@ -182,6 +183,8 @@ export function previewExpandIndustry(w: WorldDraft): Preview {
 }
 
 export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; moduleIds: string[]; squadronId: string }): Preview {
+  const frozen = procurementFrozen(w);
+  if (frozen) return blocked(frozen);
   const ev = evaluateLoadout(a.hullId, a.moduleIds, bridgeSet(w.research.completed));
   if (!ev.valid) return blocked(ev.errors[0]);
   const vendors = w.vendors as unknown as Record<string, WorldDraft['vendors'][VendorId]>;
@@ -198,7 +201,7 @@ export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; module
   return [
     `−${M(ev.cost)} (budget ${M(w.resources.budget)} → ${M(w.resources.budget - ev.cost)})`,
     `commissions in ${hull.buildDays} days${wait}`,
-    `upkeep +${(ev.upkeepPerDay * 2.5).toFixed(2)}M/day once commissioned`,
+    `running cost +${hullDailyCost(a.hullId, 'TRANSIT_WORKUP').toFixed(2)}–${hullDailyCost(a.hullId, 'ACTIVE_PATROL').toFixed(2)}M/day once commissioned`,
     ...(ev.frictionIndex > 0 ? [`integration friction ${ev.frictionIndex.toFixed(2)}`] : []),
     ...(foreign.length ? [`sanction exposure: ${foreign.map(vt).join(', ')}`] : []),
   ].join(' · ');
@@ -242,4 +245,21 @@ export function previewStartResearch(w: WorldDraft, projectId: string): Preview 
 export function previewStopResearch(w: WorldDraft, projectId: string): Preview {
   const p = PROJECT_BY_ID[projectId];
   return `Pauses ${pt(projectId)}: ${(w.research.progress[projectId] ?? 0).toFixed(0)}/${p.costRP} RP kept · frees an engineering slot`;
+}
+
+// ------------------------------------------------------------------------------------------ home front
+
+export function previewHearing(w: WorldDraft): Preview {
+  const b = hearingBlocked(w);
+  if (b) return blocked(b);
+  const f = forecast(w);
+  const cost = lobbyCost(w, HEARING_PC);
+  const boosted = f.mid * (1 + w.politics.fiscal.hearingBoost + HEARING_BOOST) / (1 + w.politics.fiscal.hearingBoost);
+  const chance = Math.round(hearingChance(w) * 100);
+  return [
+    `−${cost} PC`,
+    `${chance}% chance: next year's appropriation ~${M(f.mid)} → ~${M(boosted)}`,
+    `${100 - chance}% chance: rejected, domestic support −4`,
+    `next hearing possible ${HEARING_COOLDOWN_DAYS} days later`,
+  ].join(' · ');
 }

@@ -8,6 +8,8 @@ import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, Meter, Section } from './kit';
 import { previewLobby } from '@/lib/sim/preview';
+import { lobbyCost, ministriesRefuse } from '@/lib/sim/politicsEngine';
+import HomeFront from './HomeFront';
 
 function statusChip(v: Vendor, tick: number) {
   switch (v.status) {
@@ -20,6 +22,9 @@ function statusChip(v: Vendor, tick: number) {
 
 export default function DiplomacyLedger() {
   const n = useNames();
+  const politics = useFleetStore((s) => s.politics);
+  const politicsView = { politics };
+  const refuse = ministriesRefuse(politicsView);
   const vendors = useFleetStore((s) => s.vendors);
   const tension = useFleetStore((s) => s.tension);
   const pc = useFleetStore((s) => s.resources.politicalCapital);
@@ -34,6 +39,7 @@ export default function DiplomacyLedger() {
 
   return (
     <div className="space-y-2">
+      <HomeFront />
       <Section title={<Term k="TENSION">Geopolitical climate</Term>} tone="amber" right={<span className="text-amber-radar">PC {pc.toFixed(1)}</span>}>
         <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
         <p className="mt-1 text-[0.8125rem] text-slate-500">Tension raises the chance a vendor state revokes licences, freezes exports or embargoes spares. Ministerial lobbying builds standing; at 65+ a pending sanction is averted outright.</p>
@@ -61,8 +67,8 @@ export default function DiplomacyLedger() {
             {v.id !== 'DOMESTIC_YARDS' && (
               <div className="mt-1.5 grid grid-cols-3 gap-1">
                 {MINISTRIES.map((m) => (
-                  <Btn key={m.id} tone="amber" disabled={pc < m.cost} title={`${m.name} — ${m.description}`} preview={(w) => `${m.name.split(' — ')[0]}: ${previewLobby(w, v.id, m.id)}`} onClick={() => lobby(v.id, m.id)}>
-                    {m.name.split(' — ')[0].replace('Ministry of ', '')} · {m.cost}PC
+                  <Btn key={m.id} tone="amber" disabled={pc < lobbyCost(politicsView, m.cost) || !!refuse} title={`${m.name} — ${m.description}`} preview={(w) => `${m.name.split(' — ')[0]}: ${previewLobby(w, v.id, m.id)}`} onClick={() => lobby(v.id, m.id)}>
+                    {m.name.split(' — ')[0].replace('Ministry of ', '')} · {lobbyCost(politicsView, m.cost)}PC
                   </Btn>
                 ))}
               </div>

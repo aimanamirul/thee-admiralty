@@ -2,7 +2,7 @@
 
 import { Coins, FastForward, GraduationCap, FlaskConical, Factory, Landmark, Pause, Play, Radar, StepForward, Wrench } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { computeFinance } from '@/lib/sim/worldEngine';
+import { daysToNextTranche, runningCosts, SUPPORT_HOSTILE, SUPPORT_STRAINED } from '@/lib/sim/politicsEngine';
 import { ARCHETYPE_LABEL, type MapArchetype } from '@/lib/types/map';
 import { useFleetStore, type SimSpeed } from '@/store/useFleetStore';
 import type { UiFlag } from '@/lib/tutorial/lessons';
@@ -41,7 +41,9 @@ export default function CommandBar() {
   const skin = useFleetStore((s) => s.skin);
   const { setRunning, setSpeed, step, newTheatre, setDesignerOpen, setUiScale, setSkin } = useFleetStore.getState();
 
-  const fin = useMemo(() => computeFinance(Object.values(ships)), [ships]);
+  const costs = useMemo(() => runningCosts(Object.values(ships), tick), [ships, tick]);
+  const politics = useFleetStore((s) => s.politics);
+  const showSupport = useUiFlag('READOUT_SUPPORT');
   const building = useMemo(() => Object.values(ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length, [ships]);
   const [seedInput, setSeedInput] = useState(seed);
   const [arch, setArch] = useState<MapArchetype | 'AUTO'>('AUTO');
@@ -64,10 +66,16 @@ export default function CommandBar() {
         </div>
       </div>
 
-      <Readout icon={<Coins className="h-4 w-4" />} flag="READOUT_BUDGET" anchor="readout-budget" label="Budget" value={fmtM(res.budget)} sub={`${fin.net >= 0 ? '+' : ''}${fin.net.toFixed(1)}M/day`} tone={res.budget < 0 ? 'text-warn' : 'text-phosphor'} />
+      <Readout icon={<Coins className="h-4 w-4" />} flag="READOUT_BUDGET" anchor="readout-budget" label="Budget" value={fmtM(res.budget)} sub={`−${costs.total.toFixed(1)}M/day · FY${politics.fiscal.year} tranche ${daysToNextTranche(tick)}d`} tone={res.budget < 0 ? 'text-warn' : 'text-phosphor'} />
       <Readout icon={<Factory className="h-4 w-4" />} flag="READOUT_INDUSTRY" anchor="readout-industry" label="Industry" value={`${building}/${res.industrialCapacity}`} sub="slipways busy" />
       <Readout icon={<FlaskConical className="h-4 w-4" />} flag="READOUT_RP" anchor="readout-rp" label="Research" value={`${res.researchPoints.toFixed(0)} RP`} tone="text-emerald-accent" />
       <Readout icon={<Landmark className="h-4 w-4" />} flag="READOUT_PC" anchor="readout-pc" label="Pol. Capital" value={res.politicalCapital.toFixed(1)} tone="text-amber-radar" />
+      {showSupport && (
+        <div data-tutorial="readout-support" className="flex w-32 flex-col justify-center border-l border-navy px-3" title="Domestic support for the navy">
+          <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500"><Term k="SUPPORT">Support</Term></div>
+          <Meter value={politics.support} tone={politics.support < SUPPORT_HOSTILE ? 'red' : politics.support < SUPPORT_STRAINED ? 'amber' : 'emerald'} label={politics.support.toFixed(0)} />
+        </div>
+      )}
       {showTension && (
         <div data-tutorial="readout-tension" className="flex w-28 flex-col justify-center border-l border-navy px-3">
           <div className="text-[0.75rem] uppercase tracking-[0.2em] text-slate-500"><Term k="TENSION">Tension</Term></div>

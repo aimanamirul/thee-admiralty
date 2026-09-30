@@ -42,6 +42,7 @@ interface WorldSlice {
   tension: number;
   scripted: boolean;
   policy: { autoSpares: boolean };
+  politics: WorldDraft['politics'];
   stats: WorldDraft['stats'];
 }
 
@@ -109,6 +110,7 @@ interface Actions {
   createSquadron: (tfId: string, name: string) => CommandResult;
   moveShip: (shipId: string, squadronId: string) => CommandResult;
   setAutoSpares: (on: boolean) => CommandResult;
+  budgetHearing: () => CommandResult;
 }
 
 export type GameState = WorldSlice & UiSlice & Actions;
@@ -117,7 +119,7 @@ const pickWorld = (s: GameState): WorldDraft => {
   // The map is large and immutable during play: share it, clone everything else.
   const mutable = structuredClone({
     resources: s.resources, ships: s.ships, fleets: s.fleets, spares: s.spares, sectors: s.sectors, vendors: s.vendors,
-    sanctions: s.sanctions, research: s.research, contacts: s.contacts, tension: s.tension, scripted: s.scripted, policy: s.policy, stats: s.stats,
+    sanctions: s.sanctions, research: s.research, contacts: s.contacts, tension: s.tension, scripted: s.scripted, policy: s.policy, politics: s.politics, stats: s.stats,
   });
   return { seed: s.seed, tick: s.tick, map: s.map, events: [], ...mutable };
 };
@@ -125,7 +127,7 @@ const pickWorld = (s: GameState): WorldDraft => {
 const worldPatch = (w: WorldDraft): WorldSlice => ({
   seed: w.seed, tick: w.tick, map: w.map, resources: w.resources, ships: w.ships, fleets: w.fleets, spares: w.spares,
   sectors: w.sectors, vendors: w.vendors, sanctions: w.sanctions, research: w.research, contacts: w.contacts,
-  tension: w.tension, scripted: w.scripted, policy: w.policy, stats: w.stats,
+  tension: w.tension, scripted: w.scripted, policy: w.policy, politics: w.politics, stats: w.stats,
 });
 
 function appendLog(log: GameEvent[], seq: number, tick: number, pending: WorldDraft['events']) {
@@ -256,6 +258,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     createSquadron: (tfId, name) => run((w) => cmd.createSquadron(w, tfId, name)),
     moveShip: (shipId, sqId) => run((w) => cmd.moveShip(w, shipId, sqId)),
     setAutoSpares: (on) => run((w) => cmd.setAutoSpares(w, on)),
+    budgetHearing: () => run((w) => cmd.holdBudgetHearing(w)),
   };
 });
 

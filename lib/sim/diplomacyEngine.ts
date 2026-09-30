@@ -1,6 +1,7 @@
 /** Vendors, lobbying, geopolitical tension and export-sanction hazards. */
 import { MINISTRIES, MODULE_BY_ID } from '../data/catalog';
 import { vt } from '../data/tokens';
+import { adjustSupport, lobbyCost, ministriesRefuse } from './politicsEngine';
 import type { Rng } from '../generator/prng';
 import type { SanctionKind, Vendor, VendorId } from '../types/diplomacy';
 import type { WorldDraft } from '../types/world';
@@ -38,8 +39,11 @@ export function lobbyVendor(world: WorldDraft, vendorId: VendorId, ministryId: s
   const m = MINISTRIES.find((x) => x.id === ministryId);
   if (!v || !m) return { ok: false, reason: 'UNKNOWN TARGET' };
   if (vendorId === 'DOMESTIC_YARDS') return { ok: false, reason: 'DOMESTIC YARDS NEED NO LOBBYING' };
-  if (world.resources.politicalCapital < m.cost) return { ok: false, reason: `NEEDS ${m.cost} POLITICAL CAPITAL` };
-  world.resources.politicalCapital -= m.cost;
+  const refuse = ministriesRefuse(world);
+  if (refuse) return { ok: false, reason: refuse };
+  const cost = lobbyCost(world, m.cost);
+  if (world.resources.politicalCapital < cost) return { ok: false, reason: `NEEDS ${cost} POLITICAL CAPITAL` };
+  world.resources.politicalCapital -= cost;
   v.standing = Math.min(100, v.standing + m.standingGain);
   world.events.push({ severity: 'INFO', text: `LOBBY: ${m.name} → ${vt(v.id)} standing +${m.standingGain} (now ${v.standing.toFixed(0)})` });
 
@@ -94,12 +98,14 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
         v.pendingSanction = null;
         v.standing -= 5;
         world.events.push({ severity: 'ADVISORY', text: `${vt(v.id)} sanction AVERTED — ministerial assurances held` });
+        adjustSupport(world, 1.5);
       } else if (kind === 'LICENSE_REVOKED') {
         v.status = 'REVOKED';
         v.statusUntilTick = null;
         v.pendingSanction = null;
         v.standing = Math.min(v.standing, 8);
         world.sanctions.push({ id: `SAN-${world.tick}-${v.id}`, vendorId: v.id, kind, startTick: world.tick, endTick: null });
+        adjustSupport(world, -3);
         world.events.push({ severity: 'CRITICAL', text: `${vt(v.id)}: EXPORT LICENCE REVOKED — orders frozen, support contracts terminated` });
       } else {
         const days = rng.int(30, 90);
@@ -107,6 +113,7 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
         v.statusUntilTick = world.tick + days;
         v.pendingSanction = null;
         world.sanctions.push({ id: `SAN-${world.tick}-${v.id}`, vendorId: v.id, kind, startTick: world.tick, endTick: world.tick + days });
+        adjustSupport(world, -1.5);
         world.events.push({
           severity: 'CRITICAL',
           text:

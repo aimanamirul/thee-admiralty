@@ -8,6 +8,7 @@ import type { HullClassId } from '../types/hull';
 import type { Roe, WorldDraft } from '../types/world';
 import { evaluateLoadout, procurability } from './designEngine';
 import { lobbyVendor, vendorBlocksOrders } from './diplomacyEngine';
+import { budgetHearing, procurementFrozen } from './politicsEngine';
 import type { VendorId } from '../types/diplomacy';
 import { allTaskForces, createShip, nextShipId } from './fleetEngine';
 import { bridgeSet, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP } from './researchEngine';
@@ -27,6 +28,8 @@ export function orderShip(
   world: WorldDraft,
   a: { designName: string; hullId: HullClassId; moduleIds: string[]; squadronId: string; tradition: NamingTradition; customName?: string },
 ): CommandResult {
+  const frozen = procurementFrozen(world);
+  if (frozen) return fail(frozen);
   const sq = allTaskForces(world.fleets).flatMap((t) => t.squadrons).find((s) => s.id === a.squadronId);
   if (!sq) return fail('SELECT A SQUADRON TO RECEIVE THE HULL');
   const ev = evaluateLoadout(a.hullId, a.moduleIds, bridgeSet(world.research.completed));
@@ -215,5 +218,10 @@ export function setAutoSpares(world: WorldDraft, on: boolean): CommandResult {
 
 export function lobbyVendorCmd(world: WorldDraft, vendorId: VendorId, ministryId: string): CommandResult {
   const r = lobbyVendor(world, vendorId, ministryId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function holdBudgetHearing(world: WorldDraft): CommandResult {
+  const r = budgetHearing(world);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

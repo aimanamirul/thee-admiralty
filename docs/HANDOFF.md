@@ -115,11 +115,32 @@ hovered or keyboard-focused: costs, before -> after values, time to effect, risk
   command refuses, never shows NaN/undefined, resolves tokens, and leaks no real names. Banned-name matching in `verify:names` and
   `verify:preview` is whole-word ("DOM" no longer matches "DOMESTIC").
 
+## Domestic support & fiscal year (done, 2026-09-30)
+
+`lib/sim/politicsEngine.ts` replaces the flat 8M/day income (all constants at the top of the file):
+- **Money in:** an annual appropriation (fiscal year = 360 days) paid in 4 quarterly tranches. **Money out:** running costs every day —
+  crew wages for every commissioned hull (even docked), fuel/yard fees by state, base overhead, +3%/year ageing — plus purchases.
+- **Year end:** up to 15% of the appropriation carries over, the rest returns to the Treasury (deficits carry as debt, support −5).
+  "Spent this year" is derived from balances (opening + tranches − budget), so no spend site needs a hook.
+- **Forecast** for next year = 3000 × support factor × tension factor × underspend factor (pace < 70%) × hearing boost × inquiry cut;
+  ±10% range that narrows and **locks on day 330**.
+- **Domestic support** 0–100: reverts to 50, rallies with tension, falls with deficits, frozen builds, exposed high-threat sectors,
+  incidents (−6), losses (−8), unopposed probes (−1.5), revoked licences (−3), export freezes (−1.5); kills +2, averted sanctions +1.5.
+  Elections every 720 days halve the distance to 50 ± 10 (disabled in scripted worlds). Graduated effects at 40 / 25 / 10 exactly as in
+  the plan; PC regen follows support.
+- **Budget hearing** command (10 PC, ×1.5 when strained; 60-day cooldown; chance 25% + 0.6 × support; success +6% next year up to +20%,
+  failure −4 support). Preview shows the odds, never the roll.
+- UI: top-bar **Support** meter (hidden in the tutorial until graduation via `READOUT_SUPPORT`); **Home front** section at the top of the
+  Diplomacy tab (support bands, fiscal year, costs, carryover cap, projected return to Treasury, forecast bar and factors, hearing button);
+  lobby buttons show the support-adjusted price.
+- `npm run verify:economy`: an idle "duck" vs a prudent active navy, 3 years × 3 theatres: tranches and year closes on schedule, hoarding
+  bounded, no NaN, and the active navy ends with more hulls, higher support and a larger appropriation than the duck.
+  A reckless bot that buys whenever it has 400M goes bankrupt into inquiries (the system working as intended).
+- Tuning note: with 6 sectors and 2 task forces, a player covering only 2 sectors settles near support ~40.
+
 ## What to build next
 
-Per `docs/PLAN-command-and-economy.md` (user feedback 2026-09-30; decisions recorded there): **step 2, domestic support + fiscal year**
-(360-day year, quarterly tranches, forecast range, budget hearings, partial 15% carryover, graduated support effects, real running costs),
-then step 3, the contact SOP ladder (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
+Per `docs/PLAN-command-and-economy.md`: steps 1 and 2 are done; next is **step 3, the contact SOP ladder** (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
 after those.
 
 ## Design backlog (do not build yet)

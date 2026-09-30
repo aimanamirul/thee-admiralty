@@ -16,7 +16,7 @@ export type UiFlag =
   | 'PANEL' | 'TAB_SECTOR' | 'TAB_FLEET' | 'TAB_RND' | 'TAB_DIPLO'
   | 'DATE' | 'CLOCK' | 'TICKER'
   | 'READOUT_BUDGET' | 'READOUT_INDUSTRY' | 'READOUT_RP' | 'READOUT_PC' | 'READOUT_TENSION'
-  | 'THIRDS' | 'SPARES' | 'ORGANISE' | 'DESIGN_BTN' | 'LAYERS' | 'HULK';
+  | 'THIRDS' | 'SPARES' | 'ORGANISE' | 'DESIGN_BTN' | 'LAYERS' | 'HULK' | 'READOUT_SUPPORT';
 
 /** Plain subset of game state the gates read, so they also run in Node. */
 export interface TutorialView {

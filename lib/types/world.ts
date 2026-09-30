@@ -58,6 +58,36 @@ export interface PendingEvent {
   text: string;
 }
 
+/** The navy's fiscal year: an annual appropriation paid in quarterly tranches. */
+export interface FiscalState {
+  /** 1-based fiscal year. */
+  year: number;
+  /** This year's appropriation (M). */
+  appropriation: number;
+  /** Quarterly tranches already paid this year (1-4). */
+  tranchesPaid: number;
+  /** Budget balance at the start of the year, before the first tranche (carryover or debt). */
+  openingBalance: number;
+  /** Next year's appropriation boost won in budget hearings this year (0-0.2). */
+  hearingBoost: number;
+  /** Set 30 days before year end: next year's appropriation, no longer moving. */
+  lockedForecast: number | null;
+  /** A parliamentary inquiry this year cuts next year's appropriation by 20%. */
+  inquiryPenalty: boolean;
+}
+
+/** Civil-military politics: how willing the civilian government is to back the navy. */
+export interface PoliticsState {
+  /** Domestic support 0-100. */
+  support: number;
+  fiscal: FiscalState;
+  /** Earliest tick for the next budget hearing. */
+  hearingReadyTick: number;
+  /** Procurement frozen by a parliamentary inquiry until this tick. */
+  inquiryUntil: number | null;
+  nextElectionTick: number;
+}
+
 /** Everything a simulated day reads and mutates. The store hands engines a structured clone of this. */
 export interface WorldDraft {
   seed: string;
@@ -80,6 +110,7 @@ export interface WorldDraft {
   scripted: boolean;
   /** Standing orders. */
   policy: { autoSpares: boolean };
+  politics: PoliticsState;
   /** Running statistics for the ledger. */
   stats: { hostilesDestroyed: number; shipsLost: number; incidents: number };
 }

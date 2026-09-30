@@ -13,6 +13,7 @@ import type { HullClassId } from '../types/hull';
 import type { MapData } from '../types/map';
 import type { WorldDraft } from '../types/world';
 import { createShip } from './fleetEngine';
+import { initialPolitics } from './politicsEngine';
 import { initialResearch } from './researchEngine';
 
 export const TUTORIAL_SEED = 'BRIEFING-01';
@@ -213,6 +214,8 @@ export function createTutorialWorld(): WorldDraft {
     events: [{ severity: 'INFO', text: "ADMIRAL'S BRIEFING OPENED — theatre: two sectors joined by THE NARROWS. Await instructions." }],
     scripted: true,
     policy: { autoSpares: false },
+    // Budget 2500 = opening balance + first tranche; the next tranche (day 90) falls after the briefing ends.
+    politics: initialPolitics({ support: 55, appropriation: 3000, openingBalance: 2500 - 750, scripted: true }),
     stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0 },
   };
 }
