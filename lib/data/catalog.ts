@@ -1,16 +1,23 @@
 /** Static game data: vendors, hulls, equipment modules, ministries, R&D projects, starter designs. */
-import type { Ministry, Vendor, VendorId } from '../types/diplomacy';
+import type { Bloc, Ministry, RegimeId, Rung, Vendor, VendorId } from '../types/diplomacy';
 import type { EquipmentModule, Protocol } from '../types/equipment';
 import type { HullBase, HullClassId, ShipDesign } from '../types/hull';
 
 // ------------------------------------------------------------------------------- vendors
 
+function v(id: VendorId, name: string, country: string, standing: number, regime: RegimeId, bloc: Bloc, rung: Rung): Vendor {
+  return { id, name, country, standing, regime, bloc, rung, rungProgress: null, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null };
+}
+
 export const INITIAL_VENDORS: Vendor[] = [
-  { id: 'DOMESTIC_YARDS', name: 'Arsenal Yards', country: 'HOME', standing: 100, volatility: 0, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'NAVAL_GROUP_THALES', name: 'Meridian Navale', country: 'REPUBLIC OF AURELLE', standing: 45, volatility: 0.35, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'RAYTHEON', name: 'Halberd Dynamics', country: 'FEDERATED STATES OF HALCYON', standing: 35, volatility: 0.6, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'ASELSAN', name: 'Sarnic Defence', country: 'REPUBLIC OF SARNIA', standing: 50, volatility: 0.45, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
-  { id: 'ZVEZDA_NORD', name: 'Zvezda-Nord Export', country: 'EASTERN BLOC', standing: 55, volatility: 0.8, status: 'ACTIVE', statusUntilTick: null, pendingSanction: null },
+  v('DOMESTIC_YARDS', 'Arsenal Yards', 'HOME', 100, 'HOME', 'HOME', 'STRATEGIC'),
+  v('NAVAL_GROUP_THALES', 'Meridian Navale', 'REPUBLIC OF AURELLE', 45, 'AURELLE', 'EURO', 'SIGNED'),
+  v('RAYTHEON', 'Halberd Dynamics', 'FEDERATED STATES OF HALCYON', 35, 'HALCYON', 'WEST', 'FRAMEWORK'),
+  v('ASELSAN', 'Sarnic Defence', 'REPUBLIC OF SARNIA', 50, 'SARNIA', 'WEST', 'SIGNED'),
+  v('ZVEZDA_NORD', 'Zvezda-Nord Export', 'EASTERN BLOC', 55, 'EASTERN', 'EAST', 'SIGNED'),
+  v('NORDVIK', 'Nordvik Systems', 'KINGDOM OF VINTERLAND', 30, 'VINTERLAND', 'NORDIC', 'CONTACT'),
+  v('SEORAK', 'Seorak Consortium', 'REPUBLIC OF SEORYEONG', 30, 'SEORYEONG', 'ASIA_PAC', 'CONTACT'),
+  v('KESSLER_BRANDT', 'Kessler-Brandt Antriebe', 'FEDERAL REPUBLIC OF RHEINMARK', 25, 'RHEINMARK', 'EURO', 'UNKNOWN'),
 ];
 
 export const VENDOR_SHORT: Record<VendorId, string> = {
@@ -19,6 +26,9 @@ export const VENDOR_SHORT: Record<VendorId, string> = {
   RAYTHEON: 'HALB',
   ASELSAN: 'SARN',
   ZVEZDA_NORD: 'ZVEZDA',
+  NORDVIK: 'NORDV',
+  SEORAK: 'SEORAK',
+  KESSLER_BRANDT: 'K-B',
 };
 
 export const MINISTRIES: Ministry[] = [
@@ -76,10 +86,11 @@ const powerplant = (
 const cms = (
   id: string, name: string, vendorId: VendorId, protocol: Protocol, draw: number, weightT: number, cost: number,
   requiredTier: 0 | 1 | 2 | 3, reliability: number, reactionSec: number, channels: number, blurb: string, unlockedBy?: string,
+  integration = 1,
 ): EquipmentModule =>
   mod({
     id, name, slot: 'CMS', vendorId, protocol, powerDrawMW: draw, weightT, cost, requiredTier, reliability,
-    unlockedBy, stats: { kind: 'CMS', reactionSec, channels }, blurb,
+    unlockedBy, stats: { kind: 'CMS', reactionSec, channels, integration }, blurb,
   });
 
 const sensor = (
@@ -139,6 +150,18 @@ export const MODULES: EquipmentModule[] = [
   arm('ARM_ASEL_SEALANCE', 'Sea Lance SSM Quad', 'ASELSAN', 'NATO_LINK16', 0.3, 22, 11, 1, 0.9, 'SSM', 4, 75, 150, 'Anti-ship missile with {x:NATO_LINK16} compatibility.'),
   arm('ARM_ZV_KH8', 'P-Kh SSM x8', 'ZVEZDA_NORD', 'EASTERN_ANALOG', 0.5, 60, 14, 0, 0.82, 'SSM', 8, 90, 200, 'Heavy analog-guided salvo missile.'),
   arm('ARM_ZV_CIWS30', 'AK-30 CIWS', 'ZVEZDA_NORD', 'EASTERN_ANALOG', 0.4, 14, 3, 0, 0.88, 'GUN', 1, 12, 5, 'Twin 30mm close-in weapon.'),
+
+  // Nordvik Systems (Vinterland): open-architecture integrator — its CMS halves integration friction with foreign kit.
+  cms('CMS_NV_OPEN9', 'Nordvik NV-9 Open CMS', 'NORDVIK', 'NATO_LINK16', 2.2, 11, 26, 1, 0.93, 4.5, 12, 'Open-architecture CMS: integrates third-party sensors and weapons with half the usual friction.', undefined, 0.5),
+  sensor('SEN_NV_SKY4', 'Nordvik SKY-4 AESA', 'NORDVIK', 'NATO_LINK16', 3.5, 16, 24, 1, 0.92, 180, 120, 'Compact rotating AESA for corvettes and frigates.'),
+  arm('ARM_NV_RB15', 'Nordvik RB-15 SSM Quad', 'NORDVIK', 'NATO_LINK16', 0.3, 24, 16, 1, 0.93, 'SSM', 4, 85, 200, 'Long-range sea-skimming anti-ship missile.'),
+  // Seorak Consortium (Seoryeong): fast, price-competitive power and domestic-bus systems.
+  powerplant('PP_SK_ST30', 'Seorak ST-30 Turbine Pack', 'SEORAK', 30, 250, 24, 1, 0.9, 'Compact 30 MW turbine pack; quick delivery.'),
+  cms('CMS_SK_SHIELD', 'Seorak Naval Shield CMS', 'SEORAK', 'DOMESTIC_OPEN', 2.4, 13, 18, 1, 0.91, 5.5, 10, 'Open-bus CMS: plugs into domestic sensors and weapons without friction.'),
+  arm('ARM_SK_KVLS16', 'Seorak SV-16 Launcher', 'SEORAK', 'DOMESTIC_OPEN', 0.8, 70, 28, 1, 0.9, 'SAM', 16, 28, 50, 'Sixteen-cell vertical launcher with medium-range SAMs.'),
+  // Kessler-Brandt Antriebe (Rheinmark): engines and radars; slow licences.
+  powerplant('PP_KB_20V', 'Kessler-Brandt KB-20V Diesel', 'KESSLER_BRANDT', 16, 150, 16, 1, 0.97, 'Very reliable high-power diesel; the engine inside many foreign hulls.'),
+  sensor('SEN_KB_TRS4', 'Kessler-Brandt TRS-4 AESA', 'KESSLER_BRANDT', 'TACTICOS_ETHERNET', 4.5, 22, 34, 2, 0.9, 170, 150, 'Four-face fixed AESA.'),
 ];
 
 export const MODULE_BY_ID: Record<string, EquipmentModule> = Object.fromEntries(MODULES.map((m) => [m.id, m]));

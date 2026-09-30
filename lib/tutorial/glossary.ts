@@ -12,5 +12,6 @@ export const GLOSSARY: Record<string, string> = {
   FISCAL: 'The navy is funded by an annual appropriation paid in four quarterly tranches. Unspent money above 15% of the appropriation returns to the Treasury at year end, and spending too slowly shrinks next year\'s forecast.',
   SOP: 'Standing operating procedure: what task forces do on their own when an unknown contact comes near. Observe = shadow and identify visually. Challenge = hail, warn the silent, board runners. Assertive = hail early and board silent contacts without warning. ROE is the ceiling on firing.',
   LADDER: 'Shadow, hail, warn, board, engage. Each step reveals something about a contact and carries a risk; ROE caps engagement. Orders here override the sector SOP for this contact only.',
+  RELATIONS: 'Relationship ladder: Contact → Trade mission → Framework agreement (tier-0 lines) → Signed (tiers by standing) → Strategic partner. Each step costs political capital and days; later steps also cost money and need standing. Courting the Eastern bloc costs standing with western vendors.',
   TENSION: 'Global geopolitical tension. Raises the chance that vendor states revoke licences, freeze exports or embargo spares.',
 };

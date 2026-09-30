@@ -160,10 +160,33 @@ hovered or keyboard-focused: costs, before -> after values, time to effect, risk
   CHALLENGE; boarding a raider is an ambush >90%; a warned raider never keeps surprise). `verify:preview` covers contact and SOP previews.
 - In a 2-year free-play soak with 2 task forces the ladder fires ~7–15 hails per theatre; most contacts appear in uncovered sectors.
 
+## Contractors phase 1 (done, 2026-09-30)
+
+`lib/sim/relationsEngine.ts`:
+- **Relationship ladder** (`Vendor.rung`, `rungProgress`): UNKNOWN (hidden: not in the designer or ledger lists) → CONTACT → TRADE MISSION
+  (8 PC, 15 d) → FRAMEWORK (10 PC + 40M, 25 d, standing ≥ 30; **tier-0 lines only**) → SIGNED (15 PC + 60M, 30 d, standing ≥ 50; tiers by
+  standing) → STRATEGIC (20 PC + 120M, 45 d, standing ≥ 80; sanction risk ×0.5, lobbying +25%). PC costs follow the support multiplier;
+  ministries refuse below support 25. A step stalls while the vendor state has sanctions in force. **Scout for suppliers** (6 PC) reveals the
+  next UNKNOWN vendor. `procurability` now gates on `sellableTier(v)`.
+- **Regime profiles** (`REGIMES`) replace the old per-vendor `volatility`: hazard, notice days, freeze length, sanction-kind mix, lobbying
+  responsiveness and an incident penalty (Vinterland −6, Rheinmark −2, Halcyon −1 standing per incident). Only vendors at FRAMEWORK+ can
+  sanction. Diplomacy risk figures use `sanctionRiskPerDay`.
+- **Soft bloc affinity:** concluding a step with an EASTERN vendor costs WEST/EURO/NORDIC vendors 4 standing; a western step costs the
+  East 2. Shown in the Advance preview.
+- **Vendors 6-8:** Nordvik Systems (Vinterland, CONTACT; NV-9 **open-architecture CMS** — `CmsStats.integration` 0.5 halves friction —
+  SKY-4 AESA, RB-15 SSM), Seorak Consortium (Seoryeong, CONTACT; ST-30 turbine, Naval Shield open-bus CMS, SV-16 launcher), Kessler-Brandt
+  Antriebe (Rheinmark, UNKNOWN; KB-20V diesel, TRS-4 AESA). Halberd Dynamics now starts at FRAMEWORK (its catalogue is tier 2-3, so it
+  needs signing). Real-name skins added.
+- **Diplomacy tab v2:** Home front, climate, then *Contracted* and *Prospective* supplier groups; each card has rung / regime / bloc chips,
+  regime blurb, standing, collapsible catalogue with per-line availability, relationship progress, Advance button and lobbying; an
+  *Unknown suppliers* card with Scout.
+- `npm run verify:relations`: gating, costs and timings of every rung, scouting, bloc fallout, Vinterland incident penalty, regime sanction
+  mixes, strategic risk halving, no sanctions from non-contract vendors over 1,500 high-tension days, open-architecture friction.
+- Not yet (phases 2-5): hidden sub-suppliers / due diligence, contracts (deposits, cancel/resale), cold vendors, licensed production.
+
 ## What to build next
 
-Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Next: **contractors phase 1** (`PLAN-foreign-contractors.md` §10), then the tutorial
-pass (teach the fiscal year, support and the SOP ladder; fix the layout jump). Confirm with the user first. (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
+Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phase 1 is done. Next: the tutorial pass (in progress), then contractors phase 2 (hidden sub-suppliers + due diligence). (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
 after those.
 
 ## Design backlog (do not build yet)

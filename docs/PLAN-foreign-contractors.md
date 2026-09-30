@@ -181,7 +181,7 @@ Aegis Link → "Bulwark Link"), with the real name in the skin table.
 
 0. **Display-name layer — DONE (2026-09-29).** `displayName(id, skin)` for vendors, countries, modules, projects; tutorial text uses tokens
    (`{vendor:SARNIC}`) instead of literals; settings toggle (persisted). Do this first, before content grows.
-1. **Ladder + regimes + roster 6-8.** `rung`, regime profiles replacing the single `volatility`, catalogue gated by rung, Diplomacy tab v2.
+1. **Ladder + regimes + roster 6-8 — DONE (2026-09-30).** `rung`, regime profiles replacing the single `volatility`, catalogue gated by rung, Diplomacy tab v2.
 2. **Information game.** `origins` on modules, a due-diligence action that reveals them before purchase, warning stage kept for every hazard.
 3. **Contracts.** Deposits, cancellation penalties, refund/resale for hulls under construction (Mistral); incident-driven standing loss for restrictive regimes.
 4. **Economy rebalance** (its own pass): income vs upkeep, deposits, offsets; verify with `verifySim`.

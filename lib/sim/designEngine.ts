@@ -1,6 +1,7 @@
 /** Equipment designer: power grid, payload, draft, protocol integration friction and combat figures. */
 import { HULLS, MODULE_BY_ID } from '../data/catalog';
-import { standingTier, type Vendor } from '../types/diplomacy';
+import type { Vendor } from '../types/diplomacy';
+import { RUNG_LABEL, sellableTier } from './relationsEngine';
 import type { BridgeKey, EquipmentModule, ModuleSlot, Protocol } from '../types/equipment';
 import { bridgeKey, SLOT_ORDER } from '../types/equipment';
 import type { Draft, DesignEvaluation, HullClassId, IntegrationFriction } from '../types/hull';
@@ -68,7 +69,9 @@ export function evaluateLoadout(
   const frictions: IntegrationFriction[] = [];
   if (cms) {
     for (const m of [...sensors, ...arms]) {
-      const severity = frictionSeverity(m.protocol, cms.protocol);
+      // An open-architecture CMS scales down friction with every foreign module.
+      const openness = cms.stats.kind === 'CMS' ? cms.stats.integration ?? 1 : 1;
+      const severity = frictionSeverity(m.protocol, cms.protocol) * openness;
       if (severity <= 0) continue;
       const key = bridgeKey(m.protocol, cms.protocol);
       frictions.push({
@@ -164,7 +167,9 @@ export function procurability(m: EquipmentModule, vendors: Record<string, Vendor
   if (!v) return { ok: true };
   if (v.status === 'FROZEN') return { ok: false, reason: 'EXPORT FREEZE' };
   if (v.status === 'REVOKED') return { ok: false, reason: 'LICENCE REVOKED' };
-  if (standingTier(v.standing) < m.requiredTier) return { ok: false, reason: `NEEDS STANDING T${m.requiredTier}` };
+  const tier = sellableTier(v);
+  if (tier < 0) return { ok: false, reason: v.rung === 'UNKNOWN' ? 'SUPPLIER UNKNOWN' : `NO CONTRACT (${RUNG_LABEL[v.rung]})` };
+  if (tier < m.requiredTier) return { ok: false, reason: v.rung === 'FRAMEWORK' ? `FRAMEWORK: TIER 0 ONLY (NEEDS SIGNED + T${m.requiredTier})` : `NEEDS STANDING T${m.requiredTier}` };
   return { ok: true };
 }
 

@@ -1,81 +1,200 @@
 'use client';
 
-import { useMemo } from 'react';
+import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { MINISTRIES, MODULES } from '@/lib/data/catalog';
-import { standingTier, type Vendor } from '@/lib/types/diplomacy';
+import { procurability } from '@/lib/sim/designEngine';
+import { lobbyCost, ministriesRefuse } from '@/lib/sim/politicsEngine';
+import { previewAdvance, previewLobby, previewScout } from '@/lib/sim/preview';
+import { advanceBlocked, BLOC_LABEL, nextStep, REGIMES, RUNG_LABEL, rungAccess, sanctionRiskPerDay, scoutBlocked, sellableTier } from '@/lib/sim/relationsEngine';
+import { rungIndex, type Rung, type Vendor } from '@/lib/types/diplomacy';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { Btn, Chip, Meter, Section } from './kit';
-import { previewLobby } from '@/lib/sim/preview';
-import { lobbyCost, ministriesRefuse } from '@/lib/sim/politicsEngine';
 import HomeFront from './HomeFront';
 
 function statusChip(v: Vendor, tick: number) {
   switch (v.status) {
-    case 'ACTIVE': return <Chip tone="emerald">LICENCE ACTIVE</Chip>;
+    case 'ACTIVE': return rungIndex(v.rung) >= rungIndex('FRAMEWORK') ? <Chip tone="emerald">LICENCE ACTIVE</Chip> : <Chip tone="dim">NO CONTRACT</Chip>;
     case 'WARNING': return <Chip tone="amber">WARNING · {v.pendingSanction?.replace('_', ' ')} IN {Math.max(0, (v.statusUntilTick ?? tick) - tick)}D</Chip>;
     case 'FROZEN': return <Chip tone="red">FROZEN · {Math.max(0, (v.statusUntilTick ?? tick) - tick)}D LEFT</Chip>;
     case 'REVOKED': return <Chip tone="red">REVOKED</Chip>;
   }
 }
 
-export default function DiplomacyLedger() {
+const GROUPS: { title: string; rungs: Rung[] }[] = [
+  { title: 'Contracted suppliers', rungs: ['STRATEGIC', 'SIGNED', 'FRAMEWORK'] },
+  { title: 'Prospective suppliers', rungs: ['TRADE_MISSION', 'CONTACT'] },
+];
+
+function Catalogue({ v }: { v: Vendor }) {
+  const n = useNames();
+  const vendors = useFleetStore((s) => s.vendors);
+  const completed = useFleetStore((s) => s.research.completed);
+  const done = useMemo(() => new Set(completed), [completed]);
+  const lines = MODULES.filter((m) => m.vendorId === v.id);
+  return (
+    <ul className="mt-1 space-y-0.5 border-l border-navy pl-2">
+      {lines.map((m) => {
+        const p = procurability(m, vendors, done);
+        return (
+          <li key={m.id} className="flex justify-between gap-2 text-[0.75rem]">
+            <span className={p.ok ? 'text-slate-300' : 'text-slate-500'}>
+              {n.m(m.id)} <span className="text-slate-600">· T{m.requiredTier} · {n.xs(m.protocol)}</span>
+            </span>
+            <span className={p.ok ? 'text-emerald-accent' : 'text-slate-600'}>{p.ok ? 'AVAILABLE' : n.t(p.reason ?? '')}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function VendorCard({ v }: { v: Vendor }) {
   const n = useNames();
   const politics = useFleetStore((s) => s.politics);
-  const politicsView = { politics };
-  const refuse = ministriesRefuse(politicsView);
+  const tension = useFleetStore((s) => s.tension);
+  const pc = useFleetStore((s) => s.resources.politicalCapital);
+  const tick = useFleetStore((s) => s.tick);
+  const { lobby, advanceRelationship } = useFleetStore.getState();
+  const [open, setOpen] = useState(false);
+  const view = { politics };
+  const refuse = ministriesRefuse(view);
+  const regime = REGIMES[v.regime];
+  const risk = rungIndex(v.rung) >= rungIndex('FRAMEWORK') ? (1 - (1 - sanctionRiskPerDay({ tension }, v)) ** 30) * 100 : 0;
+  const tier = sellableTier(v);
+  const step = nextStep(v.rung);
+  const blocked = advanceBlocked(useFleetStore.getState().snapshotWorld(), v.id);
+  const lines = MODULES.filter((m) => m.vendorId === v.id).length;
+  const domestic = v.id === 'DOMESTIC_YARDS';
+
+  return (
+    <Section
+      anchor={`vendor-${v.id}`}
+      title={`${n.v(v.id)} · ${n.c(v.id)}`}
+      tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'}
+      right={statusChip(v, tick)}
+    >
+      <div className="mb-1 flex flex-wrap gap-1">
+        <Chip tone={rungIndex(v.rung) >= rungIndex('SIGNED') ? 'emerald' : rungIndex(v.rung) >= rungIndex('FRAMEWORK') ? 'cyan' : 'dim'}>{RUNG_LABEL[v.rung]}</Chip>
+        {!domestic && <Chip tone="dim">{regime.label}</Chip>}
+        {!domestic && <Chip tone={v.bloc === 'EAST' ? 'amber' : 'dim'}>{BLOC_LABEL[v.bloc]}</Chip>}
+      </div>
+      {!domestic && <p className="mb-1 text-[0.75rem] text-slate-500">{regime.blurb}</p>}
+      <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500">
+        <span><Term k="STANDING">STANDING</Term></span>
+        <div className="relative flex-1">
+          <Meter value={v.standing} tone="cyan" label={v.standing.toFixed(0)} />
+          {[25, 50, 75].map((t) => (
+            <span key={t} className="absolute top-0 h-1.5 w-px bg-slate-500/70" style={{ left: `calc((100% - 2.25rem - 0.375rem) * ${t / 100})` }} />
+          ))}
+        </div>
+        <span className="text-phosphor">{tier < 0 ? '—' : `T${tier}`}</span>
+      </div>
+      <div className="mt-1 flex justify-between text-[0.8125rem] text-slate-500">
+        <button onClick={() => setOpen(!open)} className="inline-flex items-center gap-1 hover:text-phosphor" aria-expanded={open}>
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {n.vs(v.id)} · {lines} catalogue lines · {rungAccess(v.rung)}
+        </button>
+        {!domestic && rungIndex(v.rung) >= rungIndex('FRAMEWORK') && (
+          <span className={risk > 8 ? 'text-warn' : risk > 3 ? 'text-amber-radar' : ''}>30-DAY SANCTION RISK ≈ {risk.toFixed(1)}%</span>
+        )}
+      </div>
+      {open && <Catalogue v={v} />}
+
+      {v.rungProgress && (
+        <div className="mt-1.5">
+          <div className="flex justify-between text-[0.75rem] uppercase tracking-widest text-slate-500">
+            <span>{RUNG_LABEL[v.rungProgress.target]} in progress</span>
+            <span>day {v.rungProgress.readyTick}</span>
+          </div>
+          <Meter
+            value={tick - v.rungProgress.startTick}
+            max={Math.max(1, v.rungProgress.readyTick - v.rungProgress.startTick)}
+            tone="emerald"
+            label={`${Math.max(0, v.rungProgress.readyTick - tick)}d`}
+          />
+        </div>
+      )}
+      {!domestic && step && !v.rungProgress && (
+        <Btn
+          className="mt-1.5 w-full"
+          tone="emerald"
+          disabled={!!blocked}
+          preview={(w) => `Advance to ${RUNG_LABEL[step.target]}: ${previewAdvance(w, v.id)}`}
+          onClick={() => advanceRelationship(v.id)}
+        >
+          Advance: {RUNG_LABEL[step.target]}
+        </Btn>
+      )}
+      {!domestic && (
+        <div className="mt-1.5 grid grid-cols-3 gap-1">
+          {MINISTRIES.map((m) => (
+            <Btn
+              key={m.id}
+              tone="amber"
+              disabled={pc < lobbyCost(view, m.cost) || !!refuse}
+              title={`${m.name} — ${m.description}`}
+              preview={(w) => `${m.name.split(' — ')[0]}: ${previewLobby(w, v.id, m.id)}`}
+              onClick={() => lobby(v.id, m.id)}
+            >
+              {m.name.split(' — ')[0].replace('Ministry of ', '')} · {lobbyCost(view, m.cost)}PC
+            </Btn>
+          ))}
+        </div>
+      )}
+    </Section>
+  );
+}
+
+export default function DiplomacyLedger() {
+  const n = useNames();
   const vendors = useFleetStore((s) => s.vendors);
   const tension = useFleetStore((s) => s.tension);
   const pc = useFleetStore((s) => s.resources.politicalCapital);
   const tick = useFleetStore((s) => s.tick);
   const sanctions = useFleetStore((s) => s.sanctions);
-  const { lobby } = useFleetStore.getState();
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    for (const m of MODULES) c[m.vendorId] = (c[m.vendorId] ?? 0) + 1;
-    return c;
-  }, []);
+  const { scoutSuppliers } = useFleetStore.getState();
+  const list = Object.values(vendors);
+  const unknown = list.filter((v) => v.rung === 'UNKNOWN').length;
+  const scoutBlock = scoutBlocked(useFleetStore.getState().snapshotWorld());
 
   return (
     <div className="space-y-2">
       <HomeFront />
       <Section title={<Term k="TENSION">Geopolitical climate</Term>} tone="amber" right={<span className="text-amber-radar">PC {pc.toFixed(1)}</span>}>
         <Meter value={tension} tone={tension > 66 ? 'red' : tension > 40 ? 'amber' : 'emerald'} label={tension.toFixed(0)} />
-        <p className="mt-1 text-[0.8125rem] text-slate-500">Tension raises the chance a vendor state revokes licences, freezes exports or embargoes spares. Ministerial lobbying builds standing; at 65+ a pending sanction is averted outright.</p>
+        <p className="mt-1 text-[0.8125rem] text-slate-500">
+          Tension raises the chance a vendor state revokes licences, freezes exports or embargoes spares; each regime reacts differently. Lobbying builds
+          standing; at 65+ a pending sanction is averted outright.
+        </p>
       </Section>
 
-      {Object.values(vendors).map((v) => {
-        const tier = standingTier(v.standing);
-        const risk = v.id === 'DOMESTIC_YARDS' ? 0 : ((tension / 100) ** 2 * v.volatility * 0.03 * (1 - v.standing / 130)) * 30 * 100;
+      {GROUPS.map((g) => {
+        const group = list.filter((v) => g.rungs.includes(v.rung)).sort((a, b) => rungIndex(b.rung) - rungIndex(a.rung));
+        if (!group.length) return null;
         return (
-          <Section key={v.id} anchor={`vendor-${v.id}`} title={`${n.v(v.id)} · ${n.c(v.id)}`} tone={v.status === 'FROZEN' || v.status === 'REVOKED' ? 'red' : v.status === 'WARNING' ? 'amber' : 'cyan'} right={statusChip(v, tick)}>
-            <div className="flex items-center gap-2 text-[0.8125rem] text-slate-500">
-              <span><Term k="STANDING">STANDING</Term></span>
-              <div className="relative flex-1">
-                <Meter value={v.standing} tone="cyan" label={v.standing.toFixed(0)} />
-                {[25, 50, 75].map((t) => (
-                  <span key={t} className="absolute top-0 h-1.5 w-px bg-slate-500/70" style={{ left: `calc((100% - 2.25rem - 0.375rem) * ${t / 100})` }} />
-                ))}
-              </div>
-              <span className="text-phosphor">T{tier}</span>
+          <div key={g.title} className="space-y-2">
+            <div className="px-1 text-[0.75rem] uppercase tracking-[0.25em] text-slate-500">
+              <Term k="RELATIONS">{g.title}</Term>
             </div>
-            <div className="mt-1 flex justify-between text-[0.8125rem] text-slate-500">
-              <span>{n.vs(v.id)} · {counts[v.id] ?? 0} catalogue lines</span>
-              {v.id !== 'DOMESTIC_YARDS' && <span className={risk > 8 ? 'text-warn' : risk > 3 ? 'text-amber-radar' : ''}>30-DAY SANCTION RISK ≈ {risk.toFixed(1)}%</span>}
-            </div>
-            {v.id !== 'DOMESTIC_YARDS' && (
-              <div className="mt-1.5 grid grid-cols-3 gap-1">
-                {MINISTRIES.map((m) => (
-                  <Btn key={m.id} tone="amber" disabled={pc < lobbyCost(politicsView, m.cost) || !!refuse} title={`${m.name} — ${m.description}`} preview={(w) => `${m.name.split(' — ')[0]}: ${previewLobby(w, v.id, m.id)}`} onClick={() => lobby(v.id, m.id)}>
-                    {m.name.split(' — ')[0].replace('Ministry of ', '')} · {lobbyCost(politicsView, m.cost)}PC
-                  </Btn>
-                ))}
-              </div>
-            )}
-          </Section>
+            {group.map((v) => (
+              <VendorCard key={v.id} v={v} />
+            ))}
+          </div>
         );
       })}
+
+      <Section anchor="scout" title="Unknown suppliers" tone="cyan" right={<Search className="h-3.5 w-3.5 text-phosphor" />}>
+        <p className="text-[0.8125rem] text-slate-500">
+          {unknown ? `${unknown} supplier${unknown > 1 ? 's' : ''} not yet identified.` : 'Every supplier on the market is known.'} Trade attachés can survey the
+          market; a new supplier starts as a contact with its catalogue visible.
+        </p>
+        <Btn className="mt-1.5 w-full" tone="cyan" disabled={!!scoutBlock} preview={previewScout} onClick={() => scoutSuppliers()}>
+          Scout for suppliers
+        </Btn>
+      </Section>
 
       <Section title="Sanction register" tone="red">
         {sanctions.length === 0 && <p className="text-[0.875rem] text-slate-500">No sanctions on record.</p>}

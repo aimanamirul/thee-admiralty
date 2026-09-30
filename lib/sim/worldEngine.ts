@@ -9,6 +9,7 @@ import { tickContacts } from './contactEngine';
 import { tickDiplomacy } from './diplomacyEngine';
 import { advanceFleets, allTaskForces, taskForceShipIds } from './fleetEngine';
 import { tickPolitics } from './politicsEngine';
+import { tickRelations } from './relationsEngine';
 import { bridgeSet, BASE_RP_INCOME, tickResearch } from './researchEngine';
 
 export { ENGAGE_RANGE, IDENTIFY_RANGE } from './contactEngine';
@@ -18,6 +19,7 @@ const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax -
 
 export function advanceDay(world: WorldDraft): void {
   world.tick += 1;
+  const incidentsBefore = world.stats.incidents;
   const rng = new Rng(`${world.seed}:day:${world.tick}`);
   const bridges = bridgeSet(world.research.completed);
 
@@ -31,6 +33,7 @@ export function advanceDay(world: WorldDraft): void {
   updateSectors(world, rng.fork('sectors'));
   advanceFleets(world, rng.fork('fleets'));
   tickContacts(world, rng.fork('contacts'), bridges);
+  tickRelations(world, incidentsBefore);
 }
 
 function progressConstruction(world: WorldDraft): void {

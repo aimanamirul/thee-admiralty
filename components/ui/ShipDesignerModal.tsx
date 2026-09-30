@@ -122,7 +122,7 @@ export default function ShipDesignerModal() {
                   {sel[slot].map((val, idx) => (
                     <select key={idx} value={val} onChange={(e) => setSlot(slot, idx, e.target.value)} className="w-full px-1.5 py-1 text-[0.875rem]" aria-label={`${SLOT_LABEL[slot]} socket ${idx + 1}`}>
                       <option value="">— empty —</option>
-                      {MODULES.filter((m) => m.slot === slot).map((m) => {
+                      {MODULES.filter((m) => m.slot === slot && vendors[m.vendorId]?.rung !== 'UNKNOWN').map((m) => {
                         const p = procurability(m, vendors, done);
                         const stat = slot === 'POWERPLANT' ? `+${m.powerGenerationMW}MW` : `${m.powerDrawMW}MW`;
                         return (

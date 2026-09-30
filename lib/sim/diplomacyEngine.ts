@@ -2,6 +2,8 @@
 import { MINISTRIES, MODULE_BY_ID } from '../data/catalog';
 import { vt } from '../data/tokens';
 import { adjustSupport, lobbyCost, ministriesRefuse } from './politicsEngine';
+import { REGIMES, rollSanctionKind, sanctionRiskPerDay } from './relationsEngine';
+import { rungIndex } from '../types/diplomacy';
 import type { Rng } from '../generator/prng';
 import type { SanctionKind, Vendor, VendorId } from '../types/diplomacy';
 import type { WorldDraft } from '../types/world';
@@ -34,18 +36,25 @@ export function vendorBlocksSpareUse(world: WorldDraft, vendorId: VendorId): boo
   return world.vendors[vendorId].status === 'REVOKED' || !!activeSanction(world, vendorId, 'PARTS_EMBARGO');
 }
 
+/** Standing a lobbying round actually buys: regime responsiveness, +25% for strategic partners. */
+export function lobbyGain(v: Vendor, base: number): number {
+  return Math.round(base * REGIMES[v.regime].lobbyEffect * (v.rung === 'STRATEGIC' ? 1.25 : 1));
+}
+
 export function lobbyVendor(world: WorldDraft, vendorId: VendorId, ministryId: string): { ok: boolean; reason?: string } {
   const v = world.vendors[vendorId];
   const m = MINISTRIES.find((x) => x.id === ministryId);
   if (!v || !m) return { ok: false, reason: 'UNKNOWN TARGET' };
   if (vendorId === 'DOMESTIC_YARDS') return { ok: false, reason: 'DOMESTIC YARDS NEED NO LOBBYING' };
+  if (v.rung === 'UNKNOWN') return { ok: false, reason: 'SUPPLIER NOT YET KNOWN — SCOUT FIRST' };
   const refuse = ministriesRefuse(world);
   if (refuse) return { ok: false, reason: refuse };
   const cost = lobbyCost(world, m.cost);
   if (world.resources.politicalCapital < cost) return { ok: false, reason: `NEEDS ${cost} POLITICAL CAPITAL` };
   world.resources.politicalCapital -= cost;
-  v.standing = Math.min(100, v.standing + m.standingGain);
-  world.events.push({ severity: 'INFO', text: `LOBBY: ${m.name} → ${vt(v.id)} standing +${m.standingGain} (now ${v.standing.toFixed(0)})` });
+  const gain = lobbyGain(v, m.standingGain);
+  v.standing = Math.min(100, v.standing + gain);
+  world.events.push({ severity: 'INFO', text: `LOBBY: ${m.name} → ${vt(v.id)} standing +${gain} (now ${v.standing.toFixed(0)})` });
 
   if (v.status === 'FROZEN' && v.statusUntilTick !== null) {
     v.statusUntilTick = Math.max(world.tick + 1, v.statusUntilTick - 10);
@@ -74,20 +83,21 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
   world.tension = Math.max(0, Math.min(100, world.tension));
 
   for (const v of Object.values(world.vendors)) {
-    if (v.id === 'DOMESTIC_YARDS') continue;
+    if (v.id === 'DOMESTIC_YARDS' || v.rung === 'UNKNOWN') continue;
     if (!world.scripted) v.standing = Math.max(10, v.standing - 0.03); // goodwill decays without upkeep
 
     if (v.status === 'ACTIVE') {
       if (world.scripted) continue; // scripted worlds inject sanctions by hand
-      const p = (world.tension / 100) ** 2 * v.volatility * 0.03 * (1 - v.standing / 130);
-      if (rng.chance(p)) {
-        const roll = rng.next();
-        v.pendingSanction = roll < 0.55 ? 'EXPORT_FREEZE' : roll < 0.8 ? 'PARTS_EMBARGO' : 'LICENSE_REVOKED';
+      // Only vendors we actually buy from can sanction us.
+      if (rungIndex(v.rung) < rungIndex('FRAMEWORK')) continue;
+      if (rng.chance(sanctionRiskPerDay(world, v))) {
+        v.pendingSanction = rollSanctionKind(v, rng.next());
         v.status = 'WARNING';
-        v.statusUntilTick = world.tick + WARNING_DAYS;
+        const notice = REGIMES[v.regime].warningDays || WARNING_DAYS;
+        v.statusUntilTick = world.tick + notice;
         world.events.push({
           severity: 'WARNING',
-          text: `EXPORT RISK: ${vt(v.id)} signals ${v.pendingSanction.replace('_', ' ')} in ${WARNING_DAYS} days — lobby to avert`,
+          text: `EXPORT RISK: ${vt(v.id)} signals ${v.pendingSanction.replace('_', ' ')} in ${notice} days — lobby to avert`,
         });
       }
     } else if (v.status === 'WARNING' && v.statusUntilTick !== null && world.tick >= v.statusUntilTick) {
@@ -108,7 +118,8 @@ export function tickDiplomacy(world: WorldDraft, rng: Rng): void {
         adjustSupport(world, -3);
         world.events.push({ severity: 'CRITICAL', text: `${vt(v.id)}: EXPORT LICENCE REVOKED — orders frozen, support contracts terminated` });
       } else {
-        const days = rng.int(30, 90);
+        const [lo, hi] = REGIMES[v.regime].freezeDays;
+        const days = rng.int(lo || 30, hi || 90);
         v.status = 'FROZEN';
         v.statusUntilTick = world.tick + days;
         v.pendingSanction = null;

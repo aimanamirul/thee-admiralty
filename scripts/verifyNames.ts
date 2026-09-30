@@ -96,7 +96,7 @@ for (const { where, text } of strings) {
 }
 
 // ---- 4. static UI source: no real names in non-comment lines
-const REAL_WORDS = /\b(Raytheon|Thales|Aselsan|Naval Group|TACTICOS|Aegis|ESSM|Harpoon|MK41|SPY-6|SMART-S|APAR|Sylver|MM40|Link-16|NATO|Turkish|French)\b/;
+const REAL_WORDS = /\b(Raytheon|Thales|Aselsan|Naval Group|TACTICOS|Aegis|ESSM|Harpoon|MK41|SPY-6|SMART-S|APAR|Sylver|MM40|Link-16|NATO|Turkish|French|Saab|Hanwha|Hensoldt|TKMS|MTU|9LV|RBS15)\b/;
 const skipFile = (f: string) => f.endsWith('lib/data/names.ts') || f.includes('node_modules');
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((e) => {

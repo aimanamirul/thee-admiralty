@@ -13,7 +13,8 @@
     "verify:names": "tsx scripts/verifyNames.ts",
     "verify:preview": "tsx scripts/verifyPreview.ts",
     "verify:economy": "tsx scripts/verifyEconomy.ts",
-    "verify:contacts": "tsx scripts/verifyContacts.ts"
+    "verify:contacts": "tsx scripts/verifyContacts.ts",
+    "verify:relations": "tsx scripts/verifyRelations.ts"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

@@ -20,6 +20,8 @@ export interface CmsStats {
   reactionSec: number;
   /** Simultaneous engagement channels. */
   channels: number;
+  /** Multiplier on integration friction with foreign modules (open-architecture CMS < 1). */
+  integration?: number;
 }
 export interface SensorStats {
   kind: 'SENSOR';

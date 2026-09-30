@@ -115,6 +115,8 @@ interface Actions {
   setAutoSpares: (on: boolean) => CommandResult;
   budgetHearing: () => CommandResult;
   setSop: (sectorId: number, sop: Sop) => CommandResult;
+  scoutSuppliers: () => CommandResult;
+  advanceRelationship: (vendorId: VendorId) => CommandResult;
   orderContact: (contactId: string, action: LadderAction | 'AUTO') => CommandResult;
 }
 
@@ -273,6 +275,8 @@ export const useFleetStore = create<GameState>((set, get) => {
     setAutoSpares: (on) => run((w) => cmd.setAutoSpares(w, on)),
     budgetHearing: () => run((w) => cmd.holdBudgetHearing(w)),
     setSop: (sectorId, sop) => run((w) => cmd.setSop(w, sectorId, sop)),
+    scoutSuppliers: () => run((w) => cmd.scoutSuppliersCmd(w)),
+    advanceRelationship: (vendorId) => run((w) => cmd.advanceRelationshipCmd(w, vendorId)),
     orderContact: (contactId, action) => run((w) => cmd.orderContact(w, contactId, action)),
   };
 });

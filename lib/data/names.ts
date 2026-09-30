@@ -22,6 +22,9 @@ const REAL_VENDOR: Record<string, RealVendor> = {
   NAVAL_GROUP_THALES: { name: 'Naval Group / Thales', country: 'FRANCE', short: 'N-G/THA' },
   RAYTHEON: { name: 'Raytheon', country: 'USA', short: 'RTX' },
   ASELSAN: { name: 'Aselsan', country: 'TURKEY', short: 'ASEL' },
+  NORDVIK: { name: 'Saab', country: 'SWEDEN', short: 'SAAB' },
+  SEORAK: { name: 'Hanwha / HD HHI', country: 'SOUTH KOREA', short: 'K-YARDS' },
+  KESSLER_BRANDT: { name: 'TKMS / MTU', country: 'GERMANY', short: 'TKMS' },
 };
 
 const REAL_MODULE: Record<string, string> = {
@@ -35,6 +38,13 @@ const REAL_MODULE: Record<string, string> = {
   ARM_NG_MM40: 'MM40 Block3 SSM Quad',
   ARM_RTX_MK41: 'MK41 VLS + ESSM (16)',
   ARM_RTX_HARPOON: 'Harpoon-class SSM Quad',
+  CMS_NV_OPEN9: 'Saab 9LV CMS',
+  SEN_NV_SKY4: 'Sea Giraffe 4A AESA',
+  ARM_NV_RB15: 'RBS15 Mk3 SSM Quad',
+  CMS_SK_SHIELD: 'Hanwha Naval Shield CMS',
+  ARM_SK_KVLS16: 'K-VLS 16-Cell',
+  PP_KB_20V: 'MTU 20V 4000 Diesel',
+  SEN_KB_TRS4: 'Hensoldt TRS-4D AESA',
 };
 
 const REAL_PROJECT: Record<string, string> = {

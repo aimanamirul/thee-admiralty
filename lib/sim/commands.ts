@@ -7,6 +7,7 @@ import type { HierarchyKind, NamingTradition, Tempo } from '../types/fleet';
 import type { HullClassId } from '../types/hull';
 import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { actionBlocked, INTENT_LABEL } from './contactEngine';
+import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { evaluateLoadout, procurability } from './designEngine';
 import { lobbyVendor, vendorBlocksOrders } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
@@ -248,4 +249,14 @@ export function orderContact(world: WorldDraft, contactId: string, action: Ladde
   const what = c.cls === 'UNKNOWN' ? 'unidentified contact' : INTENT_LABEL[c.intent].toLowerCase();
   world.events.push({ severity: 'INFO', text: `ORDERS: ${action === 'SHADOW' ? 'shadow and hold' : action.toLowerCase()} the ${what} ${c.id.slice(3, 11)}` });
   return done('Orders issued');
+}
+
+export function scoutSuppliersCmd(world: WorldDraft): CommandResult {
+  const r = scoutSuppliers(world);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function advanceRelationshipCmd(world: WorldDraft, vendorId: VendorId): CommandResult {
+  const r = advanceRelationship(world, vendorId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

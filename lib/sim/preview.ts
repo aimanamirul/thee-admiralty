@@ -19,6 +19,7 @@ import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, 
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
+import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutBlocked, SCOUT_PC } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
 
@@ -314,4 +315,28 @@ export function previewContactOrder(w: WorldDraft, contactId: string, action: La
   const when = !near ? 'no task force at sea to carry it out' : near.d <= range ? 'carried out tomorrow' : `carried out once a task force is within ${range} tiles (nearest ${near.d.toFixed(0)})`;
   if (action === 'SHADOW') return `Hold: track the contact and do not escalate, overriding the ${st.sop} SOP · raiders may still attack inside 12 tiles`;
   return `${when} · ${OUTCOMES[action]}`;
+}
+
+// ------------------------------------------------------------------------------------------ vendor relations
+
+export function previewScout(w: WorldDraft): Preview {
+  const b = scoutBlocked(w);
+  if (b) return blocked(b);
+  const unknown = Object.values(w.vendors).filter((v) => v.rung === 'UNKNOWN').length;
+  return `−${lobbyCost(w, SCOUT_PC)} PC · trade attachés identify 1 of ${unknown} unknown supplier${unknown > 1 ? 's' : ''} · its catalogue becomes visible (not yet purchasable)`;
+}
+
+export function previewAdvance(w: WorldDraft, vendorId: VendorId): Preview {
+  const b = advanceBlocked(w, vendorId);
+  if (b) return blocked(b);
+  const v = w.vendors[vendorId];
+  const step = nextStep(v.rung)!;
+  const fallout = blocFallout(w, v);
+  return [
+    `−${lobbyCost(w, step.pc)} PC${step.money ? ` · −${M(step.money)}` : ''}`,
+    `${RUNG_LABEL[step.target]} concludes in ${step.days} days (day ${w.tick + step.days})`,
+    `then: ${rungAccess(step.target)}`,
+    ...(fallout.length ? [`bloc politics: ${fallout.map((f) => `${vt(f.id)} −${f.loss}`).join(', ')} standing`] : []),
+    `stalls if ${REGIMES[v.regime].label.toLowerCase()} regime imposes sanctions`,
+  ].join(' · ');
 }
