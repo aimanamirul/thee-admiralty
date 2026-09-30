@@ -13,7 +13,7 @@ import type { Bridges, WorldDraft } from '../types/world';
 import type { Combatant } from './combatSim';
 import { moduleOrdersBlocked, moduleSpareUseBlocked } from './diplomacyEngine';
 import { evaluateLoadout } from './designEngine';
-import { findRoute } from './navigation';
+import { findRoute, snapToWater } from './navigation';
 
 export const PATROL_LIMIT_DAYS = 30;
 export const WORKUP_DAYS = 14;
@@ -194,7 +194,14 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
     const ships = taskForceShipIds(tf).map((id) => world.ships[id]).filter((s) => s && s.buildStatus === 'COMMISSIONED' && !s.isPartsHulk);
     const sector = tf.assignedSectorId !== null ? map.sectors[tf.assignedSectorId] : undefined;
     const wantsStation = !!sector && ships.some((s) => s.state !== 'MAINTENANCE_DOCK');
-    const goal = wantsStation && sector ? sector.anchor : map.homePort;
+    // Escort duty (shipping): follow the ship, or answer its distress call; overrides the station while it lasts.
+    const escortee = tf.escort ? world.shipping.ships.find((m) => m.id === tf.escort) : undefined;
+    const atSea = ships.some((s) => s.state !== 'MAINTENANCE_DOCK');
+    if (tf.escort && (!escortee || !atSea)) {
+      if (escortee && escortee.escort === tf.id) escortee.escort = null;
+      tf.escort = null;
+    }
+    const goal = tf.escort && escortee ? snapToWater(map, escortee.position) : wantsStation && sector ? sector.anchor : map.homePort;
     if (!tf.destination || dist(tf.destination, goal) > 0.5) {
       tf.destination = { ...goal };
       tf.route = [];

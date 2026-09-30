@@ -19,6 +19,7 @@ npm run verify:relations  # vendor ladder, regimes, bloc affinity, open-architec
 npm run verify:supply     # hidden sub-suppliers, due diligence, sanctions through components (always foreshadowed)
 npm run verify:contracts  # build contracts: deposit, instalments, cancellation refunds by fault, resale
 npm run verify:cold       # cold vendors: policy-shift vote, bloc introduction, JV export drive
+npm run verify:shipping   # civilian shipping: lanes, raiders vs cover, distress, escorts, war-risk, trade index
 node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the file header)
 ```
 

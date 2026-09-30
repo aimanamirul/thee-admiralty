@@ -15,6 +15,7 @@ import { usePreviewStore } from '@/store/usePreviewStore';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { previewAssign } from '@/lib/sim/preview';
 import { contactTag } from '@/lib/sim/contactEngine';
+import { KIND_TAG } from '@/lib/types/shipping';
 
 const C = {
   void: '#050811',
@@ -124,15 +125,17 @@ interface Toggles {
   bathy: boolean;
   sectors: boolean;
   threat: boolean;
+  shipping: boolean;
 }
 
 export default function TacticalMap() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true });
+  const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true, shipping: true });
   const [toggles, setToggles] = useState<Toggles>(togglesRef.current);
   const showLayers = useUiFlag('LAYERS');
+  const hasLanes = useFleetStore((s) => s.shipping.lanes.length > 0);
   const [fps, setFps] = useState(0);
 
   useEffect(() => {
@@ -250,6 +253,23 @@ export default function TacticalMap() {
       if (contactHit) {
         st.selectContact(contactHit);
         return;
+      }
+      // Merchant ships (identified civilian traffic on the lanes).
+      if (togglesRef.current.shipping) {
+        let shipHit: string | null = null;
+        let shipBest = 11;
+        for (const m of st.shipping.ships) {
+          const p = toScreen(m.position.x, m.position.y);
+          const dd = Math.hypot(p.x - e.offsetX, p.y - e.offsetY);
+          if (dd < shipBest) {
+            shipBest = dd;
+            shipHit = m.id;
+          }
+        }
+        if (shipHit) {
+          st.selectMerchant(shipHit);
+          return;
+        }
       }
       // Task force hit-test (screen space, 14px).
       let hit: string | null = null;
@@ -592,8 +612,83 @@ export default function TacticalMap() {
         label('HOME PORT', p.x + 10, p.y, 'rgba(0,240,255,0.8)', 'left', 9);
       }
 
-      // Contacts: amber = unidentified (blinking until hailed), red = hostile, green = identified neutral. Click to open the ladder.
       const blink = Math.floor(now / 500) % 2 === 0;
+
+      // Civilian shipping: faint lanes, identified merchant ships (grey), distress calls (amber), escorts (cyan line). Click a ship for orders.
+      if (tg.shipping) {
+        ctx.save();
+        ctx.setLineDash([2, 6]);
+        ctx.lineWidth = 1;
+        for (const lane of st.shipping.lanes) {
+          ctx.strokeStyle = lane.reroutedUntil !== null ? 'rgba(255,42,42,0.30)' : lane.risk > 40 ? 'rgba(255,176,0,0.32)' : 'rgba(148,163,184,0.26)';
+          ctx.beginPath();
+          lane.path.forEach((pt, i) => {
+            const q = toScreen(pt.x, pt.y);
+            if (i === 0) ctx.moveTo(q.x, q.y);
+            else ctx.lineTo(q.x, q.y);
+          });
+          ctx.stroke();
+        }
+        ctx.restore();
+        const tfs = st.fleets.flatMap((f) => f.taskForces);
+        for (const m of st.shipping.ships) {
+          const p = toScreen(m.position.x, m.position.y);
+          const distress = m.status === 'DISTRESS';
+          const col = distress ? C.amber : 'rgba(148,163,184,0.95)';
+          if (m.escort) {
+            const tf = tfs.find((t) => t.id === m.escort);
+            if (tf) {
+              const q = toScreen(tf.position.x, tf.position.y);
+              ctx.save();
+              ctx.strokeStyle = 'rgba(0,240,255,0.55)';
+              ctx.setLineDash([3, 3]);
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(q.x, q.y);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+          if (!distress || blink) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(m.heading);
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(5, 0);
+            ctx.lineTo(-4, 3);
+            ctx.lineTo(-4, -3);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+          }
+          if (distress) {
+            ctx.save();
+            ctx.strokeStyle = C.amber;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 8 + ((now / 120) % 6), 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+          label(distress ? `${KIND_TAG[m.kind]} SOS` : KIND_TAG[m.kind], p.x + 8, p.y - 6, distress ? C.amber : 'rgba(148,163,184,0.75)', 'left', 8);
+          if (st.selectedMerchantId === m.id) {
+            ctx.save();
+            ctx.strokeStyle = C.cyan;
+            ctx.shadowColor = C.cyan;
+            ctx.shadowBlur = 6 * dpr;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
+
+      // Contacts: amber = unidentified (blinking until hailed), red = hostile, green = identified neutral. Click to open the ladder.
       for (const c of st.contacts) {
         const p = toScreen(c.position.x, c.position.y);
         const tag = contactTag(c);
@@ -769,7 +864,7 @@ export default function TacticalMap() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
       <div ref={overlayRef} className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
         {<div aria-hidden={!showLayers || undefined} className={`pointer-events-auto flex gap-1 ${showLayers ? '' : 'invisible'}`}>
-          {(['grid', 'bathy', 'sectors', 'threat'] as const).map((k) => (
+          {(['grid', 'bathy', 'sectors', 'threat', ...(hasLanes ? (['shipping'] as const) : [])] as (keyof Toggles)[]).map((k) => (
             <button
               key={k}
               onClick={() => flip(k)}

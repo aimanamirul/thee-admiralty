@@ -6,6 +6,8 @@ import { allTaskForces, taskForceShipIds } from '@/lib/sim/fleetEngine';
 import type { Roe, Sop } from '@/lib/types/world';
 import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
+import MerchantPanel from './MerchantPanel';
+import ShippingLanes from './ShippingLanes';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
@@ -34,7 +36,9 @@ export default function SectorPanel() {
   const contacts = useFleetStore((s) => s.contacts);
   const selectedTf = useFleetStore((s) => s.selectedTaskForceId);
   const selectedContact = useFleetStore((s) => s.selectedContactId);
-  const { selectSector, setRoe, assignTaskForce, setSop, selectContact } = useFleetStore.getState();
+  const merchants = useFleetStore((s) => s.shipping.ships);
+  const selectedMerchant = useFleetStore((s) => s.selectedMerchantId);
+  const { selectSector, setRoe, assignTaskForce, setSop, selectContact, selectMerchant } = useFleetStore.getState();
 
   const tfs = useMemo(() => allTaskForces(fleets), [fleets]);
 
@@ -69,6 +73,7 @@ export default function SectorPanel() {
             </div>
           ))}
         </Section>
+        <ShippingLanes />
       </div>
     );
   }
@@ -77,12 +82,14 @@ export default function SectorPanel() {
   const st = sectorStates[selected];
   const chokes = map.chokepoints.filter((c) => c.links.includes(selected));
   const here = contacts.filter((c) => c.sectorId === selected);
+  const shipsHere = merchants.filter((m) => map.sectorGrid[Math.round(m.position.y) * map.width + Math.round(m.position.x)] === selected);
   const roe = ROES.find((r) => r.id === st.roe)!;
   const deepDraftRisk = Math.round(sec.littoralFraction * 100 * 2.5);
 
   return (
     <div className="space-y-2">
       <ContactPanel />
+      <MerchantPanel />
       <Section title={sec.name} right={<Btn tone="dim" onClick={() => selectSector(null)}>Overview</Btn>}>
         <div className="mb-2 flex flex-wrap gap-1">
           <Chip tone="cyan">{sec.kind}</Chip>
@@ -119,6 +126,24 @@ export default function SectorPanel() {
             ))}
           </div>
         </div>
+        {shipsHere.length > 0 && (
+          <div className="mt-2">
+            <div className="text-[0.8125rem] uppercase tracking-widest text-slate-500">Merchant ships in sector</div>
+            <ul className="mt-1 space-y-0.5">
+              {shipsHere.map((m) => (
+                <li key={m.id}>
+                  <button
+                    onClick={() => selectMerchant(m.id)}
+                    className={`flex w-full justify-between border px-1.5 py-0.5 text-left text-[0.8125rem] hover:border-phosphor/60 ${selectedMerchant === m.id ? 'border-phosphor/70' : 'border-navy'}`}
+                  >
+                    <span className={m.status === 'DISTRESS' ? 'text-amber-radar' : 'text-slate-300'}>{m.name}</span>
+                    <span className="text-slate-500">{m.status === 'DISTRESS' ? 'DISTRESS' : m.kind}{m.escort ? ' · ESCORTED' : ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {here.length > 0 && (
           <div className="mt-2">
             <div className="text-[0.8125rem] uppercase tracking-widest text-slate-500">Contacts in sector</div>

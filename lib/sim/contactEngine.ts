@@ -5,12 +5,13 @@
  * automatically, per the sector's standing operating procedure (SOP), or by the player's per-contact order. ROE is the ceiling
  * on ENGAGE. Each intent answers each step differently, so every step both reveals information and carries a risk.
  */
-import type { Rng } from '../generator/prng';
+import { Rng } from '../generator/prng';
 import type { Ship } from '../types/fleet';
 import type { Bridges, Contact, ContactIntent, LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { resolveEngagement } from './combatSim';
 import { allTaskForces, combatantOf, removeShip, taskForceShipIds } from './fleetEngine';
 import { adjustSupport } from './politicsEngine';
+import { laneAmbush, nearestMerchant, PREY_RANGE } from './shipping';
 
 export const IDENTIFY_RANGE = 10;
 export const ENGAGE_RANGE = 12;
@@ -305,10 +306,17 @@ function spawnContact(w: WorldDraft, rng: Rng, sectorId: number): Contact | null
     const i = rng.int(0, map.width * map.height - 1);
     if (map.sectorGrid[i] !== sectorId) continue;
     const intent = pickIntent(rng, st.threat);
+    let position = { x: i % map.width, y: Math.floor(i / map.width) };
+    if (intent === 'RAIDER') {
+      // Raiders often lie in wait on the shipping lane (own stream: existing spawn rolls are untouched).
+      const lane = new Rng(`${w.seed}:ambush:${w.tick}:${sectorId}`);
+      const at = lane.chance(0.6) ? laneAmbush(w, sectorId, lane) : null;
+      if (at && map.sectorGrid[Math.round(at.y) * map.width + Math.round(at.x)] === sectorId) position = at;
+    }
     return {
       id: `CT-${w.tick}-${sectorId}-${tries}`,
       sectorId,
-      position: { x: i % map.width, y: Math.floor(i / map.width) },
+      position,
       heading: rng.range(0, Math.PI * 2),
       cls: 'UNKNOWN',
       hostile: intent === 'RAIDER',
@@ -336,6 +344,9 @@ function move(w: WorldDraft, c: Contact, rng: Rng) {
     step = 2;
   } else if (c.intent === 'RAIDER' && near && near.d <= 24) {
     c.heading = toward(tfs.find((t) => t.id === near.id)!.position); // hunting
+    step = 2;
+  } else if (c.intent === 'RAIDER' && nearestMerchant(w.shipping, c.position, PREY_RANGE)) {
+    c.heading = toward(nearestMerchant(w.shipping, c.position, PREY_RANGE)!.position); // hunting shipping
     step = 2;
   } else if (c.intent === 'SHADOWER' && near && near.d <= 30) {
     // Keep station on the task force, outside visual identification range.

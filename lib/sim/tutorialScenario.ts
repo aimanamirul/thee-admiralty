@@ -3,6 +3,7 @@
  * strait into two hand-named sectors, plus a small, hand-tuned fleet. Random events are disabled (`scripted`)
  * so every lesson's setup is deterministic; lessons inject their own events.
  */
+import { emptyShipping } from '../types/shipping';
 import { INITIAL_VENDORS, STARTER_DESIGNS } from '../data/catalog';
 import { generateShipName, generatePennant, squadronName } from '../generator/nameGenerator';
 import { Rng } from '../generator/prng';
@@ -217,6 +218,7 @@ export function createTutorialWorld(): WorldDraft {
     policy: { autoSpares: false },
     // Budget 2500 = opening balance + first tranche; the next tranche (day 90) falls after the briefing ends.
     politics: initialPolitics({ support: 55, appropriation: 3000, openingBalance: 2500 - 750, scripted: true }),
+    shipping: emptyShipping(),
     stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0, seizures: 0 },
   };
 }

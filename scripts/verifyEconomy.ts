@@ -22,8 +22,8 @@ const check = (ok: boolean, msg: string) => {
 const YEARS = 3;
 const CORVETTE = ['PP_DOM_D12', 'CMS_DOM_OB1', 'SEN_DOM_DSR2', 'ARM_DOM_DSAM8', 'ARM_DOM_GUN76'];
 
-function run(arch: MapArchetype, strategy: 'DUCK' | 'ACTIVE') {
-  const w: WorldDraft = createInitialWorld('economy-check', arch);
+function run(arch: MapArchetype, strategy: 'DUCK' | 'ACTIVE', seed: string) {
+  const w: WorldDraft = createInitialWorld(seed, arch);
   let maxBudget = w.resources.budget;
   let yearCloses = 0;
   let tranches = 0;
@@ -60,27 +60,39 @@ function run(arch: MapArchetype, strategy: 'DUCK' | 'ACTIVE') {
   return { w, maxBudget, yearCloses, tranches, forecastsSeen: forecasts.size };
 }
 
+// One seed is a coin flip (a raider's dice can flip a single comparison), so each theatre runs three seeds and the comparison between
+// strategies is made on the totals, which is what the design claim is about.
+const SEEDS = ['economy-check', 'economy-check-2', 'economy-check-3'];
 for (const arch of ['CHOKEPOINT', 'CORRIDOR', 'RIMLAND'] as MapArchetype[]) {
-  const duck = run(arch, 'DUCK');
-  const active = run(arch, 'ACTIVE');
-  for (const [name, r] of [['DUCK', duck], ['ACTIVE', active]] as const) {
-    console.log(
-      `${arch.padEnd(10)} ${name.padEnd(6)} FY${r.w.politics.fiscal.year} budget ${r.w.resources.budget.toFixed(0).padStart(6)} max ${r.maxBudget.toFixed(0).padStart(5)} ` +
-        `support ${r.w.politics.support.toFixed(0).padStart(3)} appropriation ${r.w.politics.fiscal.appropriation.toFixed(0)} hulls ${Object.keys(r.w.ships).length} ` +
-        `lost ${r.w.stats.shipsLost} kills ${r.w.stats.hostilesDestroyed}`,
-    );
-    check(r.yearCloses === YEARS, `${arch}/${name}: expected ${YEARS} year closes, got ${r.yearCloses}`);
-    check(r.tranches === YEARS * 3, `${arch}/${name}: expected ${YEARS * 3} mid-year tranches, got ${r.tranches}`);
-    check(r.forecastsSeen > 20, `${arch}/${name}: forecast never moved`);
+  const tot = { duck: { ships: 0, support: 0, appropriation: 0 }, active: { ships: 0, support: 0, appropriation: 0 } };
+  for (const seed of SEEDS) {
+    const duck = run(arch, 'DUCK', seed);
+    const active = run(arch, 'ACTIVE', seed);
+    for (const [name, r] of [['DUCK', duck], ['ACTIVE', active]] as const) {
+      console.log(
+        `${arch.padEnd(10)} ${SEEDS.indexOf(seed) + 1} ${name.padEnd(6)} FY${r.w.politics.fiscal.year} budget ${r.w.resources.budget.toFixed(0).padStart(6)} max ${r.maxBudget.toFixed(0).padStart(5)} ` +
+          `support ${r.w.politics.support.toFixed(0).padStart(3)} appropriation ${r.w.politics.fiscal.appropriation.toFixed(0)} hulls ${Object.keys(r.w.ships).length} ` +
+          `lost ${r.w.stats.shipsLost} kills ${r.w.stats.hostilesDestroyed}`,
+      );
+      check(r.yearCloses === YEARS, `${arch}/${name}: expected ${YEARS} year closes, got ${r.yearCloses}`);
+      check(r.tranches === YEARS * 3, `${arch}/${name}: expected ${YEARS * 3} mid-year tranches, got ${r.tranches}`);
+      check(r.forecastsSeen > 20, `${arch}/${name}: forecast never moved`);
+    }
+    // Hoarding is bounded: a navy that never buys cannot bank more than about one quarter plus the carryover.
+    const cap = duck.w.politics.fiscal.appropriation * (0.25 + CARRYOVER_SHARE) + 1500;
+    check(duck.maxBudget < cap, `${arch}/${seed}: duck hoarded ${duck.maxBudget.toFixed(0)} (cap ${cap.toFixed(0)})`);
+    check(active.w.resources.budget > -500, `${arch}/${seed}: active navy went bankrupt (${active.w.resources.budget.toFixed(0)})`);
+    tot.duck.ships += Object.keys(duck.w.ships).length;
+    tot.active.ships += Object.keys(active.w.ships).length;
+    tot.duck.support += duck.w.politics.support;
+    tot.active.support += active.w.politics.support;
+    tot.duck.appropriation += duck.w.politics.fiscal.appropriation;
+    tot.active.appropriation += active.w.politics.fiscal.appropriation;
   }
-  // Hoarding is bounded: a navy that never buys cannot bank more than about one quarter plus the carryover.
-  const cap = duck.w.politics.fiscal.appropriation * (0.25 + CARRYOVER_SHARE) + 1500;
-  check(duck.maxBudget < cap, `${arch}: duck hoarded ${duck.maxBudget.toFixed(0)} (cap ${cap.toFixed(0)})`);
-  check(Object.keys(active.w.ships).length > Object.keys(duck.w.ships).length, `${arch}: active navy should end larger than the duck's`);
-  check(active.w.resources.budget > -500, `${arch}: active navy went bankrupt (${active.w.resources.budget.toFixed(0)})`);
+  check(tot.active.ships > tot.duck.ships, `${arch}: active navy should end larger than the duck's (${tot.active.ships} vs ${tot.duck.ships} hulls over ${SEEDS.length} seeds)`);
   // Doing the job must pay better politically than sitting still.
-  check(active.w.politics.support > duck.w.politics.support, `${arch}: active support should beat the duck's`);
-  check(active.w.politics.fiscal.appropriation > duck.w.politics.fiscal.appropriation, `${arch}: active appropriation should beat the duck's`);
+  check(tot.active.support > tot.duck.support, `${arch}: active support should beat the duck's (${tot.active.support.toFixed(0)} vs ${tot.duck.support.toFixed(0)})`);
+  check(tot.active.appropriation > tot.duck.appropriation, `${arch}: active appropriation should beat the duck's (${tot.active.appropriation.toFixed(0)} vs ${tot.duck.appropriation.toFixed(0)})`);
 }
 console.log(failures === 0 ? '\nECONOMY OK' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

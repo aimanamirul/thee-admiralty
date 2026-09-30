@@ -20,6 +20,7 @@ import {
   UNDERSPEND_PACE,
 } from '@/lib/sim/politicsEngine';
 import { previewHearing } from '@/lib/sim/preview';
+import { tradeFactor, TRADE_SUPPORT_DRAIN } from '@/lib/types/shipping';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Btn, fmtM, Section, Stat } from './kit';
 
@@ -37,9 +38,10 @@ export default function HomeFront() {
   const tension = useFleetStore((s) => s.tension);
   const resources = useFleetStore((s) => s.resources);
   const ships = useFleetStore((s) => s.ships);
+  const shipping = useFleetStore((s) => s.shipping);
   const { budgetHearing } = useFleetStore.getState();
 
-  const view = { politics, resources, tick, tension };
+  const view = { politics, resources, tick, tension, shipping };
   const fc = forecast(view);
   const spent = spentThisYear(view);
   const costs = useMemo(() => runningCosts(Object.values(ships), tick), [ships, tick]);
@@ -76,6 +78,13 @@ export default function HomeFront() {
         <span>100</span>
       </div>
       <p className={`mt-1 text-[0.8125rem] ${effect.tone}`}>{effect.text}</p>
+      {shipping.lanes.length > 0 && (
+        <Stat
+          k={<Term k="SHIPPING">Trade index</Term>}
+          v={`${shipping.index.toFixed(0)}${shipping.index < 99.5 ? ` (budget ×${tradeFactor(shipping.index).toFixed(2)}, support −${((100 - shipping.index) * TRADE_SUPPORT_DRAIN).toFixed(2)}/day)` : ' — normal'}`}
+          tone={shipping.index < 85 ? 'text-warn' : shipping.index < 97 ? 'text-amber-radar' : undefined}
+        />
+      )}
       <Stat k="Political capital income" v={`${pcRegenPerDay(view) >= 0 ? '+' : ''}${pcRegenPerDay(view).toFixed(2)}/day`} tone={pcRegenPerDay(view) < 0 ? 'text-warn' : undefined} />
 
       <div className="mt-2 border-t border-navy pt-1.5">
@@ -110,6 +119,7 @@ export default function HomeFront() {
           {fc.factors.underspend < 1 && <span className="text-amber-radar"> · underspending ×{fc.factors.underspend.toFixed(2)}</span>}
           {fc.factors.hearing > 1 && <span className="text-emerald-accent"> · hearings ×{fc.factors.hearing.toFixed(2)}</span>}
           {fc.factors.inquiry < 1 && <span className="text-warn"> · inquiry ×0.80</span>}
+          {fc.factors.trade < 0.995 && <span className="text-amber-radar"> · trade ×{fc.factors.trade.toFixed(2)}</span>}
         </div>
         <Btn className="mt-1.5 w-full" tone="amber" preview={previewHearing} disabled={!!hearingBlocked(view)} onClick={() => budgetHearing()}>
           Budget hearing: demand more

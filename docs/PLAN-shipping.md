@@ -1,6 +1,6 @@
 # Civilian shipping — plan
 
-Status: **brainstormed and decided 2026-09-30, not built.** Real-world anchors below are *general knowledge*, not source-checked:
+Status: **decided 2026-09-30; phases T1-T3 built 2026-09-30 (see HANDOFF.md), T4-T6 not started.** Real-world anchors below are *general knowledge*, not source-checked:
 the 1987–88 Tanker War escorts (Earnest Will), the 1982 Falklands total exclusion zone, the 2023–24 Red Sea attacks and rerouting
 around the Cape, war-risk insurance premiums, AIS "dark" shadow-fleet tankers.
 
@@ -73,13 +73,18 @@ A navy can choose economic warfare against a state's shipping. It is always avai
 
 ## 6. Build phases
 
-1. **T1 lanes and traffic:** lane generation, identified ship spawns and movement, plot layer, ship panel (name, flag, cargo).
-2. **T2 threats and protection:** raider targeting of lane ships, outcomes, implicit protection, escort order, distress calls.
-3. **T3 economy:** lane risk, insurance, rerouting, trade volume index into `forecast()` and support; previews and Home Front.
+1. **T1 lanes and traffic — DONE:** lane generation, identified ship spawns and movement, plot layer, ship panel (name, flag, cargo).
+2. **T2 threats and protection — DONE:** raider targeting of lane ships, outcomes, implicit protection, escort order, distress calls.
+3. **T3 economy — DONE:** lane risk, insurance, rerouting, trade volume index into `forecast()` and support; previews and Home Front.
 4. **T4 inspections:** INSPECT ladder step, contraband, flag-state reactions, SOP option.
 5. **T5 interdiction:** exclusion zones with notice, interdiction policies, polarization meter, civilian toll and report.
 6. **T6 verification:** `verify:shipping` (lane connectivity, traffic caps, protection vs loss rates, trade → budget, zone notice
    always precedes force, consequences scale with policy), preview coverage, names.
+
+Deviations while building T1-T3: protection also comes from a task force **holding the ship's sector** (on station within 8 tiles of its
+anchor), not only from one within 14 tiles, because a 14-tile disc covers a sliver of a 200-tile lane and coverage would not have
+mattered; the trade index only ever lowers the forecast (factor 0.85-1.00), so the existing economy balance is unchanged at normal
+trade; ferries share the lanes; up to three lanes, the first of which crosses a chokepoint when the theatre has one.
 
 **Recommended order with submarines:** T1–T3 before submarine phase S3, since enemy submarines' main target is shipping.
 

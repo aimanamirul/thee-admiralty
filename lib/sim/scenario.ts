@@ -9,6 +9,8 @@ import type { HullClassId } from '../types/hull';
 import type { MapArchetype } from '../types/map';
 import type { SectorState, WorldDraft } from '../types/world';
 import { createShip } from './fleetEngine';
+import { generateLanes } from './shipping';
+import { emptyShipping } from '../types/shipping';
 import { initialPolitics } from './politicsEngine';
 import { initialResearch } from './researchEngine';
 
@@ -110,6 +112,7 @@ export function createInitialWorld(seed: string, archetype?: MapArchetype): Worl
     scripted: false,
     policy: { autoSpares: true },
     politics: initialPolitics({ support: 55, appropriation: START_APPROPRIATION, openingBalance: START_OPENING_BALANCE, scripted: false }),
+    shipping: { ...emptyShipping(), lanes: generateLanes(map, seed) },
     stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0, seizures: 0 },
   };
   world.sectors = initialSectorStates(world, rng.fork('threat'));

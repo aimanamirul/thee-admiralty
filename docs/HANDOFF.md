@@ -283,13 +283,45 @@ The briefing now teaches everything added since it was written. 15 lessons:
   record passes it, introduction thresholds (standing and rung) and the lobbying path, western fallout, export drive announcement and
   scouting, JV exposure, skins, scripted worlds stay closed; soak: in 10 theatres × 900 days the reform passed 10/10, drive open 10/10.
 
+## Civilian shipping T1-T3 (done, 2026-09-30; plan in `docs/PLAN-shipping.md`)
+
+- **State:** `WorldDraft.shipping` (`ShippingState`: `lanes`, `ships`, `seq`, `index`, `stats`), types and pure helpers (`tradeFactor`,
+  `TRADE_*`) in `lib/types/shipping.ts`; engine `lib/sim/shipping.ts`; `TaskForce.escort?`. The tutorial world is scripted and has no
+  lanes (nothing spawns, no UI). `loadWorld` backfills `shipping` on old checkpoints.
+- **T1 lanes and traffic:** `generateLanes(map, seed)`: up to 3 routes between distant map-edge gates over water (A* with deep-water
+  preference), never clipping land (checked at half-tile steps), the first crossing a chokepoint when the map has one. Ships (tanker,
+  container, bulk, ferry; fictional names; flags = home, open registry or a state the player already knows, shown via `{c:ID}`) enter at
+  a lane end at `base × traffic` per day (cap 20), sail 4 tiles/day and leave at the other end.
+- **T2 threats and protection:** raiders steer at lane ships within 22 tiles when no task force is near, and 60% spawn lying in wait
+  on a lane (own Rng stream, so existing spawn rolls are untouched). A raider within 5 tiles of an **unprotected** ship attacks and is
+  expended: 30% sunk, 20% seized, 50% damaged (distress). Protected = a task force at sea within 14 tiles (`COVER_RADIUS`) **or** one
+  holding the ship's sector (`sectorHeld`: assigned, within 8 tiles of the anchor, a ship at sea). A distressed ship stops; a task force
+  in range rescues it (support +1) else it founders after 6 days. `orderEscort` (store `escortMerchant` / `cancelEscort`) makes a task
+  force follow a ship at 9 tiles/day (fleetEngine goal override; released if the ship is lost or all hulls dock); arrival under escort
+  is "SAFE PASSAGE" (+0.5 support). Losses: support −1 (−2 for the home flag), tension +1, lane risk up, everything logged.
+- **T3 war-risk and trade:** each lane's risk drifts (4%/day) to 0.35 × the mean threat of its sectors, +30 sunk / +25 seized / +15
+  damaged / +10 foundered, −5 rescue. Traffic = 1 − max(0, risk − 15)/70 (the premium shown is risk × 0.8 %). Risk ≥ 70 reroutes the
+  lane for ≥ 30 days (returns when risk < 40); the index (smoothed) = base-weighted traffic. Index → forecast factor `trade`
+  (0.85–1.00) and support drift (−0.002 per point below 100). Home Front shows the index and the factor; the Sector overview lists lanes
+  with risk meters; **only losses and threat lower the index, never above 100**, so normal trade leaves the economy as it was.
+- **UI:** plot layer toggle `shipping` (lanes dotted, red when rerouted, amber when risky; grey ships, amber SOS, cyan escort line),
+  click a ship for `MerchantPanel` (status, cover, escort/aid buttons with previews); "Merchant ships in sector" list in the sector
+  panel; `ShippingLanes` section; glossary terms `SHIPPING`, `ESCORT`.
+- **Verification:** `npm run verify:shipping` (lane validity/determinism, traffic cap, ships stay on lanes, accounting, attack outcome
+  shares, cover radius and sector presence, distress, escort, war-risk, reroute, forecast and support effects, name tokens; soak: losses
+  98 with no fleet at sea, 87 with the starting fleet, 62 with two task forces on the busiest lane sectors). `verify:preview` sweeps
+  escort previews. **`verify:economy` now compares strategies over three seeds per theatre on the totals:** adding shipping shifted the
+  random streams and one seed flipped the duck-vs-active comparison (over 24 seeds the active navy still wins 22/24, mean support +8).
+- **Not built:** T4 inspections, T5 interdiction and exclusion zones (with polarization and civilian toll), T6 polish; no tutorial lesson
+  on shipping yet (candidate: escort the first tanker, read the trade line on the Home Front).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
 rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Phase 5 (cold vendors) is
-done, so the contractors plan is complete. Submarines and civilian shipping are brainstormed and decided in `docs/PLAN-submarines.md` (S1–S5) and
-`docs/PLAN-shipping.md` (T1–T6, incl. deliberate trade interdiction via exclusion zones); neither started. Recommended: shipping
-T1–T3 before submarine S3. Other candidates: licensed local production at STRATEGIC, offsets, a tutorial or advisor nudge for
+done, so the contractors plan is complete. Submarines (`docs/PLAN-submarines.md`, S1–S5) are decided but not started. Civilian shipping T1–T3 are done; T4–T6 (inspections,
+deliberate trade interdiction via exclusion zones, polish) remain in `docs/PLAN-shipping.md`. Recommended: T4–T6 or a shipping tutorial
+lesson next, and submarine S3 (enemy submarines hunting shipping) after that. Other candidates: licensed local production at STRATEGIC, offsets, a tutorial or advisor nudge for
 the contract / due-diligence tools, the Movement faction (design only).
 
 ## Design backlog (do not build yet)

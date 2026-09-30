@@ -70,6 +70,8 @@ export interface TaskForce {
   /** Where the task force is trying to be (sector anchor or home port). */
   destination: Vec2 | null;
   tempo: Tempo;
+  /** Merchant ship this task force is escorting (or going to the aid of); overrides its station while set. */
+  escort?: string | null;
 }
 
 export interface Fleet {

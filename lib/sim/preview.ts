@@ -20,6 +20,8 @@ import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, 
 import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
 import { cancelBlocked, cancellationTerms, DEPOSIT_RATE, RESALE_RATE, resaleBlocked, resaleProceeds, BREACH_STANDING } from './contracts';
+import { cancelEscortBlocked, COVER_RADIUS, escortBlocked, flagText, laneOf, MERCHANT_SPEED, nearestCover, isCovered, premiumPct } from './shipping';
+import { KIND_TAG } from '../types/shipping';
 import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './supplyChain';
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
@@ -378,4 +380,48 @@ export function previewResell(w: WorldDraft, shipId: string): Preview {
   if (b) return blocked(b);
   const s = w.ships[shipId];
   return `+${M(resaleProceeds(s))} (${Math.round(RESALE_RATE * 100)}% of ${M(s.contract?.paid ?? 0)} paid) · a third-party navy takes over the hull and its contract · no standing or support cost`;
+}
+
+// ------------------------------------------------------------------------------------------ civilian shipping
+
+export function previewEscort(w: WorldDraft, tfId: string, merchantId: string): Preview {
+  const b = escortBlocked(w, tfId, merchantId);
+  if (b) return blocked(b);
+  const tf = tfById(w, tfId)!;
+  const m = w.shipping.ships.find((x) => x.id === merchantId)!;
+  const lane = laneOf(w.shipping, m.laneId)!;
+  const gap = Math.hypot(tf.position.x - m.position.x, tf.position.y - m.position.y);
+  const days = Math.max(0, Math.ceil((gap - COVER_RADIUS) / tf.speedTilesPerDay));
+  const remaining = m.dir === 1 ? lane.length - m.dist : m.dist;
+  const parts: string[] = [];
+  if (m.status === 'DISTRESS') {
+    const left = (m.distressUntil ?? w.tick) - w.tick;
+    parts.push(`${tf.name} reaches ${KIND_TAG[m.kind]} ${m.name.toUpperCase()} in ~${days} day${days === 1 ? '' : 's'}; it founders in ${left}${days > left ? ' — TOO LATE' : ' (rescue: support +1)'}`);
+  } else {
+    parts.push(`${tf.name} joins ${KIND_TAG[m.kind]} ${m.name.toUpperCase()} (${flagText(m.flag)}) in ~${days} day${days === 1 ? '' : 's'}, then keeps pace to port (~${Math.ceil(remaining / MERCHANT_SPEED)} days)`);
+    parts.push('safe passage: support +0.5');
+  }
+  if (tf.assignedSectorId !== null) parts.push(`${w.map.sectors[tf.assignedSectorId].label} left uncovered while away`);
+  parts.push('off station: readiness wears while escorting');
+  return parts.join(' · ');
+}
+
+export function previewCancelEscort(w: WorldDraft, tfId: string): Preview {
+  const b = cancelEscortBlocked(w, tfId);
+  if (b) return blocked(b);
+  const tf = tfById(w, tfId)!;
+  const m = w.shipping.ships.find((x) => x.id === tf.escort);
+  return `${tf.name} breaks off${m ? ` from ${m.name.toUpperCase()}` : ''} and returns to ${tf.assignedSectorId !== null ? w.map.sectors[tf.assignedSectorId].label : 'port'}${m && !isCovered(w, m) ? ' · the ship is then unprotected' : ''}`;
+}
+
+/** One-line status for a merchant ship (panel and previews). */
+export function merchantStatusLine(w: WorldDraft, merchantId: string): string {
+  const m = w.shipping.ships.find((x) => x.id === merchantId);
+  if (!m) return 'LEFT THE PLOT';
+  const lane = laneOf(w.shipping, m.laneId)!;
+  const cover = nearestCover(w, m.position);
+  const parts: string[] = [m.status === 'DISTRESS' ? `DISTRESS — ${Math.max(0, (m.distressUntil ?? w.tick) - w.tick)} days left` : 'UNDERWAY'];
+  parts.push(isCovered(w, m) ? 'COVERED' : cover ? `UNPROTECTED — NEAREST TASK FORCE ${cover.d.toFixed(0)} TILES` : 'UNPROTECTED — NO TASK FORCE AT SEA');
+  parts.push(`lane war-risk premium +${premiumPct(lane.risk)}%`);
+  return parts.join(' · ');
 }

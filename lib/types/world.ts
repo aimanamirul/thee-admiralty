@@ -3,6 +3,7 @@ import type { SanctionEvent, Vendor, VendorId } from './diplomacy';
 import type { BridgeKey } from './equipment';
 import type { Fleet, Ship } from './fleet';
 import type { MapData, Vec2 } from './map';
+import type { ShippingState } from './shipping';
 
 export interface Resources {
   budget: number;
@@ -131,6 +132,8 @@ export interface WorldDraft {
   /** Standing orders. */
   policy: { autoSpares: boolean };
   politics: PoliticsState;
+  /** Civilian shipping: lanes, merchant ships, trade index. */
+  shipping: ShippingState;
   /** Running statistics for the ledger. */
   stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number };
 }

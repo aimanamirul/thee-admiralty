@@ -19,6 +19,7 @@ import type { MapArchetype, MapData } from '../lib/types/map';
 import type { Contact, GameEvent, LadderAction, ResearchState, Resources, Roe, SectorState, Sop, WorldDraft } from '../lib/types/world';
 import type { NamingTradition } from '../lib/types/fleet';
 import type { SanctionEvent, Vendor, VendorId } from '../lib/types/diplomacy';
+import { emptyShipping, type ShippingState } from '../lib/types/shipping';
 
 export type PanelTab = 'SECTOR' | 'FLEET' | 'RND' | 'DIPLO';
 export type SimSpeed = 1 | 4 | 16;
@@ -39,6 +40,7 @@ interface WorldSlice {
   sanctions: SanctionEvent[];
   research: ResearchState;
   contacts: Contact[];
+  shipping: ShippingState;
   tension: number;
   scripted: boolean;
   policy: { autoSpares: boolean };
@@ -56,6 +58,7 @@ interface UiSlice {
   selectedTaskForceId: string | null;
   selectedShipId: string | null;
   selectedContactId: string | null;
+  selectedMerchantId: string | null;
   designerOpen: boolean;
   designs: ShipDesign[];
   toast: { text: string; ok: boolean; id: number } | null;
@@ -78,6 +81,8 @@ interface Actions {
   selectShip: (id: string | null) => void;
   /** Select a contact on the plot: opens its sector panel with the contact ladder. */
   selectContact: (id: string | null) => void;
+  /** Select a merchant ship on the plot: opens its panel (escort orders) in its sector. */
+  selectMerchant: (id: string | null) => void;
   setDesignerOpen: (open: boolean) => void;
   saveDesign: (d: ShipDesign) => void;
   deleteDesign: (id: string) => void;
@@ -121,6 +126,8 @@ interface Actions {
   cancelContract: (shipId: string) => CommandResult;
   resellHull: (shipId: string) => CommandResult;
   orderContact: (contactId: string, action: LadderAction | 'AUTO') => CommandResult;
+  escortMerchant: (taskForceId: string, merchantId: string) => CommandResult;
+  cancelEscort: (taskForceId: string) => CommandResult;
 }
 
 export type GameState = WorldSlice & UiSlice & Actions;
@@ -129,14 +136,14 @@ const pickWorld = (s: GameState): WorldDraft => {
   // The map is large and immutable during play: share it, clone everything else.
   const mutable = structuredClone({
     resources: s.resources, ships: s.ships, fleets: s.fleets, spares: s.spares, sectors: s.sectors, vendors: s.vendors,
-    sanctions: s.sanctions, research: s.research, contacts: s.contacts, tension: s.tension, scripted: s.scripted, policy: s.policy, politics: s.politics, stats: s.stats,
+    sanctions: s.sanctions, research: s.research, contacts: s.contacts, shipping: s.shipping, tension: s.tension, scripted: s.scripted, policy: s.policy, politics: s.politics, stats: s.stats,
   });
   return { seed: s.seed, tick: s.tick, map: s.map, events: [], ...mutable };
 };
 
 const worldPatch = (w: WorldDraft): WorldSlice => ({
   seed: w.seed, tick: w.tick, map: w.map, resources: w.resources, ships: w.ships, fleets: w.fleets, spares: w.spares,
-  sectors: w.sectors, vendors: w.vendors, sanctions: w.sanctions, research: w.research, contacts: w.contacts,
+  sectors: w.sectors, vendors: w.vendors, sanctions: w.sanctions, research: w.research, contacts: w.contacts, shipping: w.shipping,
   tension: w.tension, scripted: w.scripted, policy: w.policy, politics: w.politics, stats: w.stats,
 });
 
@@ -177,6 +184,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     selectedTaskForceId: null,
     selectedShipId: null,
     selectedContactId: null,
+    selectedMerchantId: null,
     designerOpen: false,
     designs: STARTER_DESIGNS,
     toast: null,
@@ -214,6 +222,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     loadWorld: (w, ledger) => {
       // Checkpoints saved before a vendor existed: add it in its starting state.
       for (const v of INITIAL_VENDORS) if (!w.vendors[v.id]) w.vendors[v.id] = structuredClone(v);
+      w.shipping ??= emptyShipping();
       const { log, logSeq } = appendLog(ledger?.log ?? [], ledger?.logSeq ?? 0, w.tick, w.events);
       w.events = [];
       set({
@@ -226,6 +235,7 @@ export const useFleetStore = create<GameState>((set, get) => {
         selectedTaskForceId: null,
         selectedShipId: null,
         selectedContactId: null,
+        selectedMerchantId: null,
         designerOpen: false,
         toast: null,
       });
@@ -238,13 +248,22 @@ export const useFleetStore = create<GameState>((set, get) => {
     },
     setDesignerPreset: (designerPreset) => set({ designerPreset }),
     setTab: (tab) => set({ tab }),
-    selectSector: (id) => set(id === null ? { selectedSectorId: null, selectedContactId: null } : { selectedSectorId: id, selectedContactId: null, tab: 'SECTOR' }),
+    selectSector: (id) =>
+      set(id === null ? { selectedSectorId: null, selectedContactId: null, selectedMerchantId: null } : { selectedSectorId: id, selectedContactId: null, selectedMerchantId: null, tab: 'SECTOR' }),
     selectTaskForce: (id) => set(id === null ? { selectedTaskForceId: null } : { selectedTaskForceId: id, tab: 'FLEET' }),
     selectShip: (id) => set({ selectedShipId: id }),
     selectContact: (id) => {
       if (id === null) return set({ selectedContactId: null });
       const c = get().contacts.find((x) => x.id === id);
-      set(c ? { selectedContactId: id, selectedSectorId: c.sectorId, tab: 'SECTOR' } : { selectedContactId: null });
+      set(c ? { selectedContactId: id, selectedMerchantId: null, selectedSectorId: c.sectorId, tab: 'SECTOR' } : { selectedContactId: null });
+    },
+    selectMerchant: (id) => {
+      if (id === null) return set({ selectedMerchantId: null });
+      const m = get().shipping.ships.find((x) => x.id === id);
+      const lane = m && get().shipping.lanes.find((l) => l.id === m.laneId);
+      const map = get().map;
+      const sector = m ? map.sectorGrid[Math.round(m.position.y) * map.width + Math.round(m.position.x)] : -1;
+      set(m ? { selectedMerchantId: id, selectedContactId: null, selectedSectorId: sector >= 0 ? sector : lane?.sectors[0] ?? null, tab: 'SECTOR' } : { selectedMerchantId: null });
     },
     setDesignerOpen: (designerOpen) => set({ designerOpen }),
     saveDesign: (d) => set((s) => ({ designs: [...s.designs.filter((x) => x.id !== d.id), d] })),
@@ -286,6 +305,8 @@ export const useFleetStore = create<GameState>((set, get) => {
     cancelContract: (shipId) => run((w) => cmd.cancelContractCmd(w, shipId)),
     resellHull: (shipId) => run((w) => cmd.resellHullCmd(w, shipId)),
     orderContact: (contactId, action) => run((w) => cmd.orderContact(w, contactId, action)),
+    escortMerchant: (tfId, merchantId) => run((w) => cmd.escortMerchantCmd(w, tfId, merchantId)),
+    cancelEscort: (tfId) => run((w) => cmd.cancelEscortCmd(w, tfId)),
   };
 });
 

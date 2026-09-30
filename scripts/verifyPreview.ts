@@ -81,6 +81,13 @@ function sweep(tag: string, w: WorldDraft) {
     for (const a of ['SHADOW', 'HAIL', 'WARN', 'BOARD', 'ENGAGE'] as const) agree(`${tag} contact ${c.intent} ${a}`, w, pv.previewContactOrder(w, c.id, a), (x) => cmd.orderContact(x, c.id, a));
     text(`${tag} contact auto`, pv.previewContactOrder(w, c.id, 'AUTO'));
   }
+  for (const tf of w.fleets.flatMap((f) => f.taskForces)) {
+    agree(`${tag} release escort ${tf.id}`, w, pv.previewCancelEscort(w, tf.id), (c) => cmd.cancelEscortCmd(c, tf.id));
+    for (const m of w.shipping.ships.slice(0, 4)) {
+      agree(`${tag} escort ${tf.id}/${m.id}`, w, pv.previewEscort(w, tf.id, m.id), (c) => cmd.escortMerchantCmd(c, tf.id, m.id));
+      text(`${tag} ship status ${m.id}`, pv.merchantStatusLine(w, m.id));
+    }
+  }
   agree(`${tag} hearing`, w, pv.previewHearing(w), (c) => cmd.holdBudgetHearing(c));
   agree(`${tag} industry`, w, pv.previewExpandIndustry(w), (c) => cmd.expandIndustry(c));
   const design = { hullId: 'CORVETTE' as const, moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_ASEL_SPEAR', 'ARM_NG_SYLVER8'], squadronId: 'SQ-1-1' };
@@ -106,6 +113,7 @@ for (const arch of ['CHOKEPOINT', 'CORRIDOR', 'RIMLAND'] as const) {
     }
     // hulls under construction at each sweep (cancel / resell previews), some old enough to be sold
     if (d % 100 === 30 || d % 100 === 95) cmd.orderShip(w, { designName: 'X', hullId: 'CORVETTE', moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_NG_SMARTS', 'ARM_DOM_GUN76'], squadronId: 'SQ-1-1', tradition: 'VIRTUES' });
+    if (d === 250 && w.shipping.ships[0]) cmd.escortMerchantCmd(w, w.fleets[0].taskForces[0].id, w.shipping.ships[0].id); // a live escort: exercises the release preview
     if (d === 150) for (const s of Object.values(w.ships)) if (s.state === 'MAINTENANCE_DOCK') designateHulk(w, s.id);
     if (d === 50) w.resources.politicalCapital = 0; // exercise blocked lobbying
     if (d === 250) w.politics.support = 20; // exercise refused lobbying / hearings

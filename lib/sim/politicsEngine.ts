@@ -9,6 +9,7 @@
  * - DOMESTIC SUPPORT (0-100) integrates the navy's record; low support makes lobbying dearer, then refused, drains political
  *   capital, and below 10 triggers a parliamentary inquiry.
  */
+import { type ShippingState, tradeFactor, TRADE_SUPPORT_DRAIN } from '../types/shipping';
 import { HULLS } from '../data/catalog';
 import { Rng } from '../generator/prng';
 import type { Ship } from '../types/fleet';
@@ -94,10 +95,10 @@ export interface Forecast {
   locked: boolean;
   /** Share of the year's money spent relative to time elapsed (1 = on pace). */
   pace: number;
-  factors: { support: number; tension: number; underspend: number; hearing: number; inquiry: number };
+  factors: { support: number; tension: number; underspend: number; hearing: number; inquiry: number; trade: number };
 }
 
-export function forecast(w: Pick<WorldDraft, 'politics' | 'resources' | 'tick' | 'tension'>): Forecast {
+export function forecast(w: Pick<WorldDraft, 'politics' | 'resources' | 'tick' | 'tension'> & { shipping?: Pick<ShippingState, 'index'> }): Forecast {
   const p = w.politics;
   const doy = dayOfYear(w.tick);
   const elapsed = Math.max(60, doy) / FISCAL_YEAR_DAYS;
@@ -108,12 +109,13 @@ export function forecast(w: Pick<WorldDraft, 'politics' | 'resources' | 'tick' |
     underspend: pace >= UNDERSPEND_PACE ? 1 : 0.7 + (0.3 * Math.max(0, pace)) / UNDERSPEND_PACE,
     hearing: 1 + p.fiscal.hearingBoost,
     inquiry: p.fiscal.inquiryPenalty ? 0.8 : 1,
+    trade: tradeFactor(w.shipping?.index ?? 100),
   };
   if (p.fiscal.lockedForecast !== null) {
     const v = p.fiscal.lockedForecast;
     return { low: v, mid: v, high: v, locked: true, pace, factors };
   }
-  const mid = BASE_APPROPRIATION * factors.support * factors.tension * factors.underspend * factors.hearing * factors.inquiry;
+  const mid = BASE_APPROPRIATION * factors.support * factors.tension * factors.underspend * factors.hearing * factors.inquiry * factors.trade;
   const u = 0.1 * Math.max(0, 1 - doy / FORECAST_LOCK_DAY);
   return { low: mid * (1 - u), mid, high: mid * (1 + u), locked: false, pace, factors };
 }
@@ -256,7 +258,7 @@ export function tickPolitics(w: WorldDraft, rng: Rng): void {
     if (!st || st.threat <= 60) return false;
     return !w.fleets.some((fl) => fl.taskForces.some((tf) => tf.assignedSectorId === s.id));
   }).length;
-  let drift = (50 - p.support) * 0.004 + (w.tension - 40) * 0.003 - 0.05 * frozen - 0.015 * exposed;
+  let drift = (50 - p.support) * 0.004 + (w.tension - 40) * 0.003 - 0.05 * frozen - 0.015 * exposed + (w.shipping.index - 100) * TRADE_SUPPORT_DRAIN;
   if (w.resources.budget < 0) {
     drift -= 0.3;
     if (w.tick % 10 === 0) w.events.push({ severity: 'WARNING', text: `NAVY OVERSPENT (${M(w.resources.budget)}) — domestic support eroding` });

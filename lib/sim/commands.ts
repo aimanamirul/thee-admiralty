@@ -10,6 +10,7 @@ import { actionBlocked, INTENT_LABEL } from './contactEngine';
 import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { startDiligence } from './supplyChain';
 import { cancelContract, newContract, resellHull } from './contracts';
+import { cancelEscort, orderEscort } from './shipping';
 import { evaluateLoadout, procurability } from './designEngine';
 import { lobbyVendor, moduleOrdersBlocked } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
@@ -280,5 +281,15 @@ export function cancelContractCmd(world: WorldDraft, shipId: string): CommandRes
 
 export function resellHullCmd(world: WorldDraft, shipId: string): CommandResult {
   const r = resellHull(world, shipId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function escortMerchantCmd(world: WorldDraft, tfId: string, merchantId: string): CommandResult {
+  const r = orderEscort(world, tfId, merchantId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function cancelEscortCmd(world: WorldDraft, tfId: string): CommandResult {
+  const r = cancelEscort(world, tfId);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }
