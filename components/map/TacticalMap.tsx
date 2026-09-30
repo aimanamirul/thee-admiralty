@@ -630,6 +630,23 @@ export default function TacticalMap() {
           ctx.stroke();
         }
         ctx.restore();
+        // Exclusion orders: dashed ring on each named sector (amber while on notice, red once force is authorised).
+        for (const z of st.shipping.zones) {
+          const live = st.tick >= z.effectiveTick;
+          for (const sid of z.sectors) {
+            const a = st.map.sectors[sid].anchor;
+            const p = toScreen(a.x, a.y);
+            ctx.save();
+            ctx.strokeStyle = live ? 'rgba(255,42,42,0.75)' : 'rgba(255,176,0,0.75)';
+            ctx.setLineDash([6, 5]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 16 * view.scale, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            label(live ? `${z.id} IN FORCE` : `${z.id} NOTICE D${z.effectiveTick}`, p.x, p.y + 16 * view.scale + 10, live ? C.red : C.amber, 'center', 8);
+          }
+        }
         const tfs = st.fleets.flatMap((f) => f.taskForces);
         for (const m of st.shipping.ships) {
           const p = toScreen(m.position.x, m.position.y);

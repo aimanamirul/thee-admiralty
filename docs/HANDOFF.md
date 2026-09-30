@@ -315,14 +315,45 @@ The briefing now teaches everything added since it was written. 15 lessons:
 - **Not built:** T4 inspections, T5 interdiction and exclusion zones (with polarization and civilian toll), T6 polish; no tutorial lesson
   on shipping yet (candidate: escort the first tanker, read the trade line on the Home Front).
 
+## Civilian shipping T4-T6: inspections, exclusion orders, polarization (done, 2026-09-30)
+
+- **Engine:** `lib/sim/interdiction.ts` (`tickInterdiction`, run right after `tickShipping` and before `tickRelations`, so strikes count as
+  incidents for restrictive regimes and the Akitsu vote). Types in `lib/types/shipping.ts` (`ExclusionZone`, `InterdictionPolicy`,
+  `normalizeShipping` backfills old saves); `SectorState.inspect`, `TaskForce.escortMode`, `PoliticsState.polarization`.
+- **T4 inspections:** every ship hides `contraband` (12% open registry / Eastern flag, 5% other foreign, 2% home, ferries never) and gets a
+  `tip` (35% of contraband ships, 2% of clean ones: mostly right, sometimes wrong). Two ways to search: **order a task force** (Search
+  button; it goes to the ship, `escortMode: 'INSPECT'`, starts within 6 tiles) or a **sector standing order** for one flag (a task force
+  at sea within 10 tiles of a matching ship; select in the sector panel). A search holds the ship 2 days, then: contraband found (90%
+  tipped, 55% untipped) is seized (+15% of cargo, support +2); otherwise a clean search costs support −1 (−0.5 home / open registry),
+  tension +1, polarization +0.5 and flag-state standing −3.
+- **T5 exclusion orders** (`declareZone`, 10 PC, max 2, sectors must lie on a lane): **14-day notice** during which no force is used
+  (verified); at once shipping of the flag starts to avoid the zone (80% of its ships reroute, so the trade index, forecast and support
+  fall: an order against all foreign flags over a hub can drop the index to ~40), flag state −4 standing (its bloc −2), tension +4,
+  lane war-risk +8, polarization +6, support +1.5 (rally). After notice task forces within 10 tiles of a matching ship act by policy:
+  *search and release*; *search, seize contraband, turn the rest back* (turned-back ships sail home, counted as `returned`, not a
+  passage); *unrestricted* strikes on sight **only in sectors at WEAPONS FREE** (else it turns back). Passenger ferries and the home
+  flag are never targets. A strike: ship lost, crew casualties (20-24) added to the **civilian toll**, tension +4, PC −3, flag-state
+  standing −10 (bloc −3), polarization +3.x, support +1.5, counted as an incident. **Engage** (merchant panel, two clicks): lawful under
+  an unrestricted order in force; otherwise the **gravest incident** (tension +20, PC −15, support −12, flag −20, polarization +10+).
+- **Polarization** (`politicsEngine`): eases 0.08/day only while no order is in force; above 20 it drains support
+  (`polarizationDrift` = 0.0015 per point above 20 per day) and widens election swings (±(10 + 0.3 × polarization)).
+- **T6:** fiscal-year **shipping report** (ledger line + `ShippingState.lastReport`, year counters reset at year end); Home Front shows
+  polarization and the toll; `ShippingLanes` shows searches, seizures, turned back, struck, toll and the last report; plot rings on
+  ordered sectors (amber notice, red in force); `InterdictionPanel` (orders, policies, lift, new order) in the sector overview;
+  glossary terms `INSPECTION`, `INTERDICTION`, `POLARIZATION`.
+- **Verification:** `verify:shipping` now also covers contraband odds and tip rates (2,000-ship sample), search hold / costs by flag /
+  find rates / seizure pay, standing orders, declaration refusals and costs, no force before notice (unit and a 260-day soak), each
+  policy, ROE gating, exemptions, engage lawful vs gravest, polarization drain and decay, self-harm (traffic, index, forecast, recovery
+  on lifting), year report, name tokens. `verify:preview` sweeps 7,900 previews including every new order.
+- **Not built:** a tutorial lesson on shipping, escorts, searches or orders; movement-faction reuse of the strike layer (design only).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
 rebalance) was superseded by the fiscal year in `PLAN-command-and-economy.md`; only offsets remain unbuilt. Phase 5 (cold vendors) is
-done, so the contractors plan is complete. Submarines (`docs/PLAN-submarines.md`, S1–S5) are decided but not started. Civilian shipping T1–T3 are done; T4–T6 (inspections,
-deliberate trade interdiction via exclusion zones, polish) remain in `docs/PLAN-shipping.md`. Recommended: T4–T6 or a shipping tutorial
-lesson next, and submarine S3 (enemy submarines hunting shipping) after that. Other candidates: licensed local production at STRATEGIC, offsets, a tutorial or advisor nudge for
-the contract / due-diligence tools, the Movement faction (design only).
+done, so the contractors plan is complete. Submarines (`docs/PLAN-submarines.md`, S1–S5) are decided but not started; enemy submarines (S3) would now hunt the shipping that T1–T6
+built. The shipping plan is complete; a tutorial lesson for shipping (escort the first tanker, read the trade line) and licensed local
+production / offsets remain optional. The Movement faction (`PLAN-asymmetric-faction.md`) can reuse the interdiction layer.
 
 ## Design backlog (do not build yet)
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.

@@ -72,6 +72,8 @@ export interface TaskForce {
   tempo: Tempo;
   /** Merchant ship this task force is escorting (or going to the aid of); overrides its station while set. */
   escort?: string | null;
+  /** ESCORT: shadow the ship to port. INSPECT: go to the ship and search it. */
+  escortMode?: 'ESCORT' | 'INSPECT';
 }
 
 export interface Fleet {

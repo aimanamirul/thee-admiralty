@@ -11,6 +11,8 @@ import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { startDiligence } from './supplyChain';
 import { cancelContract, newContract, resellHull } from './contracts';
 import { cancelEscort, orderEscort } from './shipping';
+import { declareZone, engageMerchant, liftZone, orderInspect, setSectorInspect, setZonePolicy } from './interdiction';
+import type { FlagFilter, InterdictionPolicy } from '../types/shipping';
 import { evaluateLoadout, procurability } from './designEngine';
 import { lobbyVendor, moduleOrdersBlocked } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
@@ -291,5 +293,35 @@ export function escortMerchantCmd(world: WorldDraft, tfId: string, merchantId: s
 
 export function cancelEscortCmd(world: WorldDraft, tfId: string): CommandResult {
   const r = cancelEscort(world, tfId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function inspectMerchantCmd(world: WorldDraft, tfId: string, merchantId: string): CommandResult {
+  const r = orderInspect(world, tfId, merchantId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function setSectorInspectCmd(world: WorldDraft, sectorId: number, flag: FlagFilter | null): CommandResult {
+  const r = setSectorInspect(world, sectorId, flag);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function declareZoneCmd(world: WorldDraft, flag: FlagFilter, sectors: number[], policy: InterdictionPolicy): CommandResult {
+  const r = declareZone(world, flag, sectors, policy);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function liftZoneCmd(world: WorldDraft, zoneId: string): CommandResult {
+  const r = liftZone(world, zoneId);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function setZonePolicyCmd(world: WorldDraft, zoneId: string, policy: InterdictionPolicy): CommandResult {
+  const r = setZonePolicy(world, zoneId, policy);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function engageMerchantCmd(world: WorldDraft, tfId: string, merchantId: string): CommandResult {
+  const r = engageMerchant(world, tfId, merchantId);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }

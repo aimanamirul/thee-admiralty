@@ -3,7 +3,7 @@ import type { SanctionEvent, Vendor, VendorId } from './diplomacy';
 import type { BridgeKey } from './equipment';
 import type { Fleet, Ship } from './fleet';
 import type { MapData, Vec2 } from './map';
-import type { ShippingState } from './shipping';
+import type { FlagFilter, ShippingState } from './shipping';
 
 export interface Resources {
   budget: number;
@@ -21,6 +21,8 @@ export interface SectorState {
   threat: number;
   roe: Roe;
   sop: Sop;
+  /** Standing order: task forces at sea inspect merchant ships of this flag that pass close by. */
+  inspect?: FlagFilter | null;
 }
 
 /** Hidden ground truth of a contact, revealed by hailing, boarding or visual identification. */
@@ -102,6 +104,8 @@ export interface PoliticsState {
   /** Domestic support 0-100. */
   support: number;
   fiscal: FiscalState;
+  /** Domestic polarization 0-100: how divisive the navy's interdiction is. Feeds support drift and election swings. */
+  polarization?: number;
   /** Earliest tick for the next budget hearing. */
   hearingReadyTick: number;
   /** Procurement frozen by a parliamentary inquiry until this tick. */

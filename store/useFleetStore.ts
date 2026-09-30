@@ -19,7 +19,7 @@ import type { MapArchetype, MapData } from '../lib/types/map';
 import type { Contact, GameEvent, LadderAction, ResearchState, Resources, Roe, SectorState, Sop, WorldDraft } from '../lib/types/world';
 import type { NamingTradition } from '../lib/types/fleet';
 import type { SanctionEvent, Vendor, VendorId } from '../lib/types/diplomacy';
-import { emptyShipping, type ShippingState } from '../lib/types/shipping';
+import { normalizeShipping, type FlagFilter, type InterdictionPolicy, type ShippingState } from '../lib/types/shipping';
 
 export type PanelTab = 'SECTOR' | 'FLEET' | 'RND' | 'DIPLO';
 export type SimSpeed = 1 | 4 | 16;
@@ -128,6 +128,12 @@ interface Actions {
   orderContact: (contactId: string, action: LadderAction | 'AUTO') => CommandResult;
   escortMerchant: (taskForceId: string, merchantId: string) => CommandResult;
   cancelEscort: (taskForceId: string) => CommandResult;
+  inspectMerchant: (taskForceId: string, merchantId: string) => CommandResult;
+  setSectorInspect: (sectorId: number, flag: FlagFilter | null) => CommandResult;
+  declareZone: (flag: FlagFilter, sectors: number[], policy: InterdictionPolicy) => CommandResult;
+  liftZone: (zoneId: string) => CommandResult;
+  setZonePolicy: (zoneId: string, policy: InterdictionPolicy) => CommandResult;
+  engageMerchant: (taskForceId: string, merchantId: string) => CommandResult;
 }
 
 export type GameState = WorldSlice & UiSlice & Actions;
@@ -222,7 +228,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     loadWorld: (w, ledger) => {
       // Checkpoints saved before a vendor existed: add it in its starting state.
       for (const v of INITIAL_VENDORS) if (!w.vendors[v.id]) w.vendors[v.id] = structuredClone(v);
-      w.shipping ??= emptyShipping();
+      w.shipping = normalizeShipping(w.shipping);
       const { log, logSeq } = appendLog(ledger?.log ?? [], ledger?.logSeq ?? 0, w.tick, w.events);
       w.events = [];
       set({
@@ -307,6 +313,12 @@ export const useFleetStore = create<GameState>((set, get) => {
     orderContact: (contactId, action) => run((w) => cmd.orderContact(w, contactId, action)),
     escortMerchant: (tfId, merchantId) => run((w) => cmd.escortMerchantCmd(w, tfId, merchantId)),
     cancelEscort: (tfId) => run((w) => cmd.cancelEscortCmd(w, tfId)),
+    inspectMerchant: (tfId, merchantId) => run((w) => cmd.inspectMerchantCmd(w, tfId, merchantId)),
+    setSectorInspect: (sectorId, flag) => run((w) => cmd.setSectorInspectCmd(w, sectorId, flag)),
+    declareZone: (flag, sectors, policy) => run((w) => cmd.declareZoneCmd(w, flag, sectors, policy)),
+    liftZone: (zoneId) => run((w) => cmd.liftZoneCmd(w, zoneId)),
+    setZonePolicy: (zoneId, policy) => run((w) => cmd.setZonePolicyCmd(w, zoneId, policy)),
+    engageMerchant: (tfId, merchantId) => run((w) => cmd.engageMerchantCmd(w, tfId, merchantId)),
   };
 });
 

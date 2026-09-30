@@ -21,7 +21,12 @@ import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
 import { cancelBlocked, cancellationTerms, DEPOSIT_RATE, RESALE_RATE, resaleBlocked, resaleProceeds, BREACH_STANDING } from './contracts';
 import { cancelEscortBlocked, COVER_RADIUS, escortBlocked, flagText, laneOf, MERCHANT_SPEED, nearestCover, isCovered, premiumPct } from './shipping';
-import { KIND_TAG } from '../types/shipping';
+import { KIND_TAG, POLICY_LABEL, type ExclusionZone, type FlagFilter, type InterdictionPolicy } from '../types/shipping';
+import {
+  engageBlocked, FIND_TIPPED, FIND_UNTIPPED, FORCE_RANGE, INSPECT_DAYS, inspectBlocked, liftBlocked, NOTICE_DAYS, sectorInspectBlocked,
+  SEIZURE_SHARE, strikeLegal, zoneBlocked, zoneInForce, zonePolicyBlocked, ZONE_PC, CREW,
+} from './interdiction';
+import { targetIndex } from './shipping';
 import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './supplyChain';
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
@@ -424,4 +429,86 @@ export function merchantStatusLine(w: WorldDraft, merchantId: string): string {
   parts.push(isCovered(w, m) ? 'COVERED' : cover ? `UNPROTECTED — NEAREST TASK FORCE ${cover.d.toFixed(0)} TILES` : 'UNPROTECTED — NO TASK FORCE AT SEA');
   parts.push(`lane war-risk premium +${premiumPct(lane.risk)}%`);
   return parts.join(' · ');
+}
+
+// ------------------------------------------------------------------------------------------ inspections and interdiction
+
+export function previewInspect(w: WorldDraft, tfId: string, merchantId: string): Preview {
+  const b = inspectBlocked(w, tfId, merchantId);
+  if (b) return blocked(b);
+  const tf = tfById(w, tfId)!;
+  const m = w.shipping.ships.find((x) => x.id === merchantId)!;
+  const gap = Math.hypot(tf.position.x - m.position.x, tf.position.y - m.position.y);
+  const days = Math.max(0, Math.ceil(gap / tf.speedTilesPerDay));
+  const home = m.flag === 'DOMESTIC_YARDS';
+  const open = m.flag === 'OPEN_REGISTRY';
+  const parts = [
+    `${tf.name} reaches ${KIND_TAG[m.kind]} ${m.name.toUpperCase()} (${flagText(m.flag)}) in ~${days} day${days === 1 ? '' : 's'}, then searches it for ${INSPECT_DAYS} days`,
+    `contraband found: seized (+${Math.round(m.cargo * SEIZURE_SHARE)}M, support +2)`,
+    `nothing found: support −${home || open ? 0.5 : 1}, tension +1${home || open ? '' : `, ${flagText(m.flag)} standing −3`}`,
+  ];
+  if (m.tip) parts.push(`intelligence tip-off: a search finds it ${Math.round(FIND_TIPPED * 100)}% of the time if the tip is right (tips are sometimes wrong)`);
+  else parts.push(`no intelligence on this ship: a search finds hidden cargo ${Math.round(FIND_UNTIPPED * 100)}% of the time, if there is any`);
+  if (tf.assignedSectorId !== null) parts.push(`${w.map.sectors[tf.assignedSectorId].label} left uncovered while away`);
+  return parts.join(' · ');
+}
+
+export function previewSectorInspect(w: WorldDraft, sectorId: number, flag: FlagFilter | null): Preview {
+  const b = sectorInspectBlocked(w, sectorId, flag);
+  if (b) return blocked(b);
+  const sec = w.map.sectors[sectorId];
+  if (!flag) return `${sec.label}: no standing search order; ships pass unchallenged`;
+  return [
+    `${sec.label}: task forces at sea search ${flagText(flag)} merchant ships passing within ${FORCE_RANGE} tiles (${INSPECT_DAYS} days each)`,
+    `contraband: seized (cargo × ${Math.round(SEIZURE_SHARE * 100)}% in money, support +2)`,
+    `clean search: support −1 (−0.5 for the home flag or open registry), tension +1, flag-state standing −3`,
+    'needs a task force at sea nearby: nothing happens without one',
+  ].join(' · ');
+}
+
+function zoneImpact(w: WorldDraft, zone: ExclusionZone): string {
+  const before = targetIndex(w.shipping);
+  const after = targetIndex({ lanes: w.shipping.lanes, zones: [...w.shipping.zones, zone] });
+  return `trade index ${before.toFixed(0)} → ~${after.toFixed(0)} (traffic of the flag reroutes; budget forecast and support follow)`;
+}
+
+export function previewDeclareZone(w: WorldDraft, flag: FlagFilter, sectors: number[], policy: InterdictionPolicy): Preview {
+  const b = zoneBlocked(w, flag, sectors);
+  if (b) return blocked(b);
+  const zone: ExclusionZone = { id: 'EZ-?', flag, sectors, declaredTick: w.tick, effectiveTick: w.tick + NOTICE_DAYS, policy };
+  const notWF = sectors.filter((s) => w.sectors[s].roe !== 'WEAPONS_FREE').map((s) => w.map.sectors[s].label);
+  const parts = [
+    `−${lobbyCost(w, ZONE_PC)} PC`,
+    `${flagText(flag)} shipping barred from ${sectors.map((s) => w.map.sectors[s].label).join(', ')}: NOTICE ${NOTICE_DAYS} days, no force before day ${zone.effectiveTick}`,
+    `now: tension +4, flag-state standing −4 (its bloc −2), lane war-risk +8, polarization +6, support +1.5 (rally)`,
+    zoneImpact(w, zone),
+    `policy ${POLICY_LABEL[policy]}${policy === 'UNRESTRICTED' ? `: strikes ships on sight (civilian crew casualties are counted) only in sectors at WEAPONS FREE${notWF.length ? ` — not yet: ${notWF.join(', ')}` : ''}; elsewhere it turns ships back` : policy === 'TURN_BACK' ? ': search, seize contraband, turn the rest back' : ': search and release'}`,
+    'passenger ferries are exempt; needs task forces on the spot to act; a polarized home front drains support later',
+  ];
+  return parts.join(' · ');
+}
+
+export function previewLiftZone(w: WorldDraft, zoneId: string): Preview {
+  const b = liftBlocked(w, zoneId);
+  if (b) return blocked(b);
+  const z = w.shipping.zones.find((x) => x.id === zoneId)!;
+  return `${z.id} lifted: ${flagText(z.flag)} shipping may return · tension −2, polarization −2, flag-state standing +2`;
+}
+
+export function previewZonePolicy(w: WorldDraft, zoneId: string, policy: InterdictionPolicy): Preview {
+  const b = zonePolicyBlocked(w, zoneId, policy);
+  if (b) return blocked(b);
+  const z = w.shipping.zones.find((x) => x.id === zoneId)!;
+  return `${z.id}: ${POLICY_LABEL[z.policy]} → ${POLICY_LABEL[policy]}${zoneInForce(z, w.tick) ? ' takes effect at once' : ` (in force from day ${z.effectiveTick})`}${policy === 'UNRESTRICTED' ? ' · strikes only where the sector is at WEAPONS FREE; civilian casualties counted' : ''}`;
+}
+
+export function previewEngage(w: WorldDraft, tfId: string, merchantId: string): Preview {
+  const b = engageBlocked(w, tfId, merchantId);
+  if (b) return blocked(b);
+  const m = w.shipping.ships.find((x) => x.id === merchantId)!;
+  const crew = CREW[m.kind];
+  if (strikeLegal(w, m)) {
+    return `LAWFUL under the exclusion order in force: ship lost (${m.cargo}M cargo), ${crew} crew casualties added to the civilian toll · tension +4, PC −3, flag-state standing −10 (bloc −3), polarization +${(3 + crew / 20).toFixed(1)}, support +1.5 now`;
+  }
+  return `GRAVEST INCIDENT — no exclusion order in force here (or not yet past notice, or the sector is not at WEAPONS FREE): ship lost (${m.cargo}M cargo), ${crew} crew casualties · tension +20, PC −15, support −12, flag-state standing −20 (bloc −6), polarization +${(10 + crew / 10).toFixed(0)}`;
 }

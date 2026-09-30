@@ -8,6 +8,11 @@ import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
 import MerchantPanel from './MerchantPanel';
 import ShippingLanes from './ShippingLanes';
+import InterdictionPanel from './InterdictionPanel';
+import { INTERDICTION_FLAGS } from '@/lib/sim/interdiction';
+import { flagText } from '@/lib/sim/shipping';
+import type { FlagFilter } from '@/lib/types/shipping';
+import { useNames } from '@/store/useNames';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
@@ -37,8 +42,10 @@ export default function SectorPanel() {
   const selectedTf = useFleetStore((s) => s.selectedTaskForceId);
   const selectedContact = useFleetStore((s) => s.selectedContactId);
   const merchants = useFleetStore((s) => s.shipping.ships);
+  const hasLanes = useFleetStore((s) => s.shipping.lanes.length > 0);
+  const n = useNames();
   const selectedMerchant = useFleetStore((s) => s.selectedMerchantId);
-  const { selectSector, setRoe, assignTaskForce, setSop, selectContact, selectMerchant } = useFleetStore.getState();
+  const { selectSector, setRoe, assignTaskForce, setSop, selectContact, selectMerchant, setSectorInspect } = useFleetStore.getState();
 
   const tfs = useMemo(() => allTaskForces(fleets), [fleets]);
 
@@ -74,6 +81,7 @@ export default function SectorPanel() {
           ))}
         </Section>
         <ShippingLanes />
+        <InterdictionPanel />
       </div>
     );
   }
@@ -126,6 +134,27 @@ export default function SectorPanel() {
             ))}
           </div>
         </div>
+        {hasLanes && (
+          <div data-tutorial="inspect-order">
+            <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">
+              <Term k="INSPECTION">Merchant searches</Term>
+            </div>
+            <select
+              aria-label="Search order flag"
+              value={st.inspect ?? ''}
+              onChange={(e) => setSectorInspect(selected, e.target.value ? (e.target.value as FlagFilter) : null)}
+              className="mt-1 w-full px-1.5 py-1 text-[0.875rem]"
+            >
+              <option value="">— no standing search order —</option>
+              {INTERDICTION_FLAGS.map((f) => (
+                <option key={f} value={f}>
+                  Search {n.t(flagText(f))} ships
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[0.75rem] text-slate-600">Task forces at sea search matching ships that pass close by. Contraband is seized; a clean search costs standing with the flag state.</p>
+          </div>
+        )}
         {shipsHere.length > 0 && (
           <div className="mt-2">
             <div className="text-[0.8125rem] uppercase tracking-widest text-slate-500">Merchant ships in sector</div>

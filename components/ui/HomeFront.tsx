@@ -12,6 +12,7 @@ import {
   hearingBlocked,
   FORECAST_LOCK_DAY,
   pcRegenPerDay,
+  polarizationDrift,
   runningCosts,
   spentThisYear,
   SUPPORT_HOSTILE,
@@ -84,6 +85,21 @@ export default function HomeFront() {
           v={`${shipping.index.toFixed(0)}${shipping.index < 99.5 ? ` (budget ×${tradeFactor(shipping.index).toFixed(2)}, support −${((100 - shipping.index) * TRADE_SUPPORT_DRAIN).toFixed(2)}/day)` : ' — normal'}`}
           tone={shipping.index < 85 ? 'text-warn' : shipping.index < 97 ? 'text-amber-radar' : undefined}
         />
+      )}
+      {shipping.stats.toll > 0 && <Stat k="Civilian toll" v={`${shipping.stats.toll} crew casualties`} tone="text-warn" />}
+      {(politics.polarization ?? 0) > 0.5 && (
+        <div className="mt-1">
+          <div className="flex justify-between text-[0.75rem] uppercase tracking-widest text-slate-500">
+            <span><Term k="POLARIZATION">Polarization</Term></span>
+            <span className={(politics.polarization ?? 0) > 60 ? 'text-warn' : (politics.polarization ?? 0) > 20 ? 'text-amber-radar' : 'text-slate-300'}>{(politics.polarization ?? 0).toFixed(0)}</span>
+          </div>
+          <div className="h-1.5 w-full bg-navy-deep">
+            <div className={`h-full ${(politics.polarization ?? 0) > 60 ? 'bg-warn' : 'bg-amber-radar'}`} style={{ width: `${politics.polarization ?? 0}%` }} />
+          </div>
+          <p className="text-[0.6875rem] text-slate-600">
+            {(politics.polarization ?? 0) > 20 ? `Support drains ${polarizationDrift(politics.polarization ?? 0).toFixed(2)}/day and elections swing harder; it eases only while no exclusion order is in force.` : 'Below 20: no lasting effect.'}
+          </p>
+        </div>
       )}
       <Stat k="Political capital income" v={`${pcRegenPerDay(view) >= 0 ? '+' : ''}${pcRegenPerDay(view).toFixed(2)}/day`} tone={pcRegenPerDay(view) < 0 ? 'text-warn' : undefined} />
 

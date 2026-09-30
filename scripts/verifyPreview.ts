@@ -88,6 +88,26 @@ function sweep(tag: string, w: WorldDraft) {
       text(`${tag} ship status ${m.id}`, pv.merchantStatusLine(w, m.id));
     }
   }
+  for (const tf of w.fleets.flatMap((f) => f.taskForces)) {
+    for (const m of w.shipping.ships.slice(0, 4)) {
+      agree(`${tag} search ${tf.id}/${m.id}`, w, pv.previewInspect(w, tf.id, m.id), (c) => cmd.inspectMerchantCmd(c, tf.id, m.id));
+      agree(`${tag} engage ${tf.id}/${m.id}`, w, pv.previewEngage(w, tf.id, m.id), (c) => cmd.engageMerchantCmd(c, tf.id, m.id));
+    }
+  }
+  const laneSecs = [...new Set(w.shipping.lanes.flatMap((l) => l.sectors))];
+  for (const sec of w.map.sectors.map((x) => x.id)) {
+    for (const f of [null, 'ALL', 'OPEN_REGISTRY', 'RAYTHEON'] as const) agree(`${tag} sector search ${sec}/${f}`, w, pv.previewSectorInspect(w, sec, f), (c) => cmd.setSectorInspectCmd(c, sec, f));
+  }
+  for (const f of ['ALL', 'RAYTHEON', 'DOMESTIC_YARDS'] as const) {
+    for (const secs of [[], laneSecs.slice(0, 1), laneSecs.slice(0, 2), [99]]) {
+      for (const p of ['INSPECT_ALL', 'TURN_BACK', 'UNRESTRICTED'] as const) agree(`${tag} declare ${f}/${secs}/${p}`, w, pv.previewDeclareZone(w, f as never, secs, p), (c) => cmd.declareZoneCmd(c, f as never, secs, p));
+    }
+  }
+  for (const z of w.shipping.zones) {
+    agree(`${tag} lift ${z.id}`, w, pv.previewLiftZone(w, z.id), (c) => cmd.liftZoneCmd(c, z.id));
+    for (const p of ['INSPECT_ALL', 'TURN_BACK', 'UNRESTRICTED'] as const) agree(`${tag} policy ${z.id}/${p}`, w, pv.previewZonePolicy(w, z.id, p), (c) => cmd.setZonePolicyCmd(c, z.id, p));
+  }
+  agree(`${tag} lift none`, w, pv.previewLiftZone(w, 'EZ-NOPE'), (c) => cmd.liftZoneCmd(c, 'EZ-NOPE'));
   agree(`${tag} hearing`, w, pv.previewHearing(w), (c) => cmd.holdBudgetHearing(c));
   agree(`${tag} industry`, w, pv.previewExpandIndustry(w), (c) => cmd.expandIndustry(c));
   const design = { hullId: 'CORVETTE' as const, moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_ASEL_SPEAR', 'ARM_NG_SYLVER8'], squadronId: 'SQ-1-1' };
@@ -113,6 +133,10 @@ for (const arch of ['CHOKEPOINT', 'CORRIDOR', 'RIMLAND'] as const) {
     }
     // hulls under construction at each sweep (cancel / resell previews), some old enough to be sold
     if (d % 100 === 30 || d % 100 === 95) cmd.orderShip(w, { designName: 'X', hullId: 'CORVETTE', moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_NG_SMARTS', 'ARM_DOM_GUN76'], squadronId: 'SQ-1-1', tradition: 'VIRTUES' });
+    if (d === 250 && w.shipping.lanes.length) {
+      w.resources.politicalCapital = 40;
+      cmd.declareZoneCmd(w, 'RAYTHEON', w.shipping.lanes[0].sectors.slice(0, 1), 'TURN_BACK'); // a live order: exercises lift / policy previews
+    }
     if (d === 250 && w.shipping.ships[0]) cmd.escortMerchantCmd(w, w.fleets[0].taskForces[0].id, w.shipping.ships[0].id); // a live escort: exercises the release preview
     if (d === 150) for (const s of Object.values(w.ships)) if (s.state === 'MAINTENANCE_DOCK') designateHulk(w, s.id);
     if (d === 50) w.resources.politicalCapital = 0; // exercise blocked lobbying

@@ -132,6 +132,7 @@ export function initialPolitics(opts: { support: number; appropriation: number; 
       lockedForecast: null,
       inquiryPenalty: false,
     },
+    polarization: 0,
     hearingReadyTick: 0,
     inquiryUntil: null,
     nextElectionTick: opts.scripted ? Number.MAX_SAFE_INTEGER : ELECTION_EVERY_DAYS,
@@ -139,6 +140,16 @@ export function initialPolitics(opts: { support: number; appropriation: number; 
 }
 
 // ------------------------------------------------------------------------------------------ support
+
+export const polarizationOf = (w: Pick<WorldDraft, 'politics'>) => w.politics.polarization ?? 0;
+
+/** Domestic polarization over interdiction (0-100). */
+export function adjustPolarization(w: Pick<WorldDraft, 'politics'>, delta: number): void {
+  w.politics.polarization = clamp(polarizationOf(w) + delta);
+}
+
+/** Daily support drain from polarization above 20: the divided home front turns on the navy, even after a rally. */
+export const polarizationDrift = (pol: number) => Math.max(0, pol - 20) * 0.0015;
 
 export function adjustSupport(w: WorldDraft, delta: number): void {
   w.politics.support = clamp(w.politics.support + delta);
@@ -258,7 +269,7 @@ export function tickPolitics(w: WorldDraft, rng: Rng): void {
     if (!st || st.threat <= 60) return false;
     return !w.fleets.some((fl) => fl.taskForces.some((tf) => tf.assignedSectorId === s.id));
   }).length;
-  let drift = (50 - p.support) * 0.004 + (w.tension - 40) * 0.003 - 0.05 * frozen - 0.015 * exposed + (w.shipping.index - 100) * TRADE_SUPPORT_DRAIN;
+  let drift = (50 - p.support) * 0.004 + (w.tension - 40) * 0.003 - 0.05 * frozen - 0.015 * exposed + (w.shipping.index - 100) * TRADE_SUPPORT_DRAIN - polarizationDrift(polarizationOf(w));
   if (w.resources.budget < 0) {
     drift -= 0.3;
     if (w.tick % 10 === 0) w.events.push({ severity: 'WARNING', text: `NAVY OVERSPENT (${M(w.resources.budget)}) — domestic support eroding` });
@@ -281,7 +292,8 @@ export function tickPolitics(w: WorldDraft, rng: Rng): void {
   // ---- elections
   if (w.tick >= p.nextElectionTick) {
     const before = p.support;
-    p.support = clamp(50 + (before - 50) * 0.5 + rng.range(-10, 10));
+    const swing = 10 + polarizationOf(w) * 0.3; // a polarized electorate swings harder
+    p.support = clamp(50 + (before - 50) * 0.5 + rng.range(-swing, swing));
     p.nextElectionTick = w.tick + ELECTION_EVERY_DAYS;
     w.events.push({ severity: 'ADVISORY', text: `ELECTION: a new government takes office — domestic support ${before.toFixed(0)} → ${p.support.toFixed(0)}` });
   }

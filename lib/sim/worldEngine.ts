@@ -13,6 +13,7 @@ import { tickRelations } from './relationsEngine';
 import { tickSupplyChain } from './supplyChain';
 import { payInstalment } from './contracts';
 import { tickShipping } from './shipping';
+import { tickInterdiction } from './interdiction';
 import { tickColdVendors } from './coldVendors';
 import { bridgeSet, BASE_RP_INCOME, tickResearch } from './researchEngine';
 
@@ -38,6 +39,7 @@ export function advanceDay(world: WorldDraft): void {
   advanceFleets(world, rng.fork('fleets'));
   tickContacts(world, rng.fork('contacts'), bridges);
   tickShipping(world, rng.fork('shipping'));
+  tickInterdiction(world, rng.fork('interdiction'));
   tickRelations(world, incidentsBefore);
   tickSupplyChain(world);
   tickColdVendors(world, rng.fork('cold'));

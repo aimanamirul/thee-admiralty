@@ -14,7 +14,7 @@ import { ct } from '../data/tokens';
 import { Rng } from '../generator/prng';
 import type { TaskForce } from '../types/fleet';
 import type { MapData, Vec2 } from '../types/map';
-import { KIND_LABEL, KIND_TAG, type Flag, type Lane, type Merchant, type ShipKind, type ShippingState } from '../types/shipping';
+import { KIND_LABEL, KIND_TAG, type Flag, type FlagFilter, type Lane, type Merchant, type ShipKind, type ShippingState, type ShippingStats } from '../types/shipping';
 import type { WorldDraft } from '../types/world';
 import { allTaskForces, taskForceShipIds } from './fleetEngine';
 import { findRoute, isWater, snapToWater } from './navigation';
@@ -58,8 +58,29 @@ function weighted<T>(rng: Rng, table: [T, number][]): T {
 }
 
 /** Flag as display text (name token, so the skin applies). */
-export function flagText(flag: Flag): string {
-  return flag === 'OPEN_REGISTRY' ? 'OPEN REGISTRY' : flag === 'DOMESTIC_YARDS' ? 'HOME' : ct(flag);
+export function flagText(flag: FlagFilter): string {
+  return flag === 'ALL' ? 'ALL FOREIGN FLAGS' : flag === 'OPEN_REGISTRY' ? 'OPEN REGISTRY' : flag === 'DOMESTIC_YARDS' ? 'HOME' : ct(flag);
+}
+
+const FLAG_TOTAL = FLAGS.reduce((a, [, w]) => a + w, 0);
+/** Share of traffic sailing under a flag (foreign flags for 'ALL'). */
+export function flagShare(f: FlagFilter): number {
+  if (f === 'ALL') return FLAGS.filter(([x]) => x !== 'DOMESTIC_YARDS').reduce((a, [, w]) => a + w, 0) / FLAG_TOTAL;
+  return (FLAGS.find(([x]) => x === f)?.[1] ?? 0) / FLAG_TOTAL;
+}
+
+export const flagMatches = (filter: FlagFilter, flag: Flag) => (filter === 'ALL' ? flag !== 'DOMESTIC_YARDS' : filter === flag);
+
+/** Chance a ship carries contraband, by flag (ferries carry passengers, never contraband). */
+function contrabandOdds(kind: ShipKind, flag: Flag): number {
+  if (kind === 'FERRY') return 0;
+  return flag === 'DOMESTIC_YARDS' ? 0.02 : flag === 'OPEN_REGISTRY' || flag === 'ZVEZDA_NORD' ? 0.12 : 0.05;
+}
+
+/** Add to a running total and to this fiscal year's report. */
+export function count(sh: ShippingState, key: keyof ShippingStats, n = 1): void {
+  sh.stats[key] += n;
+  sh.year.counts[key] += n;
 }
 
 // ------------------------------------------------------------------------------------------ lanes (T1)
@@ -191,11 +212,12 @@ export function trafficAt(risk: number): number {
 /** War-risk premium shown to the player, as a percentage surcharge. */
 export const premiumPct = (risk: number) => Math.round(risk * 0.8);
 
-/** Trade index the lanes currently imply (100 = every lane at full traffic). */
-export function targetIndex(s: Pick<ShippingState, 'lanes'>): number {
+/** Trade index the lanes currently imply (100 = every lane at full traffic); exclusion orders divert part of it. */
+export function targetIndex(s: Pick<ShippingState, 'lanes'> & Partial<Pick<ShippingState, 'zones'>>): number {
   const total = s.lanes.reduce((a, l) => a + l.base, 0);
   if (total === 0) return 100;
-  return (100 * s.lanes.reduce((a, l) => a + l.base * (l.reroutedUntil !== null ? 0 : l.traffic), 0)) / total;
+  const zones = s.zones ?? [];
+  return (100 * s.lanes.reduce((a, l) => a + l.base * (l.reroutedUntil !== null ? 0 : l.traffic * (1 - laneAvoid({ zones }, l))), 0)) / total;
 }
 
 export { tradeFactor, TRADE_BUDGET_SHARE, TRADE_SUPPORT_DRAIN } from '../types/shipping';
@@ -204,7 +226,7 @@ export const laneOf = (s: Pick<ShippingState, 'lanes'>, id: string) => s.lanes.f
 
 // ------------------------------------------------------------------------------------------ protection (T2)
 
-function shipsAtSea(w: WorldDraft, tf: TaskForce) {
+export function shipsAtSea(w: WorldDraft, tf: TaskForce) {
   return taskForceShipIds(tf)
     .map((id) => w.ships[id])
     .filter((s) => !!s && s.buildStatus === 'COMMISSIONED' && !s.isPartsHulk && s.state !== 'MAINTENANCE_DOCK');
@@ -280,7 +302,7 @@ export function escortBlocked(w: WorldDraft, tfId: string, merchantId: string): 
   return null;
 }
 
-function releaseEscort(w: WorldDraft, tf: TaskForce) {
+export function releaseEscort(w: WorldDraft, tf: TaskForce) {
   if (!tf.escort) return;
   const m = w.shipping.ships.find((x) => x.id === tf.escort);
   if (m && m.escort === tf.id) m.escort = null;
@@ -294,6 +316,7 @@ export function orderEscort(w: WorldDraft, tfId: string, merchantId: string): { 
   const m = w.shipping.ships.find((x) => x.id === merchantId)!;
   releaseEscort(w, tf);
   tf.escort = m.id;
+  tf.escortMode = 'ESCORT';
   m.escort = tf.id;
   const left = tf.assignedSectorId !== null ? ` — ${w.map.sectors[tf.assignedSectorId].label} left uncovered` : '';
   w.events.push({ severity: 'INFO', text: `ESCORT: ${tf.name} ordered to ${m.status === 'DISTRESS' ? 'the aid of' : 'escort'} ${KIND_TAG[m.kind]} ${m.name.toUpperCase()} (${flagText(m.flag)})${left}` });
@@ -318,7 +341,7 @@ export function cancelEscort(w: WorldDraft, tfId: string): { ok: boolean; reason
 
 // ------------------------------------------------------------------------------------------ daily tick
 
-function sectorOf(w: WorldDraft, m: Merchant, lane: Lane): number {
+export function sectorOf(w: WorldDraft, m: Merchant, lane: Lane): number {
   const s = w.map.sectorGrid[Math.round(m.position.y) * w.map.width + Math.round(m.position.x)];
   return s >= 0 ? s : lane.sectors[0];
 }
@@ -337,11 +360,13 @@ function spawnMerchant(w: WorldDraft, lane: Lane, rng: Rng): Merchant {
     if (!used.has(name)) break;
   }
   sh.seq++;
+  const flag = weighted(rng, FLAGS);
+  const contraband = rng.chance(contrabandOdds(kind, flag));
   return {
     id: `MV-${sh.seq}`,
     name,
     kind,
-    flag: weighted(rng, FLAGS),
+    flag,
     laneId: lane.id,
     dist: dist0,
     dir,
@@ -352,27 +377,45 @@ function spawnMerchant(w: WorldDraft, lane: Lane, rng: Rng): Merchant {
     status: 'UNDERWAY',
     distressUntil: null,
     escort: null,
+    contraband,
+    tip: kind !== 'FERRY' && rng.chance(contraband ? 0.35 : 0.02),
+    checked: false,
+    turnedBack: false,
+    inspecting: null,
   };
 }
 
-function removeMerchant(w: WorldDraft, m: Merchant) {
+/** Do exclusion orders make ships of this flag avoid the lane (they still notice the notice period)? */
+export function laneAvoided(sh: Pick<ShippingState, 'zones'>, lane: Lane, flag: Flag): boolean {
+  return (sh.zones ?? []).some((z) => flagMatches(z.flag, flag) && z.sectors.some((s) => lane.sectors.includes(s)));
+}
+
+/** Share of a lane's traffic diverted by exclusion orders (flag share, 80% of which reroutes). */
+export function laneAvoid(sh: Pick<ShippingState, 'zones'>, lane: Lane): number {
+  const zones = (sh.zones ?? []).filter((z) => z.sectors.some((s) => lane.sectors.includes(s)));
+  return Math.min(0.9, zones.reduce((a, z) => a + flagShare(z.flag) * 0.8, 0));
+}
+
+export function removeMerchant(w: WorldDraft, m: Merchant) {
   for (const tf of allTaskForces(w.fleets)) if (tf.escort === m.id) tf.escort = null;
   w.shipping.ships = w.shipping.ships.filter((x) => x.id !== m.id);
 }
 
-const tag = (m: Merchant) => `${KIND_TAG[m.kind]} ${m.name.toUpperCase()} (${flagText(m.flag)})`;
+export const merchantTag = (m: Merchant) => `${KIND_TAG[m.kind]} ${m.name.toUpperCase()} (${flagText(m.flag)})`;
 
 /** A ship is lost: sunk, taken or foundered. Everyone sees the cost. */
-function loss(w: WorldDraft, m: Merchant, lane: Lane, how: 'SUNK' | 'SEIZED' | 'FOUNDERED', where: string) {
+function loss(w: WorldDraft, m: Merchant, lane: Lane, how: 'SUNK' | 'SEIZED' | 'FOUNDERED', sectorId: number) {
+  const where = w.map.sectors[sectorId].label;
   const sh = w.shipping;
-  sh.stats.lost++;
-  sh.stats.cargoLost += m.cargo;
+  count(sh, 'lost');
+  count(sh, 'cargoLost', m.cargo);
+  sh.year.lossBySector[sectorId] = (sh.year.lossBySector[sectorId] ?? 0) + 1;
   lane.risk = clamp(lane.risk + (how === 'SUNK' ? 30 : how === 'SEIZED' ? 25 : 10));
   const home = m.flag === 'DOMESTIC_YARDS';
   adjustSupport(w, -(home ? 2 : 1) - (how === 'SEIZED' ? 0.5 : 0));
   w.tension = clamp(w.tension + 1);
   const verb = how === 'SUNK' ? 'sunk by a raider' : how === 'SEIZED' ? 'seized by a raider' : 'foundered before help arrived';
-  w.events.push({ severity: 'CRITICAL', text: `SHIPPING LOSS: ${tag(m)} ${verb} in ${where} — ${m.cargo} M cargo lost, support −${home ? 2 : 1}` });
+  w.events.push({ severity: 'CRITICAL', text: `SHIPPING LOSS: ${merchantTag(m)} ${verb} in ${where} — ${m.cargo} M cargo lost, support −${home ? 2 : 1}` });
   const escorts = allTaskForces(w.fleets).filter((t) => t.escort === m.id);
   for (const tf of escorts) w.events.push({ severity: 'WARNING', text: `ESCORT FAILED: ${tf.name} lost the ship it was assigned to` });
   removeMerchant(w, m);
@@ -399,7 +442,10 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
   // ---- traffic
   for (const lane of sh.lanes) {
     if (lane.reroutedUntil !== null || sh.ships.length >= MAX_MERCHANTS) continue;
-    if (rng.chance(lane.base * lane.traffic)) sh.ships.push(spawnMerchant(w, lane, rng));
+    if (!rng.chance(lane.base * lane.traffic)) continue;
+    const m = spawnMerchant(w, lane, rng);
+    if (laneAvoided(sh, lane, m.flag) && rng.chance(0.8)) sh.seq--; // this ship reroutes around the exclusion zone
+    else sh.ships.push(m);
   }
 
   // ---- movement and arrival
@@ -409,15 +455,20 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
       removeMerchant(w, m);
       continue;
     }
-    if (m.status === 'UNDERWAY') {
+    if (m.status === 'UNDERWAY' && !m.inspecting) {
       m.dist += m.dir * MERCHANT_SPEED;
       if (m.dist <= 0 || m.dist >= lane.length) {
-        sh.stats.transited++;
-        const guards = allTaskForces(w.fleets).filter((t) => t.escort === m.id);
+        if (m.turnedBack) {
+          count(sh, 'returned');
+          removeMerchant(w, m);
+          continue;
+        }
+        count(sh, 'transited');
+        const guards = allTaskForces(w.fleets).filter((t) => t.escort === m.id && t.escortMode !== 'INSPECT');
         if (guards.length) {
-          sh.stats.escorted++;
+          count(sh, 'escorted');
           adjustSupport(w, 0.5);
-          w.events.push({ severity: 'ADVISORY', text: `SAFE PASSAGE: ${tag(m)} reaches port under ${guards[0].name}'s escort (support +0.5)` });
+          w.events.push({ severity: 'ADVISORY', text: `SAFE PASSAGE: ${merchantTag(m)} reaches port under ${guards[0].name}'s escort (support +0.5)` });
         }
         removeMerchant(w, m);
         continue;
@@ -438,17 +489,18 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
     attacked.add(prey.id);
     const lane = laneOf(sh, prey.laneId)!;
     const r = new Rng(`${w.seed}:merchant-attack:${w.tick}:${prey.id}`).next();
-    const where = w.map.sectors[sectorOf(w, prey, lane)].label;
+    const secId = sectorOf(w, prey, lane);
+    const where = w.map.sectors[secId].label;
     w.sectors[c.sectorId].threat = clamp(w.sectors[c.sectorId].threat + 2);
     w.contacts = w.contacts.filter((x) => x.id !== c.id); // the raid is expended
-    if (prey.status === 'DISTRESS' || r < 0.3) loss(w, prey, lane, 'SUNK', where);
-    else if (r < 0.5) loss(w, prey, lane, 'SEIZED', where);
+    if (prey.status === 'DISTRESS' || r < 0.3) loss(w, prey, lane, 'SUNK', secId);
+    else if (r < 0.5) loss(w, prey, lane, 'SEIZED', secId);
     else {
       prey.status = 'DISTRESS';
       prey.distressUntil = w.tick + DISTRESS_DAYS;
       lane.risk = clamp(lane.risk + 15);
       adjustSupport(w, -0.3);
-      w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${tag(prey)} damaged by a raider in ${where} — help needed within ${DISTRESS_DAYS} days` });
+      w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} damaged by a raider in ${where} — help needed within ${DISTRESS_DAYS} days` });
     }
   }
 
@@ -460,15 +512,17 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
     if (cover && cover.d <= COVER_RADIUS) {
       m.status = 'UNDERWAY';
       m.distressUntil = null;
-      sh.stats.rescued++;
+      count(sh, 'rescued');
       adjustSupport(w, 1);
       lane.risk = clamp(lane.risk - 5);
-      w.events.push({ severity: 'ADVISORY', text: `RESCUE: ${cover.tf.name} reaches ${tag(m)}; the ship resumes its passage (support +1)` });
+      w.events.push({ severity: 'ADVISORY', text: `RESCUE: ${cover.tf.name} reaches ${merchantTag(m)}; the ship resumes its passage (support +1)` });
     } else if (m.distressUntil !== null && w.tick >= m.distressUntil) {
-      loss(w, m, lane, 'FOUNDERED', w.map.sectors[sectorOf(w, m, lane)].label);
+      loss(w, m, lane, 'FOUNDERED', sectorOf(w, m, lane));
     }
   }
 
   // ---- trade index
   sh.index = clamp(sh.index + (targetIndex(sh) - sh.index) * 0.1);
+  sh.year.indexSum += sh.index;
+  sh.year.days++;
 }
