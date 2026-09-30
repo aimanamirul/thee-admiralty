@@ -234,11 +234,11 @@ export const LESSONS: Lesson[] = [
       // merchant is fired on while still unidentified (an incident); under the other ROEs it is identified and ignored.
       const raider = spawnPursuer(w, 'TF-1', 28, []);
       w.contacts.push(
-        { id: 'CT-TUT-RAID', sectorId: HOME_SECTOR, position: raider, heading: 0, cls: 'UNKNOWN', hostile: true, strength: 20, bornTick: w.tick, expiresTick: w.tick + 40, pursue: 'TF-1' },
+        { id: 'CT-TUT-RAID', sectorId: HOME_SECTOR, position: raider, heading: 0, cls: 'UNKNOWN', hostile: true, intent: 'RAIDER', strength: 20, bornTick: w.tick, expiresTick: w.tick + 40, pursue: 'TF-1' },
       );
       const merchant = spawnPursuer(w, 'TF-1', 24, [raider], 0.9);
       w.contacts.push(
-        { id: 'CT-TUT-MERCH', sectorId: HOME_SECTOR, position: merchant, heading: 0, cls: 'UNKNOWN', hostile: false, strength: 0, bornTick: w.tick, expiresTick: w.tick + 40, pursue: 'TF-1' },
+        { id: 'CT-TUT-MERCH', sectorId: HOME_SECTOR, position: merchant, heading: 0, cls: 'UNKNOWN', hostile: false, intent: 'MERCHANT', strength: 0, bornTick: w.tick, expiresTick: w.tick + 40, pursue: 'TF-1' },
       );
       w.events.push({ severity: 'WARNING', text: 'NEW CONTACTS: two unidentified tracks in HOME APPROACHES, closing on TF 11' });
     },
@@ -348,20 +348,22 @@ export const LESSONS: Lesson[] = [
     id: 'graduation',
     title: 'Graduation',
     body: [
-      'Briefing complete. Every panel is open and random events are live.',
-      'HOME APPROACHES is covered; BEYOND THE STRAIT (threat 70) is not. Coverage is your scarcest resource. Send TF 12.',
+      'Briefing complete. Every panel is open, random events are live, and your task forces now hail, warn and board unknown contacts on their own (sector SOP: CHALLENGE).',
+      'BEYOND THE STRAIT (threat 70) is uncovered. TF 12\'s fast attack craft carry almost no air defence: against a raid there they would be lost. Hover Assign to compare, then decide which force goes and what is left at home. Coverage is your scarcest resource.',
     ],
-    objective: 'Assign TF 12 to BEYOND THE STRAIT.',
+    objective: 'Assign a task force to BEYOND THE STRAIT.',
     reveals: ['*'],
     tab: 'SECTOR',
     target: BEYOND_SECTOR,
     onEnter: (w) => {
       w.scripted = false;
       w.policy.autoSpares = true;
+      // Hand over the free-play default: task forces now hail, warn and board unknown contacts on their own.
+      for (const st of Object.values(w.sectors)) st.sop = 'CHALLENGE';
       w.sectors[BEYOND_SECTOR].threat = 70;
       w.events.push({ severity: 'ADVISORY', text: 'BRIEFING COMPLETE — random events live, standing orders restored' });
     },
-    gate: (v) => tf(v, 'TF-2')?.assignedSectorId === BEYOND_SECTOR,
+    gate: (v) => v.fleets.some((f) => f.taskForces.some((t) => t.assignedSectorId === BEYOND_SECTOR)),
   },
 ];
 

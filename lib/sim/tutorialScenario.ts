@@ -205,7 +205,8 @@ export function createTutorialWorld(): WorldDraft {
     ships,
     fleets,
     spares: {},
-    sectors: { 0: { threat: 20, roe: 'HOLD_FIRE' }, 1: { threat: 55, roe: 'RETURN_FIRE' } },
+    // OBSERVE: the ladder is not taught yet, so contacts behave exactly as the briefing describes (visual ID only).
+    sectors: { 0: { threat: 20, roe: 'HOLD_FIRE', sop: 'OBSERVE' }, 1: { threat: 55, roe: 'RETURN_FIRE', sop: 'OBSERVE' } },
     vendors,
     sanctions: [],
     research: initialResearch(),
@@ -216,6 +217,6 @@ export function createTutorialWorld(): WorldDraft {
     policy: { autoSpares: false },
     // Budget 2500 = opening balance + first tranche; the next tranche (day 90) falls after the briefing ends.
     politics: initialPolitics({ support: 55, appropriation: 3000, openingBalance: 2500 - 750, scripted: true }),
-    stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0 },
+    stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0, seizures: 0 },
   };
 }

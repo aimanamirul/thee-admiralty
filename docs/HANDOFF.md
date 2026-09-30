@@ -138,9 +138,32 @@ hovered or keyboard-focused: costs, before -> after values, time to effect, risk
   A reckless bot that buys whenever it has 400M goes bankrupt into inquiries (the system working as intended).
 - Tuning note: with 6 sectors and 2 task forces, a player covering only 2 sectors settles near support ~40.
 
+## Contact SOP ladder (done, 2026-09-30)
+
+`lib/sim/contactEngine.ts` owns contacts (moved out of `worldEngine.ts`, which re-exports `IDENTIFY_RANGE` / `ENGAGE_RANGE`).
+- Hidden **intent** per contact: MERCHANT, FISHING, SMUGGLER, SHADOWER, WARSHIP, RAIDER (`hostile` = RAIDER). Spawn mix shifts with
+  sector threat. Raiders hunt task forces within 24 tiles; shadowers keep station 14–18 tiles out; warned smugglers run.
+- **Ladder** (one step per contact per day, by the nearest task force with ships at sea): HAIL (26) · WARN (20) · BOARD (16) · ENGAGE (12);
+  SHADOW as an order = hold. Outcomes per intent live in `execute()` and are summarised for previews in `OUTCOMES`.
+- **Sector SOP** (`SectorState.sop`): OBSERVE (visual ID only) · CHALLENGE (hail 20, warn silent at 14, board runners at 16; free-play default) ·
+  ASSERTIVE (hail 26, board silent contacts at 16 without warning, warn warships off). ROE is the ceiling: HOLD FIRE never engages first,
+  RETURN FIRE engages identified hostiles only, WEAPONS FREE also auto-engages unidentified contacts inside 12.
+- **Per-contact orders** (`Contact.order`, command `orderContact`): click a contact on the plot or in the sector's contact list; the Contact
+  panel shows status, nearest task force, ROE ceiling and the ladder with previews. Surprise: a raider attacking under HOLD FIRE keeps
+  surprise unless warned or already identified; boarding a disguised raider is an ambush (always surprised).
+- Support/tension hooks: incidents (scaled by intent; warships worst), seizures (+25M, support +2, `stats.seizures`), escaped smugglers,
+  completed surveillance runs.
+- Tutorial: both tutorial sectors use OBSERVE (so lesson 6 behaves exactly as taught); graduation switches all sectors to CHALLENGE. The
+  graduation lesson now asks for *a* task force in BEYOND THE STRAIT and warns the FACs cannot defend themselves (hunting raiders sank them
+  in the soak). The Assign preview warns "AIR DEFENCE WEAK" when interceptors at sea < 3 × expected raid missiles.
+- `npm run verify:contacts`: every intent vs every SOP/ROE, rates over 30 seeds (e.g. ASSERTIVE seizes >85% of smugglers and more than
+  CHALLENGE; boarding a raider is an ambush >90%; a warned raider never keeps surprise). `verify:preview` covers contact and SOP previews.
+- In a 2-year free-play soak with 2 task forces the ladder fires ~7–15 hails per theatre; most contacts appear in uncovered sectors.
+
 ## What to build next
 
-Per `docs/PLAN-command-and-economy.md`: steps 1 and 2 are done; next is **step 3, the contact SOP ladder** (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
+Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Next: **contractors phase 1** (`PLAN-foreign-contractors.md` §10), then the tutorial
+pass (teach the fiscal year, support and the SOP ladder; fix the layout jump). Confirm with the user first. (sector SOP + per-contact override), then contractors phase 1. The layout-jump fix waits for the tutorial pass
 after those.
 
 ## Design backlog (do not build yet)

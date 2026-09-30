@@ -23,7 +23,7 @@ export function initialSectorStates(world: Pick<WorldDraft, 'map'>, rng: Rng): R
   const out: Record<number, SectorState> = {};
   for (const s of map.sectors) {
     const far = Math.hypot(s.anchor.x - map.homePort.x, s.anchor.y - map.homePort.y) / diag;
-    out[s.id] = { threat: Math.round(15 + far * 45 + rng.range(-6, 8)), roe: 'RETURN_FIRE' };
+    out[s.id] = { threat: Math.round(15 + far * 45 + rng.range(-6, 8)), roe: 'RETURN_FIRE', sop: 'CHALLENGE' };
   }
   return out;
 }
@@ -110,7 +110,7 @@ export function createInitialWorld(seed: string, archetype?: MapArchetype): Worl
     scripted: false,
     policy: { autoSpares: true },
     politics: initialPolitics({ support: 55, appropriation: START_APPROPRIATION, openingBalance: START_OPENING_BALANCE, scripted: false }),
-    stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0 },
+    stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0, seizures: 0 },
   };
   world.sectors = initialSectorStates(world, rng.fork('threat'));
   world.events.push({ severity: 'INFO', text: `ADMIRALTY LEDGER OPENED — theatre ${map.archetype}, seed "${seed}", ${map.sectors.length} sectors, ${map.chokepoints.length} chokepoints` });

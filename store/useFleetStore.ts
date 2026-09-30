@@ -16,7 +16,7 @@ import * as hulk from '../lib/sim/fleetEngine';
 import type { Fleet, HierarchyKind, Ship, Tempo } from '../lib/types/fleet';
 import type { ShipDesign } from '../lib/types/hull';
 import type { MapArchetype, MapData } from '../lib/types/map';
-import type { Contact, GameEvent, ResearchState, Resources, Roe, SectorState, WorldDraft } from '../lib/types/world';
+import type { Contact, GameEvent, LadderAction, ResearchState, Resources, Roe, SectorState, Sop, WorldDraft } from '../lib/types/world';
 import type { NamingTradition } from '../lib/types/fleet';
 import type { SanctionEvent, Vendor, VendorId } from '../lib/types/diplomacy';
 
@@ -55,6 +55,7 @@ interface UiSlice {
   selectedSectorId: number | null;
   selectedTaskForceId: string | null;
   selectedShipId: string | null;
+  selectedContactId: string | null;
   designerOpen: boolean;
   designs: ShipDesign[];
   toast: { text: string; ok: boolean; id: number } | null;
@@ -75,6 +76,8 @@ interface Actions {
   selectSector: (id: number | null) => void;
   selectTaskForce: (id: string | null) => void;
   selectShip: (id: string | null) => void;
+  /** Select a contact on the plot: opens its sector panel with the contact ladder. */
+  selectContact: (id: string | null) => void;
   setDesignerOpen: (open: boolean) => void;
   saveDesign: (d: ShipDesign) => void;
   deleteDesign: (id: string) => void;
@@ -111,6 +114,8 @@ interface Actions {
   moveShip: (shipId: string, squadronId: string) => CommandResult;
   setAutoSpares: (on: boolean) => CommandResult;
   budgetHearing: () => CommandResult;
+  setSop: (sectorId: number, sop: Sop) => CommandResult;
+  orderContact: (contactId: string, action: LadderAction | 'AUTO') => CommandResult;
 }
 
 export type GameState = WorldSlice & UiSlice & Actions;
@@ -166,6 +171,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     selectedSectorId: null,
     selectedTaskForceId: null,
     selectedShipId: null,
+    selectedContactId: null,
     designerOpen: false,
     designs: STARTER_DESIGNS,
     toast: null,
@@ -196,6 +202,7 @@ export const useFleetStore = create<GameState>((set, get) => {
         selectedSectorId: null,
         selectedTaskForceId: null,
         selectedShipId: null,
+        selectedContactId: null,
         toast: null,
       }),
     snapshotWorld: () => pickWorld(get()),
@@ -211,6 +218,7 @@ export const useFleetStore = create<GameState>((set, get) => {
         selectedSectorId: null,
         selectedTaskForceId: null,
         selectedShipId: null,
+        selectedContactId: null,
         designerOpen: false,
         toast: null,
       });
@@ -223,9 +231,14 @@ export const useFleetStore = create<GameState>((set, get) => {
     },
     setDesignerPreset: (designerPreset) => set({ designerPreset }),
     setTab: (tab) => set({ tab }),
-    selectSector: (id) => set(id === null ? { selectedSectorId: null } : { selectedSectorId: id, tab: 'SECTOR' }),
+    selectSector: (id) => set(id === null ? { selectedSectorId: null, selectedContactId: null } : { selectedSectorId: id, selectedContactId: null, tab: 'SECTOR' }),
     selectTaskForce: (id) => set(id === null ? { selectedTaskForceId: null } : { selectedTaskForceId: id, tab: 'FLEET' }),
     selectShip: (id) => set({ selectedShipId: id }),
+    selectContact: (id) => {
+      if (id === null) return set({ selectedContactId: null });
+      const c = get().contacts.find((x) => x.id === id);
+      set(c ? { selectedContactId: id, selectedSectorId: c.sectorId, tab: 'SECTOR' } : { selectedContactId: null });
+    },
     setDesignerOpen: (designerOpen) => set({ designerOpen }),
     saveDesign: (d) => set((s) => ({ designs: [...s.designs.filter((x) => x.id !== d.id), d] })),
     deleteDesign: (id) => set((s) => ({ designs: s.designs.filter((x) => x.id !== id) })),
@@ -259,6 +272,8 @@ export const useFleetStore = create<GameState>((set, get) => {
     moveShip: (shipId, sqId) => run((w) => cmd.moveShip(w, shipId, sqId)),
     setAutoSpares: (on) => run((w) => cmd.setAutoSpares(w, on)),
     budgetHearing: () => run((w) => cmd.holdBudgetHearing(w)),
+    setSop: (sectorId, sop) => run((w) => cmd.setSop(w, sectorId, sop)),
+    orderContact: (contactId, action) => run((w) => cmd.orderContact(w, contactId, action)),
   };
 });
 

@@ -18,6 +18,26 @@ import { findRoute } from './navigation';
 import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, HEARING_COOLDOWN_DAYS, HEARING_PC, lobbyCost, procurementFrozen } from './politicsEngine';
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
+import { raidProfile } from './combatSim';
+import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
+import type { LadderAction, Sop } from '../types/world';
+
+/** Warn when a task force's interceptors fall short of the raids to expect at the sector's current threat. */
+function airDefence(w: WorldDraft, tfId: string, sectorId: number): string | null {
+  const tf = tfById(w, tfId)!;
+  const bridges = bridgeSet(w.research.completed);
+  let interceptors = 0;
+  for (const id of taskForceShipIds(tf)) {
+    const s = w.ships[id];
+    if (!s || s.buildStatus !== 'COMMISSIONED' || s.isPartsHulk || s.state === 'MAINTENANCE_DOCK') continue;
+    interceptors += evaluateLoadout(s.hullId, s.modules.filter((m) => !m.failed).map((m) => m.moduleId), bridges).interceptors;
+  }
+  const threat = w.sectors[sectorId].threat;
+  const missiles = raidProfile({ strength: 15 + threat * 0.7 + 5 }).missiles;
+  // Interceptors kill roughly one missile in three (readiness and friction permitting); below ~3 per inbound missile, raids get through.
+  if (interceptors >= missiles * 3) return null;
+  return `AIR DEFENCE WEAK: ${interceptors} interceptors at sea vs raids of ~${missiles} missiles at threat ${threat.toFixed(0)} — ${interceptors < missiles ? 'losses likely' : 'leakers likely'}`;
+}
 
 export type Preview = string;
 
@@ -90,6 +110,10 @@ export function previewAssign(w: WorldDraft, tfId: string, sectorId: number | nu
   }
   const days = Math.max(0, Math.ceil(dist / tf.speedTilesPerDay));
   const parts: string[] = [];
+  if (sectorId !== null) {
+    const air = airDefence(w, tfId, sectorId);
+    if (air) parts.push(air);
+  }
   if (sectorId === null) parts.push(`${tf.name} returns to port in ~${days} day${days === 1 ? '' : 's'}; hulls stay in rotation but none patrol`);
   else {
     const sec = w.map.sectors[sectorId];
@@ -262,4 +286,32 @@ export function previewHearing(w: WorldDraft): Preview {
     `${100 - chance}% chance: rejected, domestic support −4`,
     `next hearing possible ${HEARING_COOLDOWN_DAYS} days later`,
   ].join(' · ');
+}
+
+// ------------------------------------------------------------------------------------------ contacts & SOP
+
+const SOP_TEXT: Record<Sop, string> = {
+  OBSERVE: 'shadow and identify visually only (inside 10 tiles); no hails or boardings; raiders under HOLD FIRE keep their surprise, smugglers and shadowers pass unchallenged',
+  CHALLENGE: `hail at ${SOP_RANGES.CHALLENGE.hail} tiles · warn silent contacts at ${SOP_RANGES.CHALLENGE.warn} · board runners at ${SOP_RANGES.CHALLENGE.board} (55%) · warned raiders lose surprise`,
+  ASSERTIVE: `hail at ${SOP_RANGES.ASSERTIVE.hail} tiles · BOARD silent contacts at ${SOP_RANGES.ASSERTIVE.board} without warning (smugglers seized before they run, but a disguised raider ambushes the boarders) · warn foreign warships off (tension)`,
+};
+
+export function previewSop(w: WorldDraft, sectorId: number, sop: Sop): Preview {
+  const current = w.sectors[sectorId].sop === sop ? 'CURRENT · ' : '';
+  const ceiling = w.sectors[sectorId].roe === 'WEAPONS_FREE' ? ' · WEAPONS FREE: unidentified contacts reaching 12 tiles are engaged' : '';
+  return `${current}${SOP_TEXT[sop]}${ceiling}`;
+}
+
+export function previewContactOrder(w: WorldDraft, contactId: string, action: LadderAction | 'AUTO'): Preview {
+  const c = w.contacts.find((x) => x.id === contactId);
+  if (!c) return blocked('contact lost');
+  const st = w.sectors[c.sectorId];
+  if (action === 'AUTO') return `Hand ${contactStatus(c).toLowerCase()} contact back to the sector SOP (${st.sop})`;
+  const b = actionBlocked(c, st.roe, action);
+  if (b) return blocked(b);
+  const near = nearestActiveTf(w, c.position.x, c.position.y);
+  const range = ACTION_RANGE[action];
+  const when = !near ? 'no task force at sea to carry it out' : near.d <= range ? 'carried out tomorrow' : `carried out once a task force is within ${range} tiles (nearest ${near.d.toFixed(0)})`;
+  if (action === 'SHADOW') return `Hold: track the contact and do not escalate, overriding the ${st.sop} SOP · raiders may still attack inside 12 tiles`;
+  return `${when} · ${OUTCOMES[action]}`;
 }

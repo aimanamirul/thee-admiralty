@@ -69,6 +69,11 @@ function sweep(tag: string, w: WorldDraft) {
     else agree(`${tag} research ${p.id}`, w, pv.previewStartResearch(w, p.id), (c) => cmd.startResearch(c, p.id));
   }
   agree(`${tag} fund`, w, pv.previewFundBureau(w), (c) => cmd.fundBureau(c));
+  for (const s of w.map.sectors) for (const sop of ['OBSERVE', 'CHALLENGE', 'ASSERTIVE'] as const) text(`${tag} sop`, pv.previewSop(w, s.id, sop));
+  for (const c of w.contacts) {
+    for (const a of ['SHADOW', 'HAIL', 'WARN', 'BOARD', 'ENGAGE'] as const) agree(`${tag} contact ${c.intent} ${a}`, w, pv.previewContactOrder(w, c.id, a), (x) => cmd.orderContact(x, c.id, a));
+    text(`${tag} contact auto`, pv.previewContactOrder(w, c.id, 'AUTO'));
+  }
   agree(`${tag} hearing`, w, pv.previewHearing(w), (c) => cmd.holdBudgetHearing(c));
   agree(`${tag} industry`, w, pv.previewExpandIndustry(w), (c) => cmd.expandIndustry(c));
   const design = { hullId: 'CORVETTE' as const, moduleIds: ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_ASEL_SPEAR', 'ARM_NG_SYLVER8'], squadronId: 'SQ-1-1' };

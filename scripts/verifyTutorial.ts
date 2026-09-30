@@ -87,7 +87,8 @@ const actions: Record<string, () => void> = {
   embargo: () => ok(designateHulk(w, 'SHP-6'), 'designate hulk'),
   graduation: () => {
     check(!w.scripted, 'graduation must turn scripted off');
-    ok(cmd.assignTaskForce(w, 'TF-2', BEYOND_SECTOR), 'assign TF-2');
+    // The briefing warns the FACs cannot defend themselves there: send the frigate group.
+    ok(cmd.assignTaskForce(w, 'TF-1', BEYOND_SECTOR), 'assign TF-1');
   },
 };
 
@@ -117,6 +118,7 @@ check(w.stats.shipsLost === 0, `no ships may be lost (lost ${w.stats.shipsLost})
 check(w.stats.hostilesDestroyed >= 0, 'stats');
 for (let d = 0; d < 120; d++) {
   advanceDay(w);
+  if (process.env.DEBUG_POST) for (const e of w.events) if (/LOST|ENGAGEMENT|RAID|INCIDENT|seized|AMBUSH|scrap|stripped/.test(e.text)) console.log(`  d${w.tick} ${e.text.slice(0, 140)}`);
   flush();
 }
 check(Object.keys(w.ships).length >= 6, 'fleet intact after graduation');

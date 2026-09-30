@@ -3,16 +3,24 @@
 import { useMemo } from 'react';
 import { HULLS } from '@/lib/data/catalog';
 import { allTaskForces, taskForceShipIds } from '@/lib/sim/fleetEngine';
-import type { Roe } from '@/lib/types/world';
+import type { Roe, Sop } from '@/lib/types/world';
+import { contactStatus } from '@/lib/sim/contactEngine';
+import ContactPanel from './ContactPanel';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
-import { previewAssign, previewRoe } from '@/lib/sim/preview';
+import { previewAssign, previewRoe, previewSop } from '@/lib/sim/preview';
 
 const ROES: { id: Roe; label: string; hint: string }[] = [
   { id: 'HOLD_FIRE', label: 'Hold fire', hint: 'Never fire first. Hostile raids get a surprise opening salvo.' },
   { id: 'RETURN_FIRE', label: 'Return fire', hint: 'Engage only hostile-identified tracks. Balanced.' },
   { id: 'WEAPONS_FREE', label: 'Weapons free', hint: 'First-strike advantage — but unidentified civilians may be engaged (incidents).' },
+];
+
+const SOPS: { id: Sop; label: string }[] = [
+  { id: 'OBSERVE', label: 'Observe' },
+  { id: 'CHALLENGE', label: 'Challenge' },
+  { id: 'ASSERTIVE', label: 'Assertive' },
 ];
 
 const threatTone = (t: number) => (t > 66 ? 'red' : t > 40 ? 'amber' : 'emerald');
@@ -25,7 +33,8 @@ export default function SectorPanel() {
   const ships = useFleetStore((s) => s.ships);
   const contacts = useFleetStore((s) => s.contacts);
   const selectedTf = useFleetStore((s) => s.selectedTaskForceId);
-  const { selectSector, setRoe, assignTaskForce } = useFleetStore.getState();
+  const selectedContact = useFleetStore((s) => s.selectedContactId);
+  const { selectSector, setRoe, assignTaskForce, setSop, selectContact } = useFleetStore.getState();
 
   const tfs = useMemo(() => allTaskForces(fleets), [fleets]);
 
@@ -73,6 +82,7 @@ export default function SectorPanel() {
 
   return (
     <div className="space-y-2">
+      <ContactPanel />
       <Section title={sec.name} right={<Btn tone="dim" onClick={() => selectSector(null)}>Overview</Btn>}>
         <div className="mb-2 flex flex-wrap gap-1">
           <Chip tone="cyan">{sec.kind}</Chip>
@@ -97,6 +107,36 @@ export default function SectorPanel() {
         </div>
         <p className="mt-1 text-[0.8125rem] text-slate-500">{roe.hint}</p>
         </div>
+        <div data-tutorial="sop">
+          <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">
+            <Term k="SOP">Contact procedure (SOP)</Term>
+          </div>
+          <div className="mt-1 flex gap-1">
+            {SOPS.map((s) => (
+              <Btn key={s.id} tone={st.sop === s.id ? 'cyan' : 'dim'} preview={(w) => `${s.label}: ${previewSop(w, selected, s.id)}`} onClick={() => setSop(selected, s.id)} className="flex-1">
+                {s.label}
+              </Btn>
+            ))}
+          </div>
+        </div>
+        {here.length > 0 && (
+          <div className="mt-2">
+            <div className="text-[0.8125rem] uppercase tracking-widest text-slate-500">Contacts in sector</div>
+            <ul className="mt-1 space-y-0.5">
+              {here.map((c) => (
+                <li key={c.id}>
+                  <button
+                    onClick={() => selectContact(c.id)}
+                    className={`flex w-full justify-between border px-1.5 py-0.5 text-left text-[0.8125rem] hover:border-phosphor/60 ${selectedContact === c.id ? 'border-phosphor/70' : 'border-navy'}`}
+                  >
+                    <span className={c.cls === 'HOSTILE' ? 'text-warn' : c.cls === 'NEUTRAL' ? 'text-emerald-accent' : 'text-amber-radar'}>{contactStatus(c)}</span>
+                    <span className="text-slate-500">{c.id.slice(3, 11)}{c.order ? ` · ${c.order === 'SHADOW' ? 'HOLD' : c.order}` : ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Section>
 
       <Section title="Bathymetry & telemetry">

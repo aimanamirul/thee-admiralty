@@ -62,7 +62,7 @@ await waitLesson(6, 60000); await shot('06-contact');
 // lesson 6 waits for an ROE decision; weapons free also fires on the unidentified merchant (incident)
 await page.getByRole('button', { name: 'Weapons free' }).click();
 await waitLesson(7, 60000); await shot('07-spares');
-if (!/INCIDENT: weapons-free fire on neutral/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('contact: expected a weapons-free incident in the ledger');
+if (!/INCIDENT: fire opened on a merchant/i.test(await page.locator('ul[aria-live]').innerText())) errors.push('contact: expected a weapons-free incident in the ledger');
 await page.getByRole('button', { name: /SHOW/ }).click();
 await page.locator('li', { hasText: 'DSR-2D Surface Search' }).getByRole('button', { name: '+1' }).click();
 await waitLesson(8, 30000); await shot('08-design');

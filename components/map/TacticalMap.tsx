@@ -14,6 +14,7 @@ import { useFleetStore } from '@/store/useFleetStore';
 import { usePreviewStore } from '@/store/usePreviewStore';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { previewAssign } from '@/lib/sim/preview';
+import { contactTag } from '@/lib/sim/contactEngine';
 
 const C = {
   void: '#050811',
@@ -235,7 +236,22 @@ export default function TacticalMap() {
       drag = null;
       if (!wasClick) return;
       const st = useFleetStore.getState();
-      // Task force hit-test first (screen space, 14px).
+      // Contacts first (they sit on top of task forces when close), then task forces, then sectors.
+      let contactHit: string | null = null;
+      let contactBest = 12;
+      for (const c of st.contacts) {
+        const p = toScreen(c.position.x, c.position.y);
+        const dd = Math.hypot(p.x - e.offsetX, p.y - e.offsetY);
+        if (dd < contactBest) {
+          contactBest = dd;
+          contactHit = c.id;
+        }
+      }
+      if (contactHit) {
+        st.selectContact(contactHit);
+        return;
+      }
+      // Task force hit-test (screen space, 14px).
       let hit: string | null = null;
       let best = 14;
       for (const tf of st.fleets.flatMap((f) => f.taskForces)) {
@@ -576,13 +592,22 @@ export default function TacticalMap() {
         label('HOME PORT', p.x + 10, p.y, 'rgba(0,240,255,0.8)', 'left', 9);
       }
 
-      // Contacts.
+      // Contacts: amber = unidentified (blinking until hailed), red = hostile, green = identified neutral. Click to open the ladder.
       const blink = Math.floor(now / 500) % 2 === 0;
       for (const c of st.contacts) {
         const p = toScreen(c.position.x, c.position.y);
+        const tag = contactTag(c);
         if (c.cls === 'UNKNOWN') {
-          if (blink) diamond(p.x, p.y, 6, C.amber);
-          label('UNK', p.x + 9, p.y - 7, C.amber, 'left', 8);
+          if (blink || c.hailed) diamond(p.x, p.y, 6, C.amber, !!c.suspicious);
+          label(tag, p.x + 9, p.y - 7, C.amber, 'left', 8);
+          if (c.fleeing) {
+            ctx.strokeStyle = C.amber;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + Math.cos(c.heading) * 18, p.y + Math.sin(c.heading) * 18);
+            ctx.stroke();
+          }
         } else if (c.cls === 'HOSTILE') {
           diamond(p.x, p.y, 7, C.red, true);
           ctx.strokeStyle = C.red;
@@ -591,13 +616,27 @@ export default function TacticalMap() {
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(p.x + Math.cos(c.heading) * 20, p.y + Math.sin(c.heading) * 20);
           ctx.stroke();
-          label(`HOSTILE ${c.strength.toFixed(0)}`, p.x + 10, p.y - 8, C.red, 'left', 8);
+          label(tag, p.x + 10, p.y - 8, C.red, 'left', 8);
         } else {
-          ctx.strokeStyle = 'rgba(120,160,190,0.8)';
+          ctx.strokeStyle = 'rgba(16,185,129,0.85)';
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
           ctx.stroke();
+          label(tag, p.x + 7, p.y - 6, 'rgba(16,185,129,0.8)', 'left', 8);
+        }
+        if (c.order) label(c.order === 'SHADOW' ? 'HOLD' : c.order, p.x + 9, p.y + 6, C.cyan, 'left', 8);
+        if (st.selectedContactId === c.id) {
+          ctx.save();
+          ctx.strokeStyle = C.cyan;
+          ctx.shadowColor = C.cyan;
+          ctx.shadowBlur = 6 * dpr;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 13, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
         }
       }
 

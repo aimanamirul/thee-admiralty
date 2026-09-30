@@ -10,5 +10,7 @@ export const GLOSSARY: Record<string, string> = {
   THREAT: 'How hard the enemy probes a sector. Rises with tension and when a sector is left uncovered; more hostile contacts appear.',
   SUPPORT: 'Domestic support: how willing the civilian government is to back the navy. It sets next year\'s appropriation and political capital income. Below 40 lobbying costs more; below 25 ministries refuse contact and political capital drains; below 10 a parliamentary inquiry freezes procurement and cuts the budget.',
   FISCAL: 'The navy is funded by an annual appropriation paid in four quarterly tranches. Unspent money above 15% of the appropriation returns to the Treasury at year end, and spending too slowly shrinks next year\'s forecast.',
+  SOP: 'Standing operating procedure: what task forces do on their own when an unknown contact comes near. Observe = shadow and identify visually. Challenge = hail, warn the silent, board runners. Assertive = hail early and board silent contacts without warning. ROE is the ceiling on firing.',
+  LADDER: 'Shadow, hail, warn, board, engage. Each step reveals something about a contact and carries a risk; ROE caps engagement. Orders here override the sector SOP for this contact only.',
   TENSION: 'Global geopolitical tension. Raises the chance that vendor states revoke licences, freeze exports or embargo spares.',
 };

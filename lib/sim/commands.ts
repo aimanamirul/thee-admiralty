@@ -5,7 +5,8 @@ import { generatePennant, generateShipName } from '../generator/nameGenerator';
 import { Rng } from '../generator/prng';
 import type { HierarchyKind, NamingTradition, Tempo } from '../types/fleet';
 import type { HullClassId } from '../types/hull';
-import type { Roe, WorldDraft } from '../types/world';
+import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
+import { actionBlocked, INTENT_LABEL } from './contactEngine';
 import { evaluateLoadout, procurability } from './designEngine';
 import { lobbyVendor, vendorBlocksOrders } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
@@ -224,4 +225,27 @@ export function lobbyVendorCmd(world: WorldDraft, vendorId: VendorId, ministryId
 export function holdBudgetHearing(world: WorldDraft): CommandResult {
   const r = budgetHearing(world);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function setSop(world: WorldDraft, sectorId: number, sop: Sop): CommandResult {
+  if (!world.sectors[sectorId]) return fail('NO SUCH SECTOR');
+  world.sectors[sectorId].sop = sop;
+  world.events.push({ severity: 'INFO', text: `SOP ${world.map.sectors[sectorId].name}: ${sop}` });
+  return done(`SOP ${sop}`);
+}
+
+/** Per-contact override of the sector SOP: take `action` next (SHADOW = hold, do not escalate), or 'AUTO' to hand back to the SOP. */
+export function orderContact(world: WorldDraft, contactId: string, action: LadderAction | 'AUTO'): CommandResult {
+  const c = world.contacts.find((x) => x.id === contactId);
+  if (!c) return fail('CONTACT LOST');
+  if (action === 'AUTO') {
+    c.order = null;
+    return done('Back to sector SOP');
+  }
+  const blocked = actionBlocked(c, world.sectors[c.sectorId].roe, action);
+  if (blocked) return fail(blocked);
+  c.order = action;
+  const what = c.cls === 'UNKNOWN' ? 'unidentified contact' : INTENT_LABEL[c.intent].toLowerCase();
+  world.events.push({ severity: 'INFO', text: `ORDERS: ${action === 'SHADOW' ? 'shadow and hold' : action.toLowerCase()} the ${what} ${c.id.slice(3, 11)}` });
+  return done('Orders issued');
 }

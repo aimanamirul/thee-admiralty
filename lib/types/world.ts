@@ -13,10 +13,20 @@ export interface Resources {
 
 export type Roe = 'HOLD_FIRE' | 'RETURN_FIRE' | 'WEAPONS_FREE';
 
+/** Standing operating procedure for unknown contacts in a sector (the ladder's automatic behaviour). */
+export type Sop = 'OBSERVE' | 'CHALLENGE' | 'ASSERTIVE';
+
 export interface SectorState {
   threat: number;
   roe: Roe;
+  sop: Sop;
 }
+
+/** Hidden ground truth of a contact, revealed by hailing, boarding or visual identification. */
+export type ContactIntent = 'MERCHANT' | 'FISHING' | 'SMUGGLER' | 'SHADOWER' | 'WARSHIP' | 'RAIDER';
+
+/** Escalation ladder steps. SHADOW as a manual order means "hold: do not escalate". */
+export type LadderAction = 'SHADOW' | 'HAIL' | 'WARN' | 'BOARD' | 'ENGAGE';
 
 /** What the plot shows. The true intent is hidden until a task force identifies the track. */
 export type ContactClass = 'UNKNOWN' | 'HOSTILE' | 'NEUTRAL';
@@ -27,8 +37,18 @@ export interface Contact {
   position: Vec2;
   heading: number;
   cls: ContactClass;
-  /** Hidden ground truth. */
+  /** Hidden ground truth: intent === 'RAIDER'. */
   hostile: boolean;
+  intent: ContactIntent;
+  /** Ladder progress. */
+  hailed?: boolean;
+  /** Did not answer a hail. */
+  suspicious?: boolean;
+  warned?: boolean;
+  fleeing?: boolean;
+  boardAttempts?: number;
+  /** Player override: the next step to take (or SHADOW = hold), replacing the sector SOP for this contact. */
+  order?: LadderAction | null;
   /** Strength scalar derived from sector threat at spawn. */
   strength: number;
   bornTick: number;
@@ -112,7 +132,7 @@ export interface WorldDraft {
   policy: { autoSpares: boolean };
   politics: PoliticsState;
   /** Running statistics for the ledger. */
-  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number };
+  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number };
 }
 
 export type Bridges = ReadonlySet<BridgeKey>;
