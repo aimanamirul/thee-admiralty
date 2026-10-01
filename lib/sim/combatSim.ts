@@ -48,6 +48,21 @@ export interface EngagementResult {
   log: string[];
 }
 
+/** A hull hit hard is crippled, not deleted: one engagement leaves at least this much integrity unless the raid overkilled it badly. */
+export const CRIPPLED_FLOOR = 5;
+/** A survivor below this integrity breaks off at once and returns to dock for repair. */
+export const WITHDRAW_BELOW = 35;
+
+/**
+ * Chance a ship is lost, given its integrity going in and the damage the raid dealt it (both in % of the hull). Surviving needs no
+ * roll. Overkill is wasted on a hull that is already crippled: it is sunk only if the raid hit it several times over (damage
+ * 3.5x its remaining integrity is a 71% loss; 2.5x is 43%; 1.5x is 14%; 1.1x is 3%).
+ */
+export function sinkChance(integrityBefore: number, damage: number): number {
+  const over = damage / Math.max(1, integrityBefore) - 1;
+  return Math.max(0, Math.min(0.9, over / 3.5));
+}
+
 const SKIMMER_KM_PER_SEC = 0.28;
 const CYCLE_SEC = 6;
 
@@ -113,7 +128,7 @@ export function resolveEngagement(
     damage[target.id] += (dmg / target.structuralHP) * 100;
   }
   for (const d of defenders) {
-    if (damage[d.id] > 0) log.push(`${d.label}: HIT — integrity −${damage[d.id].toFixed(0)}%`);
+    if (damage[d.id] > 0) log.push(`${d.label}: HIT — integrity −${Math.min(100, damage[d.id]).toFixed(0)}%${damage[d.id] > 100 ? ' (overwhelmed)' : ''}`);
   }
 
   // ---- offence: SSM salvos and guns against the hostile group

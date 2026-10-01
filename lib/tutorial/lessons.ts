@@ -502,7 +502,7 @@ export const LESSONS: Lesson[] = [
     title: 'Graduation',
     body: [
       'Briefing complete. Every panel is open, random events are live, and your task forces now hail, warn and board unknown contacts on their own (sector SOP: CHALLENGE).',
-      'BEYOND THE STRAIT (threat 70) is uncovered. TF 12\'s fast attack craft carry almost no air defence: against a raid there they would be lost. Hover Assign to compare, then decide which force goes and what is left at home. Coverage is your scarcest resource.',
+      'BEYOND THE STRAIT (threat 70) is uncovered. TF 12\'s fast attack craft carry almost no air defence: against a raid there they would be crippled and sent back for weeks of repair (or sunk outright if the raid is heavy). Hover Assign to compare, then decide which force goes and what is left at home. Coverage is your scarcest resource.',
       'Shipping is live on every lane, and so are the heavy levers in the Sector overview: standing search orders and maritime exclusion orders. Exclusion orders give notice, cost standing, trade and support at home, and count every casualty; read the strip before you commit.',
     ],
     objective: 'Assign a task force to BEYOND THE STRAIT.',

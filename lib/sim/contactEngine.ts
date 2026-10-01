@@ -8,8 +8,8 @@
 import { Rng } from '../generator/prng';
 import type { Ship } from '../types/fleet';
 import type { Bridges, Contact, ContactIntent, LadderAction, Roe, Sop, WorldDraft } from '../types/world';
-import { resolveEngagement } from './combatSim';
-import { allTaskForces, combatantOf, removeShip, taskForceShipIds } from './fleetEngine';
+import { CRIPPLED_FLOOR, resolveEngagement, sinkChance, WITHDRAW_BELOW } from './combatSim';
+import { allTaskForces, combatantOf, removeShip, sendToRepair, taskForceShipIds } from './fleetEngine';
 import { adjustSupport } from './politicsEngine';
 import { laneAmbush, nearestMerchant, PREY_RANGE } from './shipping';
 
@@ -264,15 +264,19 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
   for (const line of res.log) w.events.push({ severity: 'COMBAT', text: `  ${line}` });
   for (const d of defenders) {
     const ship = w.ships[d.id];
-    ship.integrity -= res.damage[d.id] ?? 0;
+    const hit = res.damage[d.id] ?? 0;
     ship.readiness = clamp(ship.readiness - 4);
     if (res.outcome !== 'DEFEAT') ship.veterancy = clamp(ship.veterancy + 3);
-    if (ship.integrity <= 0) {
+    // Overkill is wasted on a crippled hull: it is lost only if the raid hit it several times over; otherwise it limps away.
+    if (hit >= ship.integrity && rng.fork(`${c.id}:sink:${ship.id}`).chance(sinkChance(ship.integrity, hit))) {
       w.events.push({ severity: 'CRITICAL', text: `LOST: ${ship.pennant} ${ship.name.toUpperCase()} sunk in action` });
       removeShip(w, ship.id);
       w.stats.shipsLost++;
       adjustSupport(w, -8);
+      continue;
     }
+    ship.integrity = hit >= ship.integrity ? CRIPPLED_FLOOR : ship.integrity - hit;
+    if (ship.integrity < WITHDRAW_BELOW) sendToRepair(w, ship, ship.integrity <= CRIPPLED_FLOOR ? 'CRIPPLED in action' : 'heavy damage');
   }
   if (res.outcome === 'DESTROYED') {
     st.threat = clamp(st.threat - 8);

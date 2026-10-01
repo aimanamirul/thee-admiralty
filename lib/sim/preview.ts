@@ -46,7 +46,7 @@ function airDefence(w: WorldDraft, tfId: string, sectorId: number): string | nul
   const missiles = raidProfile({ strength: 15 + threat * 0.7 + 5 }).missiles;
   // Interceptors kill roughly one missile in three (readiness and friction permitting); below ~3 per inbound missile, raids get through.
   if (interceptors >= missiles * 3) return null;
-  return `AIR DEFENCE WEAK: ${interceptors} interceptors at sea vs raids of ~${missiles} missiles at threat ${threat.toFixed(0)} — ${interceptors < missiles ? 'losses likely' : 'leakers likely'}`;
+  return `AIR DEFENCE WEAK: ${interceptors} interceptors at sea vs raids of ~${missiles} missiles at threat ${threat.toFixed(0)} — ${interceptors < missiles ? 'crippling damage likely (ships break off for repair; heavy overkill can still sink them)' : 'leakers likely'}`;
 }
 
 export type Preview = string;

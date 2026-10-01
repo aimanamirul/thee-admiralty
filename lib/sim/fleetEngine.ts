@@ -182,6 +182,13 @@ function setState(ship: Ship, state: OpState) {
   if (state === 'MAINTENANCE_DOCK' || state === 'ACTIVE_PATROL') ship.overdeployDays = 0;
 }
 
+/** A damaged ship breaks off and heads for the yard: it joins the dock cycle (readiness and integrity recover there). */
+export function sendToRepair(world: WorldDraft, ship: Ship, why: string): void {
+  if (ship.state === 'MAINTENANCE_DOCK') return;
+  setState(ship, 'MAINTENANCE_DOCK');
+  world.events.push({ severity: 'WARNING', text: `${ship.pennant} ${ship.name.toUpperCase()}: ${why} — integrity ${ship.integrity.toFixed(0)}%, breaks off and returns to dock for repair` });
+}
+
 const isCriticalFailure = (s: Ship) => s.modules.some((m) => m.failed && (m.slot === 'POWERPLANT' || m.slot === 'CMS'));
 
 export function advanceFleets(world: WorldDraft, rng: Rng): void {

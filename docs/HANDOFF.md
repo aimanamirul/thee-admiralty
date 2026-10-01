@@ -358,6 +358,25 @@ The briefing teaches everything added since it was written. 17 lessons (the two 
   on lifting), year report, name tokens. `verify:preview` sweeps 7,900 previews including every new order.
 - **Not built:** a tutorial lesson on exclusion orders (shipping, escorts and searches have lessons 14-15); movement-faction reuse of the strike layer (design only).
 
+## Raid damage: crippled, not deleted (done, 2026-10-01)
+
+- **Problem (measured):** every leaker's damage was divided by the hull's structural HP and summed with no cap, and integrity ≤ 0 meant the
+  ship was removed on the spot. Two FACs (120 HP, no air defence) lost a hull 68% of the time to even a *weak* raid (strength 20) and were
+  annihilated by strength 45+ (mean damage 210-351% of integrity). The forced-dock rule (integrity < 25) never fired for ships on workup.
+- **Rule now** (`combatSim.ts`, applied in `contactEngine.engagement`): a hit that would take a ship to zero leaves it **crippled at 5%
+  integrity** unless it is lost to **overkill**: `sinkChance(integrity, damage) = (damage / integrity − 1) / 3.5`, capped at 90% (1.1x = 3%,
+  1.5x = 14%, 2.5x = 43%, 3.5x = 71%). A ship below **35% integrity** (`WITHDRAW_BELOW`) **breaks off at once** (`sendToRepair`, ledger
+  line "…breaks off and returns to dock for repair") and uses the existing dock cycle: +1.8% integrity/day, back in service at 90% and the
+  minimum dock time (about 48 days from 5%). A ship already crippled and still at sea is lost far more readily (it is the overkill ratio
+  against what is left). The combat log caps displayed damage at 100% and marks "(overwhelmed)".
+- **Measured after** (FAC pair, no air defence): strength 20 → 7% lose a hull (was 68%); strength 45 → 0.59 hulls/raid (was 1.89); strength
+  70 → 1.34 (was 1.99); frigate group at strength 70 → 0 lost, some sent to repair. The graduation lesson and the Assign preview now say
+  "crippled and sent back for weeks of repair (sunk outright if the raid is heavy)".
+- **Tunables:** `CRIPPLED_FLOOR`, `WITHDRAW_BELOW`, the `3.5` slope in `sinkChance`. No repair bill is charged (an option: a share of hull cost per
+  % of damage, which would add a money sink for fighting navies).
+- `npm run verify:combat`: the curve, FAC/frigate raids through the real contact engine, the withdrawal and the ledger line, no hull at or
+  below 0 integrity or left badly damaged at sea, repair completing in 30-90 days, a pre-crippled hull being lost.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
