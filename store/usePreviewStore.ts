@@ -17,12 +17,25 @@ interface PreviewState {
   clear: (owner: string) => void;
 }
 
+/** Grace period before a cleared preview disappears, so moving from one action to the next never flashes the placeholder. */
+const CLEAR_DELAY_MS = 140;
+let clearTimer: ReturnType<typeof setTimeout> | undefined;
+
 export const usePreviewStore = create<PreviewState>((set, get) => ({
   fn: null,
   owner: null,
-  show: (fn, owner) => set({ fn, owner }),
+  show: (fn, owner) => {
+    if (clearTimer) clearTimeout(clearTimer);
+    clearTimer = undefined;
+    set({ fn, owner });
+  },
   clear: (owner) => {
-    if (get().owner === owner) set({ fn: null, owner: null });
+    if (get().owner !== owner) return;
+    if (clearTimer) clearTimeout(clearTimer);
+    clearTimer = setTimeout(() => {
+      clearTimer = undefined;
+      if (get().owner === owner) set({ fn: null, owner: null });
+    }, CLEAR_DELAY_MS);
   },
 }));
 

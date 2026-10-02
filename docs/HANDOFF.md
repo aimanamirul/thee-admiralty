@@ -404,6 +404,15 @@ The briefing teaches everything added since it was written. 17 lessons (the two 
   `verify:shipping`'s absolute "never attacked" cover checks became rate checks.
 - Also: `npm run dev` now serves on port 3009 (`next dev --port 3009`; README updated).
 
+## Action preview strip: no more flicker (2026-10-02)
+
+- **Causes:** the strip's height followed its text (every longer prediction resized the ticker and the map canvas), and moving between two
+  actions cleared the preview for a frame (placeholder flash). It also re-rendered and deep-cloned the world every tick even when idle.
+- **Fix:** the strip is a fixed two lines tall (`h-[2.75rem]`); a longer prediction grows *upward* as a pointer-transparent overlay over
+  the ticker, so nothing else moves. `usePreviewStore.clear` waits 140 ms (cancelled by the next `show`). The strip subscribes to the
+  clock only while an action is hovered, and the text is memoised on (preview fn, tick, log, budget). Measured in the browser: canvas,
+  ticker and strip boxes are identical with a 391-character preview, and 40 samples while hopping between two buttons showed 0 placeholder flashes.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
