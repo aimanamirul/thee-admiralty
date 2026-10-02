@@ -377,6 +377,33 @@ The briefing teaches everything added since it was written. 17 lessons (the two 
 - `npm run verify:combat`: the curve, FAC/frigate raids through the real contact engine, the withdrawal and the ledger line, no hull at or
   below 0 integrity or left badly damaged at sea, repair completing in 30-90 days, a pre-crippled hull being lost.
 
+## Presence-scaled deterrence (done, 2026-10-02)
+
+- **Problem:** presence was a yes/no (any ship on patrol = threat −0.5/day; any task force near a merchant = full cover), so a FAC pair
+  deterred exactly as much as a carrier group.
+- **`lib/sim/presence.ts`:** `shipPower` in *frigate-equivalents* (structure×0.5 + interceptors×12 + firepower×0.12 + air group×3, over 430,
+  scaled by readiness and integrity): FAC 0.4, corvette 0.6, frigate 1.0, destroyer ~2.2, carrier ~4.9 (the designer's combat rating was
+  not used: it ranks a FAC above a corvette). `presenceFrom(power)` has diminishing returns: 1 → 1.0, 2 → 1.6, 4 → 2.2, capped 2.5.
+  Sector presence counts ships on **active patrol** of the forces **holding** the sector (`holdersOf`: assigned, on station, not escorting);
+  labels token / light / solid / strong / dominant.
+- **Effects:** (1) sector threat falls **0.5 × presence per day** (one frigate = the old 0.5); (2) **raider spawns** are converted to
+  ordinary contacts with probability min(0.6, 0.25 × presence) (own rng stream `deter:`); (3) a raider within 24 tiles of a task force
+  **turns away** if presence × 30 > its strength (`Contact.deterred`; it never closes, and if it expires it is logged "RAIDER DETERRED":
+  threat −2, support +0.3, instead of the unopposed-probe penalty) — a single FAC deters nothing, a frigate group strength ≤ ~28, a carrier
+  group up to ~70; (4) **shipping cover is a probability** (`coverChance`: 0.25 + 0.6 × presence of every task force within 14 tiles or
+  holding the sector, counted once each, max 0.97; an escort alongside = 0.97): FAC pair 0.75, frigate 0.85, carrier group 0.97.
+- **UI:** "Naval presence" row in the sector panel (value, label, threat reduction per day); the Assign preview states the presence the
+  move would give together with the forces already there and the raid strength that would turn away; merchant status shows the cover
+  percentage; glossary term `PRESENCE`.
+- **Measured** (one force holding a sector, threat 60, tension 55, 150 days): mean threat none 44 · FAC pair 31 · frigate 27 · destroyer 17 ·
+  carrier group 7; raiders per 200 days at pinned threat none 2.6 · FAC 1.8 · frigate 1.4 · destroyer 1.0 · carrier group 0.8.
+- **Not done:** the carrier's air group still adds only to presence (no strike in a raid); deterrence ignores task-force count beyond
+  summed power; no presence display per task force in the order of battle.
+- `npm run verify:presence`: power ordering and condition effects, the curve, station rules, threat and raider ordering across five force
+  types, raider behaviour by strength, deterred-expiry handling, graded shipping cover (counted once, escort 0.97), preview text.
+  `verify:shipping`'s absolute "never attacked" cover checks became rate checks.
+- Also: `npm run dev` now serves on port 3009 (`next dev --port 3009`; README updated).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

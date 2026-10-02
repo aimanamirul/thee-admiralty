@@ -13,6 +13,7 @@ import { tickRelations } from './relationsEngine';
 import { tickSupplyChain } from './supplyChain';
 import { payInstalment } from './contracts';
 import { tickShipping } from './shipping';
+import { DETERRENCE_PER_DAY, sectorPresence } from './presence';
 import { tickInterdiction } from './interdiction';
 import { tickColdVendors } from './coldVendors';
 import { bridgeSet, BASE_RP_INCOME, tickResearch } from './researchEngine';
@@ -69,18 +70,11 @@ function updateSectors(world: WorldDraft, rng: Rng): void {
   if (world.scripted) return;
   const map = world.map;
   const diag = Math.hypot(map.width, map.height);
-  const covered = new Set<number>();
-  for (const tf of allTaskForces(world.fleets)) {
-    if (tf.assignedSectorId === null) continue;
-    const sec = map.sectors[tf.assignedSectorId];
-    if (!sec || dist(tf.position.x, tf.position.y, sec.anchor.x, sec.anchor.y) > 3) continue;
-    if (taskForceShipIds(tf).some((id) => world.ships[id]?.state === 'ACTIVE_PATROL')) covered.add(sec.id);
-  }
   for (const sec of map.sectors) {
     const st = world.sectors[sec.id];
     const far = Math.hypot(sec.anchor.x - map.homePort.x, sec.anchor.y - map.homePort.y) / diag;
     const baseline = 10 + world.tension * 0.45 + far * 30;
-    st.threat += (baseline - st.threat) * 0.03 + rng.gaussian() * 1.1 - (covered.has(sec.id) ? 0.5 : 0);
+    st.threat += (baseline - st.threat) * 0.03 + rng.gaussian() * 1.1 - DETERRENCE_PER_DAY * sectorPresence(world, sec.id).presence;
     st.threat = clamp(st.threat);
   }
 }

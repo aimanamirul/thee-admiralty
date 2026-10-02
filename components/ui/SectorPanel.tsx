@@ -6,6 +6,7 @@ import { allTaskForces, taskForceShipIds } from '@/lib/sim/fleetEngine';
 import type { Roe, Sop } from '@/lib/types/world';
 import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
+import { DETERRENCE_PER_DAY, presenceLabel, sectorPresence } from '@/lib/sim/presence';
 import MerchantPanel from './MerchantPanel';
 import ShippingLanes from './ShippingLanes';
 import InterdictionPanel from './InterdictionPanel';
@@ -90,6 +91,7 @@ export default function SectorPanel() {
 
   const sec = map.sectors[selected];
   const st = sectorStates[selected];
+  const presence = sectorPresence({ fleets, ships, map }, selected);
   const chokes = map.chokepoints.filter((c) => c.links.includes(selected));
   const here = contacts.filter((c) => c.sectorId === selected);
   const shipsHere = merchants.filter((m) => map.sectorGrid[Math.round(m.position.y) * map.width + Math.round(m.position.x)] === selected);
@@ -111,6 +113,13 @@ export default function SectorPanel() {
           <Term k="THREAT">Threat level</Term>
         </div>
         <Meter value={st.threat} tone={threatTone(st.threat)} label={st.threat.toFixed(0)} />
+        <div className="mt-1">
+          <Stat
+            k={<Term k="PRESENCE">Naval presence</Term>}
+            v={presence.presence > 0 ? `${presence.presence.toFixed(1)} · ${presenceLabel(presence.presence)} · threat −${(DETERRENCE_PER_DAY * presence.presence).toFixed(2)}/day` : 'none on station'}
+            tone={presence.presence > 0 ? 'text-emerald-accent' : 'text-slate-500'}
+          />
+        </div>
         <div data-tutorial="roe">
         <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">
           <Term k="ROE">Rules of engagement</Term>

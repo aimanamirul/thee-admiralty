@@ -49,6 +49,8 @@ export interface Contact {
   suspicious?: boolean;
   warned?: boolean;
   fleeing?: boolean;
+  /** A raider that turned away from a force too strong for it. */
+  deterred?: boolean;
   boardAttempts?: number;
   /** Player override: the next step to take (or SHADOW = hold), replacing the sector SOP for this contact. */
   order?: LadderAction | null;

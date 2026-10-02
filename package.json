@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3009",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -19,7 +19,8 @@
     "verify:contracts": "tsx scripts/verifyContracts.ts",
     "verify:cold": "tsx scripts/verifyCold.ts",
     "verify:shipping": "tsx scripts/verifyShipping.ts",
-    "verify:combat": "tsx scripts/verifyCombat.ts"
+    "verify:combat": "tsx scripts/verifyCombat.ts",
+    "verify:presence": "tsx scripts/verifyPresence.ts"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

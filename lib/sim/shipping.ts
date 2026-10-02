@@ -17,6 +17,7 @@ import type { MapData, Vec2 } from '../types/map';
 import { KIND_LABEL, KIND_TAG, type Flag, type FlagFilter, type Lane, type Merchant, type ShipKind, type ShippingState, type ShippingStats } from '../types/shipping';
 import type { WorldDraft } from '../types/world';
 import { allTaskForces, taskForceShipIds } from './fleetEngine';
+import { holdersOf, presenceFrom, taskForcePower } from './presence';
 import { findRoute, isWater, snapToWater } from './navigation';
 import { adjustSupport } from './politicsEngine';
 
@@ -252,13 +253,21 @@ export function sectorHeld(w: WorldDraft, sectorId: number): boolean {
   return allTaskForces(w.fleets).some((tf) => tf.assignedSectorId === sectorId && dist(tf.position, anchor) <= STATION_HOLD && shipsAtSea(w, tf).length > 0);
 }
 
-/** Protected by a task force within COVER_RADIUS, or by one holding the sector the ship is in. */
-export const isCovered = (w: WorldDraft, m: Merchant) => {
-  const c = nearestCover(w, m.position);
-  if (c && c.d <= COVER_RADIUS) return true;
+/** Chance a raider is held off when it closes on a ship: 0.25 + 0.6 x presence of the covering forces (a FAC pair ~50%, a frigate group
+ *  ~85%, a carrier group ~97%); an escort alongside makes it 97%. Zero with no force at sea nearby or holding the sector. */
+export function coverChance(w: WorldDraft, m: Merchant): number {
   const sec = w.map.sectorGrid[Math.round(m.position.y) * w.map.width + Math.round(m.position.x)];
-  return sec >= 0 && sectorHeld(w, sec);
-};
+  const near = allTaskForces(w.fleets).filter((tf) => dist(tf.position, m.position) <= COVER_RADIUS);
+  const covering = new Set([...near, ...(sec >= 0 ? holdersOf(w, sec) : [])]); // each task force counts once
+  const power = [...covering].reduce((a, tf) => a + taskForcePower(w, tf, false), 0);
+  if (power <= 0) return 0;
+  const chance = Math.min(0.97, 0.25 + 0.6 * presenceFrom(power));
+  const escorted = near.some((tf) => tf.escort === m.id && tf.escortMode !== 'INSPECT');
+  return escorted ? 0.97 : chance;
+}
+
+/** Any cover at all (display); the actual protection is rolled with `coverChance`. */
+export const isCovered = (w: WorldDraft, m: Merchant) => coverChance(w, m) > 0;
 
 /** Nearest lane ship to a point, for raiders choosing prey. */
 export function nearestMerchant(s: Pick<ShippingState, 'ships'>, p: Vec2, range: number): Merchant | null {
@@ -488,7 +497,8 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
   for (const c of raiders) {
     const prey = [...sh.ships].sort((a, b) => dist(a.position, c.position) - dist(b.position, c.position))[0];
     if (!prey || dist(prey.position, c.position) > ATTACK_RANGE || attacked.has(prey.id)) continue;
-    if (isCovered(w, prey)) continue; // a task force nearby: the raider holds off
+    const hold = coverChance(w, prey);
+    if (hold > 0 && new Rng(`${w.seed}:merchant-cover:${w.tick}:${prey.id}`).chance(hold)) continue; // the covering force holds the raider off
     attacked.add(prey.id);
     const lane = laneOf(sh, prey.laneId)!;
     const r = new Rng(`${w.seed}:merchant-attack:${w.tick}:${prey.id}`).next();

@@ -5,7 +5,7 @@ Next.js (App Router) · TypeScript (strict) · Tailwind · Zustand · native Can
 
 ```bash
 npm install
-npm run dev            # http://localhost:3000
+npm run dev            # http://localhost:3009
 npm run typecheck
 npm run build
 npm run verify:map     # determinism / connectivity / tier checks for all archetypes (add -- --ascii to draw them)
@@ -19,6 +19,7 @@ npm run verify:relations  # vendor ladder, regimes, bloc affinity, open-architec
 npm run verify:supply     # hidden sub-suppliers, due diligence, sanctions through components (always foreshadowed)
 npm run verify:contracts  # build contracts: deposit, instalments, cancellation refunds by fault, resale
 npm run verify:cold       # cold vendors: policy-shift vote, bloc introduction, JV export drive
+npm run verify:presence   # hull class decides deterrence: threat reduction, raider spawns and behaviour, shipping cover
 npm run verify:combat     # raids cripple and send ships to repair instead of deleting them; only heavy overkill sinks
 npm run verify:shipping   # civilian shipping: lanes, raiders vs cover, distress, escorts, war-risk, trade index, searches, exclusion orders
 node scripts/e2e-tutorial.mjs   # same, through the real UI (Playwright; see the file header)

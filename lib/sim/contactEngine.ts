@@ -12,6 +12,7 @@ import { CRIPPLED_FLOOR, resolveEngagement, sinkChance, WITHDRAW_BELOW } from '.
 import { allTaskForces, combatantOf, removeShip, sendToRepair, taskForceShipIds } from './fleetEngine';
 import { adjustSupport } from './politicsEngine';
 import { laneAmbush, nearestMerchant, PREY_RANGE } from './shipping';
+import { DETER_STRENGTH_PER_PRESENCE, SPAWN_DETERRENCE, SPAWN_DETERRENCE_CAP, sectorPresence, taskForcePresence } from './presence';
 
 export const IDENTIFY_RANGE = 10;
 export const ENGAGE_RANGE = 12;
@@ -289,8 +290,8 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
 
 // ------------------------------------------------------------------------------------------ spawning & movement
 
-function pickIntent(rng: Rng, threat: number): ContactIntent {
-  if (rng.chance(clamp(0.15 + (threat / 100) * 0.75, 0, 0.95))) return 'RAIDER';
+function pickIntent(rng: Rng, threat: number, allowRaider = true): ContactIntent {
+  if (allowRaider && rng.chance(clamp(0.15 + (threat / 100) * 0.75, 0, 0.95))) return 'RAIDER';
   const weights: [ContactIntent, number][] = [
     ['MERCHANT', 45],
     ['FISHING', 20],
@@ -309,7 +310,13 @@ function spawnContact(w: WorldDraft, rng: Rng, sectorId: number): Contact | null
   for (let tries = 0; tries < 60; tries++) {
     const i = rng.int(0, map.width * map.height - 1);
     if (map.sectorGrid[i] !== sectorId) continue;
-    const intent = pickIntent(rng, st.threat);
+    let intent = pickIntent(rng, st.threat);
+    if (intent === 'RAIDER') {
+      // Presence deters: a strong force on station keeps raiders at home (own stream, so other spawn rolls are untouched).
+      const pres = sectorPresence(w, sectorId).presence;
+      const d = new Rng(`${w.seed}:deter:${w.tick}:${sectorId}`);
+      if (pres > 0 && d.chance(Math.min(SPAWN_DETERRENCE_CAP, SPAWN_DETERRENCE * pres))) intent = pickIntent(d, st.threat, false);
+    }
     let position = { x: i % map.width, y: Math.floor(i / map.width) };
     if (intent === 'RAIDER') {
       // Raiders often lie in wait on the shipping lane (own stream: existing spawn rolls are untouched).
@@ -347,7 +354,12 @@ function move(w: WorldDraft, c: Contact, rng: Rng) {
     c.heading = toward(chased.position);
     step = 2;
   } else if (c.intent === 'RAIDER' && near && near.d <= 24) {
-    c.heading = toward(tfs.find((t) => t.id === near.id)!.position); // hunting
+    const tfNear = tfs.find((t) => t.id === near.id)!;
+    // A raid weaker than the force's presence turns away instead of closing; a stronger one hunts.
+    if (taskForcePresence(w, tfNear, false) * DETER_STRENGTH_PER_PRESENCE > c.strength) {
+      c.deterred = true;
+      c.heading = toward(tfNear.position) + Math.PI;
+    } else c.heading = toward(tfNear.position); // hunting
     step = 2;
   } else if (c.intent === 'RAIDER' && nearestMerchant(w.shipping, c.position, PREY_RANGE)) {
     c.heading = toward(nearestMerchant(w.shipping, c.position, PREY_RANGE)!.position); // hunting shipping
@@ -418,7 +430,11 @@ export function tickContacts(w: WorldDraft, rng: Rng, bridges: Bridges): void {
     }
 
     if (w.tick >= c.expiresTick) {
-      if (c.hostile) {
+      if (c.hostile && c.deterred) {
+        st.threat = clamp(st.threat - 2);
+        adjustSupport(w, 0.3);
+        w.events.push({ severity: 'ADVISORY', text: `${label(w, c)}: RAIDER DETERRED — it broke off rather than close on the task force (threat −2, support +0.3)` });
+      } else if (c.hostile) {
         st.threat = clamp(st.threat + 8);
         w.resources.politicalCapital = clamp(w.resources.politicalCapital - 3, 0, 60);
         w.tension = clamp(w.tension + 2);

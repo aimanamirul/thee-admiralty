@@ -19,8 +19,9 @@ import { forecast, hearingBlocked, hearingChance, hullDailyCost, HEARING_BOOST, 
 import { bridgeSet, BASE_RP_INCOME, canStart, FUND_BUREAU_COST, FUND_BUREAU_RP, RP_THROUGHPUT_PER_PROJECT } from './researchEngine';
 import { ENGAGE_RANGE } from './worldEngine';
 import { raidProfile } from './combatSim';
+import { DETER_STRENGTH_PER_PRESENCE, DETERRENCE_PER_DAY, presenceFrom, presenceLabel, taskForcePower } from './presence';
 import { cancelBlocked, cancellationTerms, DEPOSIT_RATE, RESALE_RATE, resaleBlocked, resaleProceeds, BREACH_STANDING } from './contracts';
-import { cancelEscortBlocked, COVER_RADIUS, escortBlocked, flagText, laneOf, MERCHANT_SPEED, nearestCover, isCovered, premiumPct } from './shipping';
+import { cancelEscortBlocked, COVER_RADIUS, escortBlocked, flagText, laneOf, MERCHANT_SPEED, nearestCover, isCovered, premiumPct, coverChance } from './shipping';
 import { KIND_TAG, POLICY_LABEL, type ExclusionZone, type FlagFilter, type InterdictionPolicy } from '../types/shipping';
 import {
   engageBlocked, FIND_TIPPED, FIND_UNTIPPED, FORCE_RANGE, INSPECT_DAYS, inspectBlocked, liftBlocked, NOTICE_DAYS, sectorInspectBlocked,
@@ -130,6 +131,10 @@ export function previewAssign(w: WorldDraft, tfId: string, sectorId: number | nu
     const sec = w.map.sectors[sectorId];
     parts.push(`${tf.name} on station in ${sec.label} in ~${days} day${days === 1 ? '' : 's'} (${dist.toFixed(0)} tiles)`);
     parts.push(`sector threat ${w.sectors[sectorId].threat.toFixed(0)}, ROE ${w.sectors[sectorId].roe.replace('_', ' ')}`);
+    const pw = taskForcePower(w, tf, false);
+    const others = allTaskForces(w.fleets).filter((t) => t.id !== tf.id && t.assignedSectorId === sectorId && !t.escort).reduce((a, t) => a + taskForcePower(w, t, false), 0);
+    const pres = presenceFrom(pw + others);
+    parts.push(`naval presence ${pres.toFixed(1)}${others > 0 ? ' with the forces already there' : ''} (${presenceLabel(pres)}): threat −${(DETERRENCE_PER_DAY * pres).toFixed(2)}/day, raiders up to strength ~${Math.round(pres * DETER_STRENGTH_PER_PRESENCE)} turn away`);
     if (deep && sec.littoralFraction > 0.2) parts.push(`${deep} deep-draft hull${deep > 1 ? 's' : ''}: grounding risk (${Math.round(sec.littoralFraction * 100)}% littoral)`);
   }
   if (tf.assignedSectorId !== null && tf.assignedSectorId !== sectorId) {
@@ -426,7 +431,7 @@ export function merchantStatusLine(w: WorldDraft, merchantId: string): string {
   const lane = laneOf(w.shipping, m.laneId)!;
   const cover = nearestCover(w, m.position);
   const parts: string[] = [m.status === 'DISTRESS' ? `DISTRESS — ${Math.max(0, (m.distressUntil ?? w.tick) - w.tick)} days left` : 'UNDERWAY'];
-  parts.push(isCovered(w, m) ? 'COVERED' : cover ? `UNPROTECTED — NEAREST TASK FORCE ${cover.d.toFixed(0)} TILES` : 'UNPROTECTED — NO TASK FORCE AT SEA');
+  parts.push(isCovered(w, m) ? `COVER HOLDS RAIDERS OFF ${Math.round(coverChance(w, m) * 100)}% OF THE TIME` : cover ? `UNPROTECTED — NEAREST TASK FORCE ${cover.d.toFixed(0)} TILES` : 'UNPROTECTED — NO TASK FORCE AT SEA');
   parts.push(`lane war-risk premium +${premiumPct(lane.risk)}%`);
   return parts.join(' · ');
 }
