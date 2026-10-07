@@ -432,6 +432,14 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   restores; corrupt, wrong-version and broken saves are rejected; a full storage fails quietly; catch-up allowance; the digest names a lost ship and
   states budget, support and shipping; bottlenecks come from the world.
 
+## Battle reports and the weight of a loss (evaluation phase 2)
+- `lib/sim/narrative.ts`: `battleStory` turns an `EngagementResult` (now carrying `shooters`, `hits`, `warningKm`) into 3–9 ticker lines prefixed `  » `
+  (detection, who led the defence, what leaked, ending, "the ledger records her name"). Sea state and time of day are colour only.
+- Losses cost by hull (`LOSS_SUPPORT` FAC 3 … carrier 22; capital ships also `LOSS_PC`), carry crew/service text, and go on a capped
+  roll of honour (`stats.fallen`, `ROLL_CAP` 30, shown in Order of battle). `Ship.engagements` counts actions.
+- Sector panel shows Conditions (sea state). `npm run verify:narrative`.
+- Still to come from the evaluation list: refit and bulk fleet operations, sound cues, hull diversity analysis.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

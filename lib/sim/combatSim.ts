@@ -45,6 +45,12 @@ export interface EngagementResult {
   hostileDamageFraction: number;
   /** Average seconds of engagement window lost to protocol friction. */
   frictionCostSec: number;
+  /** Who fired how much (for the battle report). */
+  shooters: { id: string; shots: number; kills: number; windowSec: number }[];
+  /** Missiles that struck each ship. */
+  hits: Record<string, number>;
+  /** Longest detection range among the defenders, km (0 = no warning at all). */
+  warningKm: number;
   log: string[];
 }
 
@@ -91,6 +97,8 @@ export function resolveEngagement(
   let intercepted = 0;
   let frictionLost = 0;
   let frictionSamples = 0;
+  const shooters: EngagementResult['shooters'] = [];
+  let warningKm = 0;
 
   const windowBase = (ctx.surprise ? 0.5 : 1) * (ctx.roe === 'WEAPONS_FREE' ? 1.25 : 1);
 
@@ -100,12 +108,14 @@ export function resolveEngagement(
     const pf = powerFactor(e);
     const effRange = Math.min(SKIMMER_HORIZON_KM, e.detectionKm * pf);
     const window = (effRange / SKIMMER_KM_PER_SEC) * windowBase;
+    warningKm = Math.max(warningKm, effRange);
     const noFriction = e.reactionSec / e.reactionMultiplier;
     const lost = e.reactionSec - noFriction + e.trackingLagSec;
     frictionLost += lost;
     frictionSamples++;
     const usable = window - e.reactionSec - e.trackingLagSec;
     if (usable <= 0 || e.interceptors <= 0) {
+      shooters.push({ id: d.id, shots: 0, kills: 0, windowSec: Math.max(0, usable) });
       log.push(`${d.label}: NO ENGAGEMENT WINDOW (${window.toFixed(0)}s − ${(e.reactionSec + e.trackingLagSec).toFixed(1)}s reaction/lag)`);
       continue;
     }
@@ -116,14 +126,17 @@ export function resolveEngagement(
     let kills = 0;
     for (let s = 0; s < shots; s++) if (rng.chance(Math.min(0.9, pk))) kills++;
     intercepted += kills;
+    shooters.push({ id: d.id, shots, kills, windowSec: usable });
     log.push(`${d.label}: ${shots} interceptors fired, ${kills} kills (window ${usable.toFixed(0)}s${lost > 0.5 ? `, friction cost ${lost.toFixed(1)}s` : ''})`);
   }
   intercepted = Math.min(intercepted, raid.missiles);
   const leakers = raid.missiles - intercepted;
 
   // ---- leakers hit random ships
+  const hits: Record<string, number> = {};
   for (let i = 0; i < leakers; i++) {
     const target = rng.pick(defenders);
+    hits[target.id] = (hits[target.id] ?? 0) + 1;
     const dmg = raid.missileDamage * rng.range(0.7, 1.3);
     damage[target.id] += (dmg / target.structuralHP) * 100;
   }
@@ -158,6 +171,9 @@ export function resolveEngagement(
     damage,
     hostileDamageFraction,
     frictionCostSec: frictionSamples ? frictionLost / frictionSamples : 0,
+    shooters,
+    hits,
+    warningKm,
     log,
   };
 }

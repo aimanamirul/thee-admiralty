@@ -434,6 +434,22 @@ function Organise() {
   );
 }
 
+function RollOfHonour() {
+  const fallen = useFleetStore((s) => s.stats.fallen);
+  if (!fallen || fallen.length === 0) return null;
+  return (
+    <Section title="Roll of honour" right={<span className="text-slate-500">{fallen.length} ship{fallen.length === 1 ? '' : 's'}</span>}>
+      <ul className="space-y-1 text-[0.8125rem]">
+        {fallen.slice(0, 8).map((f, i) => (
+          <li key={`${f.pennant}-${f.tick}-${i}`} className="text-slate-400">
+            <span className="text-warn">{f.pennant} {f.name}</span> · {f.hull} · day {f.tick} · {f.where} · {f.crew} crew · {f.serviceDays} days, {f.engagements} engagement{f.engagements === 1 ? '' : 's'}
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 export default function OrderOfBattle() {
   const fleets = useFleetStore((s) => s.fleets);
   const ships = useFleetStore((s) => s.ships);
@@ -462,6 +478,7 @@ export default function OrderOfBattle() {
           ))}
         </div>
       </Section>
+      <RollOfHonour />
       {showSpares && <SparesYard />}
       {showOrganise && <Organise />}
     </div>

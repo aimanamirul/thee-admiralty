@@ -62,6 +62,18 @@ export interface Contact {
   pursue?: string;
 }
 
+/** Roll of honour entry: a warship lost with her crew. */
+export interface FallenShip {
+  name: string;
+  pennant: string;
+  hull: string;
+  tick: number;
+  crew: number;
+  serviceDays: number;
+  engagements: number;
+  where: string;
+}
+
 export type EventSeverity = 'INFO' | 'ADVISORY' | 'WARNING' | 'CRITICAL' | 'COMBAT';
 
 export interface GameEvent {
@@ -141,7 +153,7 @@ export interface WorldDraft {
   /** Civilian shipping: lanes, merchant ships, trade index. */
   shipping: ShippingState;
   /** Running statistics for the ledger. */
-  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number };
+  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number; fallen?: FallenShip[] };
 }
 
 export type Bridges = ReadonlySet<BridgeKey>;

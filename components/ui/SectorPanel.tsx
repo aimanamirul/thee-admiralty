@@ -6,6 +6,7 @@ import { allTaskForces, taskForceShipIds } from '@/lib/sim/fleetEngine';
 import type { Roe, Sop } from '@/lib/types/world';
 import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
+import { conditionsText, seaState } from '@/lib/sim/narrative';
 import { DETERRENCE_PER_DAY, presenceLabel, sectorPresence } from '@/lib/sim/presence';
 import MerchantPanel from './MerchantPanel';
 import ShippingLanes from './ShippingLanes';
@@ -38,6 +39,8 @@ export default function SectorPanel() {
   const map = useFleetStore((s) => s.map);
   const sectorStates = useFleetStore((s) => s.sectors);
   const selected = useFleetStore((s) => s.selectedSectorId);
+  const seed = useFleetStore((s) => s.seed);
+  const tick = useFleetStore((s) => s.tick);
   const fleets = useFleetStore((s) => s.fleets);
   const ships = useFleetStore((s) => s.ships);
   const contacts = useFleetStore((s) => s.contacts);
@@ -120,6 +123,7 @@ export default function SectorPanel() {
             tone={presence.presence > 0 ? 'text-emerald-accent' : 'text-slate-500'}
           />
         </div>
+        <Stat k="Conditions" v={conditionsText(seed, tick, sec.id)} tone={seaState(seed, tick, sec.id) === 'HEAVY' ? 'text-warn' : 'text-slate-400'} />
         <div data-tutorial="roe">
         <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">
           <Term k="ROE">Rules of engagement</Term>

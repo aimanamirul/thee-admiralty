@@ -47,6 +47,8 @@ export interface Ship {
   /** Player override: keep on station regardless of rotation. */
   holdStation: boolean;
   commissionedTick: number | null;
+  /** Engagements fought (service record). */
+  engagements?: number;
 }
 
 export interface Squadron {

@@ -11,6 +11,7 @@ import type { Bridges, Contact, ContactIntent, LadderAction, Roe, Sop, WorldDraf
 import { CRIPPLED_FLOOR, resolveEngagement, sinkChance, WITHDRAW_BELOW } from './combatSim';
 import { allTaskForces, combatantOf, removeShip, sendToRepair, taskForceShipIds } from './fleetEngine';
 import { adjustSupport } from './politicsEngine';
+import { battleStory, compass, fallenRecord, LOSS_PC, LOSS_SUPPORT, lossText, ROLL_CAP, type StoryShip } from './narrative';
 import { laneAmbush, nearestMerchant, PREY_RANGE } from './shipping';
 import { DETER_STRENGTH_PER_PRESENCE, SPAWN_DETERRENCE, SPAWN_DETERRENCE_CAP, sectorPresence, taskForcePresence } from './presence';
 
@@ -263,22 +264,41 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
     text: `ENGAGEMENT ${map.sectors[c.sectorId].name} vs hostile str ${c.strength.toFixed(0)} [${tf.name}, ROE ${st.roe.replace('_', ' ')}${surprise ? ', SURPRISED' : ''}]: ${res.outcome}`,
   });
   for (const line of res.log) w.events.push({ severity: 'COMBAT', text: `  ${line}` });
+  const sectorName = map.sectors[c.sectorId].name;
+  const storyShips: StoryShip[] = [];
+  const losses: Ship[] = [];
+  const fallen: ReturnType<typeof fallenRecord>[] = [];
   for (const d of defenders) {
     const ship = w.ships[d.id];
     const hit = res.damage[d.id] ?? 0;
+    const before = ship.integrity;
     ship.readiness = clamp(ship.readiness - 4);
+    ship.engagements = (ship.engagements ?? 0) + 1;
     if (res.outcome !== 'DEFEAT') ship.veterancy = clamp(ship.veterancy + 3);
     // Overkill is wasted on a crippled hull: it is lost only if the raid hit it several times over; otherwise it limps away.
     if (hit >= ship.integrity && rng.fork(`${c.id}:sink:${ship.id}`).chance(sinkChance(ship.integrity, hit))) {
-      w.events.push({ severity: 'CRITICAL', text: `LOST: ${ship.pennant} ${ship.name.toUpperCase()} sunk in action` });
-      removeShip(w, ship.id);
-      w.stats.shipsLost++;
-      adjustSupport(w, -8);
+      storyShips.push({ id: ship.id, name: ship.name, hull: ship.hullId, before, after: 0, lost: true, crippled: false });
+      losses.push(ship);
+      fallen.push(fallenRecord(ship, w.tick, sectorName));
       continue;
     }
     ship.integrity = hit >= ship.integrity ? CRIPPLED_FLOOR : ship.integrity - hit;
+    storyShips.push({ id: ship.id, name: ship.name, hull: ship.hullId, before, after: ship.integrity, lost: false, crippled: ship.integrity <= CRIPPLED_FLOOR && hit > 0 });
     if (ship.integrity < WITHDRAW_BELOW) sendToRepair(w, ship, ship.integrity <= CRIPPLED_FLOOR ? 'CRIPPLED in action' : 'heavy damage');
   }
+  for (const line of battleStory({
+    seed: w.seed, tick: w.tick, contactId: c.id, sectorLabel: sectorName, sectorId: c.sectorId, strength: c.strength, missiles: res.incoming,
+    bearing: compass(c.position, tf.position), surprise, outcome: res.outcome, result: res, ships: storyShips,
+  })) w.events.push({ severity: 'COMBAT', text: `  » ${line}` });
+  losses.forEach((ship, i) => {
+    const rec = fallen[i];
+    w.events.push({ severity: 'CRITICAL', text: lossText(rec, ship.hullId, ship.veterancy) });
+    w.stats.fallen = [rec, ...(w.stats.fallen ?? [])].slice(0, ROLL_CAP);
+    removeShip(w, ship.id);
+    w.stats.shipsLost++;
+    adjustSupport(w, -LOSS_SUPPORT[ship.hullId]);
+    if (LOSS_PC[ship.hullId] > 0) w.resources.politicalCapital = clamp(w.resources.politicalCapital - LOSS_PC[ship.hullId], 0, 60);
+  });
   if (res.outcome === 'DESTROYED') {
     st.threat = clamp(st.threat - 8);
     w.stats.hostilesDestroyed++;
