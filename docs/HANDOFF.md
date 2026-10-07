@@ -459,6 +459,17 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   log entries (silent for loaded games, catch-up digests and batches over 40 lines). Toggle is "Sound" in the command bar.
 - `npm run verify:audio`. Not done: volume slider, separate music bed, per-cue mute.
 
+## Hull diversity (evaluation phase 5)
+- `npm run verify:hulls` (`scripts/analyzeHulls.ts`) builds the best legal open-catalogue loadout per hull and compares cost, upkeep and presence.
+  It found two problems, both in `lib/sim/presence.ts`, not in hull costs:
+  1. Interceptor stacking: a three-SAM corvette (178 M) scored 2.3 frigate-equivalents, more than a frigate. Usable interceptors are now capped at
+     `structuralHP / 13` (`INTERCEPTORS_PER_HP`); the starter designs are below the cap, so they are unchanged.
+  2. Swarm spam: cost per frigate-equivalent was flat, so nine FACs bought what one destroyer did. `CLASS_WEIGHT` (FAC 0.7, corvette 0.85, frigate 1,
+     destroyer 1.15, carrier 1.3) scales a ship's power: cost per frigate-equivalent now runs FAC 295 → corvette 243 → frigate 217 → destroyer 206 →
+     carrier 181 M, upkeep per frigate-equivalent 1.3 → 0.9 → 1.0. Big hulls are better value but lumpy and their loss costs more (see the loss weights).
+  Hull purchase costs were left alone. The same interceptor stacking exists in `combatSim` (real defence uses the raw count, limited by CMS channels);
+  that was not changed. Submarines (S1–S5) remain unbuilt; they would need rows in this analysis.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

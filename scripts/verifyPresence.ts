@@ -43,7 +43,7 @@ const mk = (kind: keyof typeof DESIGNS, id = 'X', readiness = 100) => {
   const p = Object.fromEntries(Object.keys(DESIGNS).map((k) => [k, shipPower(mk(k))]));
   check(p.FAC < p.CORVETTE && p.CORVETTE < p.FRIGATE && p.FRIGATE < p.DESTROYER && p.DESTROYER < p.CARRIER, `power orders by hull class ${JSON.stringify(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, +v.toFixed(2)])))}`);
   check(near(p.FRIGATE, 1, 0.05), `the reference frigate is 1.0 (${p.FRIGATE.toFixed(2)})`);
-  check(p.FAC > 0.3 && p.FAC < 0.5 && p.CARRIER > 4, 'a FAC is ~0.4, a carrier ~5 frigates');
+  check(p.FAC > 0.2 && p.FAC < 0.4 && p.CARRIER > 4, 'a FAC is ~0.3, a carrier ~5 frigates');
   const hurt = mk('FRIGATE');
   hurt.integrity = 40;
   const tired = mk('FRIGATE', 'T', 30);

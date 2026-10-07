@@ -3,11 +3,12 @@
  * owns the sector. Presence feeds sector threat reduction, raider spawns and behaviour, and how reliably shipping is covered.
  *
  * - Ship power is in frigate-equivalents (1.0 = a healthy Argus-class frigate): structure, air defence, firepower and air group, scaled by
- *   readiness and integrity. A FAC is ~0.4, a corvette ~0.6, a carrier ~5.
+ *   readiness and integrity. A FAC is ~0.3, a corvette ~0.6, a carrier ~5.
  * - Presence has diminishing returns: 1 frigate-equivalent = 1.0, two = 1.6, four = 2.2, capped at 2.5.
  */
 import { HULLS } from '../data/catalog';
 import type { Ship, TaskForce } from '../types/fleet';
+import type { HullClassId } from '../types/hull';
 import type { Vec2 } from '../types/map';
 import type { WorldDraft } from '../types/world';
 import { evaluateLoadout } from './designEngine';
@@ -25,6 +26,12 @@ export const DETER_STRENGTH_PER_PRESENCE = 30;
 export const SPAWN_DETERRENCE = 0.25;
 export const SPAWN_DETERRENCE_CAP = 0.6;
 
+/** Magazine depth beyond what a hull can shield and direct adds nothing to presence: usable interceptors per point of structure. */
+export const INTERCEPTORS_PER_HP = 1 / 13;
+
+/** A force of small hulls is a nuisance, a capital ship a statement: per-class weight on a ship's power (a frigate is the yardstick). */
+export const CLASS_WEIGHT: Record<HullClassId, number> = { FAC: 0.7, CORVETTE: 0.85, FRIGATE: 1, DESTROYER: 1.15, CARRIER: 1.3 };
+
 const NO_BRIDGES: ReadonlySet<never> = new Set();
 
 /** Frigate-equivalents of one ship (0 if it cannot fight). */
@@ -32,9 +39,9 @@ export function shipPower(ship: Ship): number {
   const working = ship.modules.filter((m) => !m.failed).map((m) => m.moduleId);
   const hull = HULLS[ship.hullId];
   const ev = evaluateLoadout(ship.hullId, working, NO_BRIDGES);
-  const raw = hull.structuralHP * 0.5 + ev.interceptors * 12 + ev.firepower * 0.12 + hull.strikeRating * 3;
+  const raw = hull.structuralHP * 0.5 + Math.min(ev.interceptors, hull.structuralHP * INTERCEPTORS_PER_HP) * 12 + ev.firepower * 0.12 + hull.strikeRating * 3;
   const condition = (0.5 + 0.5 * ship.readiness / 100) * (0.4 + 0.6 * ship.integrity / 100);
-  return (raw / REF_POWER) * condition;
+  return (raw / REF_POWER) * condition * CLASS_WEIGHT[ship.hullId];
 }
 
 /** Diminishing returns: frigate-equivalents -> presence (1 -> 1.0, 2 -> 1.6, 4 -> 2.2, cap 2.5). */
