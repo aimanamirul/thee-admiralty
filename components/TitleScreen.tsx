@@ -1,11 +1,12 @@
 'use client';
 
-import { GraduationCap, Play, Radar, RotateCcw } from 'lucide-react';
+import { Anchor, GraduationCap, Play, Radar, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { Btn } from '@/components/ui/kit';
 import { ARCHETYPE_LABEL, type MapArchetype } from '@/lib/types/map';
 import { DEFAULT_SEED, useFleetStore } from '@/store/useFleetStore';
 import { LESSONS } from '@/lib/tutorial/lessons';
+import { clearSave, readSave, summarize, type SaveGame } from '@/lib/save';
 import { useNames } from '@/store/useNames';
 import { savedBriefing, useTutorialStore } from '@/store/useTutorialStore';
 
@@ -18,6 +19,8 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
   const n = useNames();
   // Read once on mount; localStorage is only available client-side (the cockpit is client-only).
   const [saved] = useState(savedBriefing);
+  const [game, setGame] = useState<SaveGame | null>(() => readSave());
+  const gameInfo = game ? summarize(game) : null;
 
   const briefing = () => {
     useTutorialStore.getState().begin();
@@ -25,6 +28,11 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
   };
   const resume = () => {
     if (useTutorialStore.getState().resume()) onStart();
+  };
+  const continueGame = (catchUp: boolean) => {
+    if (!game || !gameInfo) return;
+    useFleetStore.getState().continueGame(game, catchUp ? gameInfo.catchUpDays : 0);
+    onStart();
   };
   const freePlay = () => {
     const custom = seed.trim() !== DEFAULT_SEED || arch !== 'AUTO';
@@ -44,9 +52,42 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
         </div>
 
         <div className="mt-6 space-y-3">
+          {game && gameInfo && (
+            <div className="border border-emerald-accent bg-emerald-accent/10 px-4 py-3">
+              <button autoFocus onClick={() => continueGame(false)} className="flex w-full items-center gap-3 text-left transition hover:text-emerald-accent">
+                <Anchor className="h-6 w-6 shrink-0 text-emerald-accent" />
+                <span className="flex-1">
+                  <span className="block text-lg uppercase tracking-[0.25em] text-emerald-accent">Continue</span>
+                  <span className="block text-[0.875rem] text-slate-400">
+                    Day {gameInfo.tick} · fiscal year {gameInfo.fiscalYear} · {gameInfo.ships} hulls · support {gameInfo.support.toFixed(0)} · {gameInfo.archetype.toLowerCase()} theatre
+                    <span className="text-slate-600"> · saved {new Date(gameInfo.savedAt).toLocaleString()}</span>
+                  </span>
+                </span>
+              </button>
+              <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-emerald-accent/30 pt-2 text-[0.8125rem] text-slate-500">
+                {gameInfo.catchUpDays > 0 && (
+                  <Btn tone="emerald" title="Standing orders carry on while you were away; you get a report of what happened" onClick={() => continueGame(true)}>
+                    Continue and catch up {gameInfo.catchUpDays} days
+                  </Btn>
+                )}
+                <Btn
+                  tone="dim"
+                  onClick={() => {
+                    if (window.confirm('Discard the saved game?')) {
+                      clearSave();
+                      setGame(null);
+                    }
+                  }}
+                >
+                  Discard save
+                </Btn>
+                {gameInfo.catchUpDays > 0 && <span>Catch-up runs under your standing orders (ROE, SOP, tempo); nothing new is ordered.</span>}
+              </div>
+            </div>
+          )}
           {saved && (
             <button
-              autoFocus
+              autoFocus={!game}
               onClick={resume}
               className="flex w-full items-center gap-3 border border-emerald-accent bg-emerald-accent/10 px-4 py-3 text-left transition hover:bg-emerald-accent/20"
             >
@@ -60,7 +101,7 @@ export default function TitleScreen({ onStart }: { onStart: () => void }) {
             </button>
           )}
           <button
-            autoFocus={!saved}
+            autoFocus={!saved && !game}
             onClick={briefing}
             className="group flex w-full items-center gap-3 border border-phosphor bg-phosphor/10 px-4 py-3 text-left shadow-glow transition hover:bg-phosphor/20"
           >

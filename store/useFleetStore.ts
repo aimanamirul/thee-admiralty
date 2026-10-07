@@ -19,6 +19,8 @@ import type { MapArchetype, MapData } from '../lib/types/map';
 import type { Contact, GameEvent, LadderAction, ResearchState, Resources, Roe, SectorState, Sop, WorldDraft } from '../lib/types/world';
 import type { NamingTradition } from '../lib/types/fleet';
 import type { SanctionEvent, Vendor, VendorId } from '../lib/types/diplomacy';
+import { restoreWorld, type SaveGame } from '../lib/save';
+import { buildDigest, snapshotOf, type Digest } from '../lib/sim/digest';
 import { normalizeShipping, type FlagFilter, type InterdictionPolicy, type ShippingState } from '../lib/types/shipping';
 
 export type PanelTab = 'SECTOR' | 'FLEET' | 'RND' | 'DIPLO';
@@ -68,6 +70,8 @@ interface UiSlice {
   skin: Skin;
   /** Design the designer opens with (set by the tutorial); null = first saved design. */
   designerPreset: ShipDesign | null;
+  /** "While you were away" report from a catch-up, shown until dismissed. */
+  digest: Digest | null;
 }
 
 interface Actions {
@@ -96,6 +100,9 @@ interface Actions {
   /** Apply an arbitrary edit to the world through the normal command path (scripted events). */
   mutate: (fn: (w: WorldDraft) => void) => void;
   setDesignerPreset: (d: ShipDesign | null) => void;
+  /** Restore a saved game (optionally simulating `catchUpDays` of the time spent away, ending in a digest). */
+  continueGame: (save: SaveGame, catchUpDays?: number) => void;
+  dismissDigest: () => void;
   // commands (each returns the engine's verdict)
   orderShip: (a: { designName: string; hullId: ShipDesign['hullId']; moduleIds: string[]; squadronId: string; tradition: NamingTradition; customName?: string }) => CommandResult;
   buySpares: (moduleId: string, qty: number) => CommandResult;
@@ -197,6 +204,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     uiScale: 1,
     skin: DEFAULT_SKIN,
     designerPreset: null,
+    digest: null,
 
     step: (days = 1) => {
       const s = get();
@@ -253,6 +261,18 @@ export const useFleetStore = create<GameState>((set, get) => {
       });
     },
     setDesignerPreset: (designerPreset) => set({ designerPreset }),
+    continueGame: (save, catchUpDays = 0) => {
+      get().loadWorld(restoreWorld(save), { log: save.log, logSeq: save.logSeq });
+      set({ designs: save.designs, digest: null });
+      if (catchUpDays <= 0) return;
+      const s = get();
+      const before = snapshotOf(pickWorld(s));
+      const seq0 = s.logSeq;
+      get().step(catchUpDays);
+      const after = get();
+      set({ digest: buildDigest(before, pickWorld(after), after.log.filter((e) => e.id > seq0)) });
+    },
+    dismissDigest: () => set({ digest: null }),
     setTab: (tab) => set({ tab }),
     selectSector: (id) =>
       set(id === null ? { selectedSectorId: null, selectedContactId: null, selectedMerchantId: null } : { selectedSectorId: id, selectedContactId: null, selectedMerchantId: null, tab: 'SECTOR' }),

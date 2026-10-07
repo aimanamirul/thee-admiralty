@@ -19,6 +19,8 @@ import { useFleetStore, type PanelTab } from '@/store/useFleetStore';
 import { useNames } from '@/store/useNames';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { SKIN_STORAGE_KEY } from '@/lib/data/names';
+import { makeSave, writeSave } from '@/lib/save';
+import DigestModal from '@/components/ui/DigestModal';
 
 const TABS: { id: PanelTab; label: string; flag: UiFlag }[] = [
   { id: 'FLEET', label: 'Order of battle', flag: 'TAB_FLEET' },
@@ -63,6 +65,39 @@ function useSkinPersist() {
       localStorage.setItem(SKIN_STORAGE_KEY, skin);
     } catch {}
   }, [skin]);
+}
+
+/**
+ * Autosave to the browser: every few simulated days, whenever the clock is paused, and when the tab is hidden or closed.
+ * Never during the briefing (it has its own checkpoints) and never while the title screen is up, so a save is not overwritten
+ * before the player has chosen Continue.
+ */
+function useAutosave(playing: boolean) {
+  useEffect(() => {
+    if (!playing) return;
+    const save = () => {
+      if (useTutorialStore.getState().active) return;
+      const g = useFleetStore.getState();
+      writeSave(makeSave(g.snapshotWorld(), g.log, g.logSeq, g.designs));
+    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastTick = useFleetStore.getState().tick;
+    const unsub = useFleetStore.subscribe((s) => {
+      if (s.tick === lastTick && s.running) return;
+      lastTick = s.tick;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(save, s.running ? 4000 : 600);
+    });
+    const hide = () => document.visibilityState === 'hidden' && save();
+    document.addEventListener('visibilitychange', hide);
+    window.addEventListener('pagehide', save);
+    return () => {
+      unsub();
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', hide);
+      window.removeEventListener('pagehide', save);
+    };
+  }, [playing]);
 }
 
 /** Drives the simulation: one day per tick, faster at higher speeds. */
@@ -111,6 +146,7 @@ export default function Cockpit() {
   };
   const activeTab: PanelTab | null = shown[tab] ? tab : TABS.find((t) => shown[t.id])?.id ?? null;
   const [screen, setScreen] = useState<'title' | 'game'>('title');
+  useAutosave(screen === 'game');
 
   return (
     <main className="flex h-screen flex-col bg-void">
@@ -165,6 +201,7 @@ export default function Cockpit() {
       {designerOpen && <ShipDesignerModal />}
       <TutorialSpotlight />
       {screen === 'title' && <TitleScreen onStart={() => setScreen('game')} />}
+      {screen === 'game' && <DigestModal />}
     </main>
   );
 }

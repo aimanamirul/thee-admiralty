@@ -413,6 +413,25 @@ The briefing teaches everything added since it was written. 17 lessons (the two 
   clock only while an action is hovered, and the text is memoised on (preview fn, tick, log, budget). Measured in the browser: canvas,
   ticker and strip boxes are identical with a 391-character preview, and 40 samples while hopping between two buttons showed 0 placeholder flashes.
 
+## Evaluation round 1: save/load and catch-up (done, 2026-10-07)
+
+Source: a self-evaluation against an immersion / QoL / loop rubric (see the conversation); priorities taken in order: (1) save and load,
+(2) battle reports, (3) refit and bulk fleet ops, (4) sound, (5) hull diversity. Each is its own section below.
+
+- **Saves** (`lib/save.ts`, key `al.save.v1`, ~15 KB): the world minus its map (regenerated from seed and archetype; the briefing's two-sector map
+  is rebuilt by `createTutorialMap`), the ledger and saved designs. Written by `useAutosave` in `Cockpit` (4 s after a change while the clock
+  runs, 0.6 s when paused, on tab hide and `pagehide`); never during the briefing and never while the title screen is up. Old saves get
+  missing fields filled (`normalizeShipping`); corrupt or other-version saves are ignored.
+- **Continue** on the title screen (day, fiscal year, hulls, support, saved time) plus **Discard save**.
+- **Catch-up** (opt-in): "Continue and catch up N days" simulates N days under standing orders (ROE, SOP, tempo; nothing new is ordered). N = one day
+  per two minutes away, 3 minimum, 30 maximum (`catchUpDaysFor`). It ends in `DigestModal` ("While you were away"): summary numbers (budget, support,
+  tension, kills, seizures, incidents, shipping, biggest threat rise), ships lost by name, up to ten dated ledger highlights, and **what is holding the
+  navy back now** (`bottlenecksOf`: low budget, hulls awaiting funds or stalled by sanctions, docks waiting for spares, uncovered high threat,
+  vendors under sanction, low support, many hulls in dock).
+- `npm run verify:save`: a restored world equals the saved one and, after 120 further days, equals the game that never stopped (3 theatres); the briefing map
+  restores; corrupt, wrong-version and broken saves are rejected; a full storage fails quietly; catch-up allowance; the digest names a lost ship and
+  states budget, support and shipping; bottlenecks come from the world.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

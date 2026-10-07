@@ -20,7 +20,8 @@
     "verify:cold": "tsx scripts/verifyCold.ts",
     "verify:shipping": "tsx scripts/verifyShipping.ts",
     "verify:combat": "tsx scripts/verifyCombat.ts",
-    "verify:presence": "tsx scripts/verifyPresence.ts"
+    "verify:presence": "tsx scripts/verifyPresence.ts",
+    "verify:save": "tsx scripts/verifySave.ts"
   },
   "dependencies": {
     "lucide-react": "^1.48.0",
