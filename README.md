@@ -20,6 +20,7 @@ npm run verify:supply     # hidden sub-suppliers, due diligence, sanctions throu
 npm run verify:contracts  # build contracts: deposit, instalments, cancellation refunds by fault, resale
 npm run verify:cold       # cold vendors: policy-shift vote, bloc introduction, JV export drive
 npm run verify:narrative  # battle reports are deterministic and name ships; loss weight by hull; roll of honour
+npm run verify:fleetops    # refit of docked ships (cost, yard days, dock lock), split / merge task forces, bulk orders
 npm run verify:save       # save / load round trip is bit-identical, bad saves rejected, catch-up digest
 npm run verify:presence   # hull class decides deterrence: threat reduction, raider spawns and behaviour, shipping cover
 npm run verify:combat     # raids cripple and send ships to repair instead of deleting them; only heavy overkill sinks

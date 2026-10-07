@@ -13,6 +13,8 @@ import { createInitialWorld } from '../lib/sim/scenario';
 import { advanceDay } from '../lib/sim/worldEngine';
 import { lobbyVendor } from '../lib/sim/diplomacyEngine';
 import * as hulk from '../lib/sim/fleetEngine';
+import * as ops from '../lib/sim/fleetOps';
+import type { ModuleSlot } from '../lib/types/equipment';
 import type { Fleet, HierarchyKind, Ship, Tempo } from '../lib/types/fleet';
 import type { ShipDesign } from '../lib/types/hull';
 import type { MapArchetype, MapData } from '../lib/types/map';
@@ -141,6 +143,13 @@ interface Actions {
   liftZone: (zoneId: string) => CommandResult;
   setZonePolicy: (zoneId: string, policy: InterdictionPolicy) => CommandResult;
   engageMerchant: (taskForceId: string, merchantId: string) => CommandResult;
+  refitShip: (shipId: string, index: number, moduleId: string) => CommandResult;
+  refitMany: (shipIds: string[], slot: ModuleSlot, fromId: string, toId: string) => CommandResult;
+  moveShips: (shipIds: string[], squadronId: string) => CommandResult;
+  assignTaskForces: (tfIds: string[], sectorId: number | null) => CommandResult;
+  setTempoMany: (tfIds: string[], tempo: Tempo) => CommandResult;
+  splitTaskForce: (shipIds: string[], name?: string) => CommandResult;
+  mergeTaskForces: (fromId: string, intoId: string) => CommandResult;
 }
 
 export type GameState = WorldSlice & UiSlice & Actions;
@@ -339,6 +348,13 @@ export const useFleetStore = create<GameState>((set, get) => {
     liftZone: (zoneId) => run((w) => cmd.liftZoneCmd(w, zoneId)),
     setZonePolicy: (zoneId, policy) => run((w) => cmd.setZonePolicyCmd(w, zoneId, policy)),
     engageMerchant: (tfId, merchantId) => run((w) => cmd.engageMerchantCmd(w, tfId, merchantId)),
+    refitShip: (shipId, index, moduleId) => run((w) => ops.refitShip(w, shipId, index, moduleId)),
+    refitMany: (shipIds, slot, fromId, toId) => run((w) => ops.refitMany(w, shipIds, slot, fromId, toId)),
+    moveShips: (shipIds, sqId) => run((w) => ops.moveShips(w, shipIds, sqId)),
+    assignTaskForces: (tfIds, sectorId) => run((w) => ops.assignTaskForces(w, tfIds, sectorId)),
+    setTempoMany: (tfIds, tempo) => run((w) => ops.setTempoMany(w, tfIds, tempo)),
+    splitTaskForce: (shipIds, name) => run((w) => ops.splitTaskForce(w, shipIds, name)),
+    mergeTaskForces: (fromId, intoId) => run((w) => ops.mergeTaskForces(w, fromId, intoId)),
   };
 });
 

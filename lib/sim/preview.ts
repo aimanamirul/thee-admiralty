@@ -32,6 +32,8 @@ import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
+import { mergeBlocked, REFIT_DAYS, refitBlocked, refitCandidates, refitCost, splitBlocked } from './fleetOps';
+import type { ModuleSlot } from '../types/equipment';
 
 /** Warn when a task force's interceptors fall short of the raids to expect at the sector's current threat. */
 function airDefence(w: WorldDraft, tfId: string, sectorId: number): string | null {
@@ -516,4 +518,47 @@ export function previewEngage(w: WorldDraft, tfId: string, merchantId: string): 
     return `LAWFUL under the exclusion order in force: ship lost (${m.cargo}M cargo), ${crew} crew casualties added to the civilian toll · tension +4, PC −3, flag-state standing −10 (bloc −3), polarization +${(3 + crew / 20).toFixed(1)}, support +1.5 now`;
   }
   return `GRAVEST INCIDENT — no exclusion order in force here (or not yet past notice, or the sector is not at WEAPONS FREE): ship lost (${m.cargo}M cargo), ${crew} crew casualties · tension +20, PC −15, support −12, flag-state standing −20 (bloc −6), polarization +${(10 + crew / 10).toFixed(0)}`;
+}
+
+// ------------------------------------------------------------------------------------------ refit and bulk fleet operations
+
+function refitEffect(w: WorldDraft, shipId: string, index: number, newId: string): string {
+  const s = w.ships[shipId];
+  const before = evaluateLoadout(s.hullId, s.modules.filter((m) => !m.failed).map((m) => m.moduleId), bridgeSet(w.research.completed));
+  const after = evaluateLoadout(s.hullId, s.modules.map((m, i) => (i === index ? newId : m.moduleId)).filter((_, i) => i === index || !s.modules[i].failed), bridgeSet(w.research.completed));
+  const d = (label: string, a: number, b: number) => (Math.round(a) === Math.round(b) ? null : `${label} ${Math.round(a)} → ${Math.round(b)}`);
+  const parts = [d('firepower', before.firepower, after.firepower), d('interceptors', before.interceptors, after.interceptors), d('detection km', before.detectionKm, after.detectionKm), d('combat rating', before.combatRating, after.combatRating)].filter(Boolean);
+  return parts.length ? parts.join(', ') : 'no change to combat rating';
+}
+
+export function previewRefit(w: WorldDraft, shipId: string, index: number, newId: string): Preview {
+  const b = refitBlocked(w, shipId, index, newId);
+  if (b) return blocked(b);
+  const s = w.ships[shipId];
+  return `${shipLabel(w, shipId)}: ${mt(s.modules[index].moduleId)} → ${mt(newId)} · −${M(refitCost(s.modules[index].moduleId, newId))} · ${REFIT_DAYS} days in the yard (cannot sail) · ${refitEffect(w, shipId, index, newId)}`;
+}
+
+export function previewRefitMany(w: WorldDraft, shipIds: string[], slot: ModuleSlot, fromId: string, toId: string): Preview {
+  const cands = refitCandidates(w, shipIds, slot, fromId);
+  if (cands.length === 0) return blocked('no selected ship carries that module');
+  const ready = cands.filter((c) => !refitBlocked(w, c.shipId, c.index, toId));
+  if (ready.length === 0) return blocked(refitBlocked(w, cands[0].shipId, cands[0].index, toId) ?? 'no refit possible');
+  const total = ready.length * refitCost(fromId, toId);
+  const afford = Math.floor(w.resources.budget / refitCost(fromId, toId));
+  return `${ready.length} of ${cands.length} ship${cands.length === 1 ? '' : 's'}: ${mt(fromId)} → ${mt(toId)} · −${M(total)} · ${REFIT_DAYS} days each in the yard${ready.length < cands.length ? ` · ${cands.length - ready.length} not in dock or blocked` : ''}${afford < ready.length ? ` · budget covers only ${afford}` : ''}`;
+}
+
+export function previewSplit(w: WorldDraft, shipIds: string[]): Preview {
+  const b = splitBlocked(w, shipIds);
+  if (b) return blocked(b);
+  const tf = allTaskForces(w.fleets).find((t) => taskForceShipIds(t).includes(shipIds[0]))!;
+  return `${shipIds.length} ship${shipIds.length === 1 ? '' : 's'} leave ${tf.name} as a new task force with the same station and tempo · ${tf.name} keeps ${taskForceShipIds(tf).length - shipIds.length}`;
+}
+
+export function previewMerge(w: WorldDraft, fromId: string, intoId: string): Preview {
+  const b = mergeBlocked(w, fromId, intoId);
+  if (b) return blocked(b);
+  const from = tfById(w, fromId)!;
+  const into = tfById(w, intoId)!;
+  return `${from.name} (${taskForceShipIds(from).length} ships) joins ${into.name} (${taskForceShipIds(into).length}) · ${from.name} is disbanded · station and tempo follow ${into.name}`;
 }

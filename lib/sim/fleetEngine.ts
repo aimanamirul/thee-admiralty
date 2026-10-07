@@ -307,6 +307,11 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
         ship.readiness = clamp(ship.readiness + 2.4);
         ship.integrity = clamp(ship.integrity + 1.8);
         for (const m of ship.modules) if (!m.failed) m.condition = clamp(m.condition + 0.04, 0, 1);
+        if ((ship.refitDaysLeft ?? 0) > 0) {
+          ship.refitDaysLeft = (ship.refitDaysLeft ?? 0) - 1;
+          if (ship.refitDaysLeft === 0) world.events.push({ severity: 'INFO', text: `${label}: refit complete — back to workup when readiness allows` });
+          continue;
+        }
         const failed = ship.modules.find((m) => m.failed);
         if (failed) {
           const src = takeSpare(world, failed.moduleId);

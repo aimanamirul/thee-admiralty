@@ -12,9 +12,12 @@ import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { useNames } from '@/store/useNames';
 import { usePreviewStore } from '@/store/usePreviewStore';
+import { useSelectionStore } from '@/store/useSelectionStore';
+import { refitCost, REFIT_DAYS } from '@/lib/sim/fleetOps';
+import type { ModuleSlot } from '@/lib/types/equipment';
 import { useUiFlag } from '@/store/useTutorialStore';
 import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
-import { previewBuySpare, previewCancel, previewHold, previewHulk, previewResell, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
+import { previewBuySpare, previewCancel, previewMerge, previewRefit, previewRefitMany, previewSplit, previewHold, previewHulk, previewResell, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
 import { cancelBlocked, instalment, resaleBlocked } from '@/lib/sim/contracts';
 
 const STATE_TONE: Record<OpState, 'emerald' | 'cyan' | 'amber'> = { ACTIVE_PATROL: 'emerald', TRANSIT_WORKUP: 'cyan', MAINTENANCE_DOCK: 'amber' };
@@ -118,6 +121,7 @@ function ShipDetail({ ship }: { ship: Ship }) {
             <div>INTEGRITY<Meter value={ship.integrity} label={ship.integrity.toFixed(0)} /></div>
             <div>VETERANCY<Meter value={ship.veterancy} tone="emerald" label={ship.veterancy.toFixed(0)} /></div>
           </div>
+          {(ship.refitDaysLeft ?? 0) > 0 && <Stat k="Refit" v={`${ship.refitDaysLeft} days left in the yard`} tone="text-cyan-radar" />}
           <Stat k="Days in state" v={`${ship.stateDays}${ship.state === 'ACTIVE_PATROL' ? ` / ${PATROL_LIMIT_DAYS}` : ''}`} />
           {ship.overdeployDays > 0 && <Stat k="Over-deployed" v={`${ship.overdeployDays} days — breakdown risk ×${(1 + (ship.overdeployDays / 10) ** 1.5).toFixed(1)}`} tone="text-warn" />}
         </>
@@ -154,6 +158,7 @@ function ShipDetail({ ship }: { ship: Ship }) {
           const def = MODULE_BY_ID[m.moduleId];
           const frozen = ship.buildStatus === 'CONSTRUCTING' && !!ship.frozenBy && exposure(def).includes(ship.frozenBy);
           const known = originView({ vendors }, def).known;
+          const refits = ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && ship.state === 'MAINTENANCE_DOCK' && (ship.refitDaysLeft ?? 0) === 0 ? [m] : [];
           const alternatives = frozen
             ? MODULES.filter((x) => x.slot === m.slot && x.id !== m.moduleId && procurability(x, vendors, done).ok)
             : [];
@@ -173,6 +178,24 @@ function ShipDetail({ ship }: { ship: Ship }) {
                 </span>
               </div>
               {ship.buildStatus === 'COMMISSIONED' && <Meter value={m.condition * 100} label={`${Math.round(m.condition * 100)}`} />}
+              {refits.length > 0 && !m.failed && (
+                <select
+                  className="mt-1 w-full px-1 py-0.5 text-[0.8125rem]"
+                  defaultValue=""
+                  data-testid={`refit-${i}`}
+                  onChange={(e) => e.target.value && st.refitShip(ship.id, i, e.target.value)}
+                  onPointerEnter={() => usePreviewStore.getState().show((w) => `Refit: pick a replacement — ${REFIT_DAYS} days in the yard, ship cannot sail; cost shown per option`, `refit-${ship.id}-${i}`)}
+                  onPointerLeave={() => usePreviewStore.getState().clear(`refit-${ship.id}-${i}`)}
+                  aria-label="Refit module"
+                >
+                  <option value="">REFIT… ({REFIT_DAYS} days in dock)</option>
+                  {MODULES.filter((x) => x.slot === m.slot && x.id !== m.moduleId && procurability(x, vendors, done).ok).map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {n.m(a.id)} [{n.vs(a.vendorId)}] {refitCost(m.moduleId, a.id).toFixed(0)}M
+                    </option>
+                  ))}
+                </select>
+              )}
               {alternatives.length > 0 && (
                 <select
                   className="mt-1 w-full px-1 py-0.5 text-[0.8125rem]"
@@ -243,11 +266,23 @@ function ShipRow({ ship }: { ship: Ship }) {
   const showHulk = useUiFlag('HULK');
   const selected = useFleetStore((s) => s.selectedShipId === ship.id);
   const select = useFleetStore((s) => s.selectShip);
+  const picked = useSelectionStore((s) => s.ships.includes(ship.id));
+  const toggle = useSelectionStore((s) => s.toggleShip);
   const hull = HULLS[ship.hullId];
   const failed = ship.modules.filter((m) => m.failed).length;
   return (
     <li data-tutorial={`ship-${ship.id}`} className={`border ${selected ? 'border-phosphor/70' : 'border-navy'} ${ship.isPartsHulk ? 'opacity-70' : ''}`}>
       <div role="button" tabIndex={0} onClick={() => select(selected ? null : ship.id)} onKeyDown={(e) => e.key === 'Enter' && select(selected ? null : ship.id)} className="flex cursor-pointer items-center gap-1.5 px-1.5 py-1 hover:bg-phosphor/5">
+        {ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && (
+          <input
+            type="checkbox"
+            aria-label={`Select ${ship.name}`}
+            checked={picked}
+            onClick={(e) => e.stopPropagation()}
+            onChange={() => toggle(ship.id)}
+            className="h-3 w-3 shrink-0 accent-[#35f2a0]"
+          />
+        )}
         {selected ? <ChevronDown className="h-3 w-3 shrink-0 text-phosphor" /> : <ChevronRight className="h-3 w-3 shrink-0 text-slate-600" />}
         <span className="w-10 shrink-0 text-[0.8125rem] text-slate-500">{ship.pennant}</span>
         <span className="min-w-0 flex-1 truncate text-[0.875rem] text-slate-200">
@@ -256,6 +291,7 @@ function ShipRow({ ship }: { ship: Ship }) {
         </span>
         {failed > 0 && !ship.isPartsHulk && <Chip tone="red">{failed}× FAULT</Chip>}
         {ship.holdStation && <Chip tone="amber">HOLD</Chip>}
+        {(ship.refitDaysLeft ?? 0) > 0 && <Chip tone="cyan">REFIT {ship.refitDaysLeft}d</Chip>}
         {showHulk && ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && ship.state === 'MAINTENANCE_DOCK' && (
           <button
             data-tutorial={`hulk-${ship.id}`}
@@ -296,6 +332,8 @@ function TaskForceNode({ tf }: { tf: TaskForce }) {
   const selected = useFleetStore((s) => s.selectedTaskForceId === tf.id);
   const { selectTaskForce, assignTaskForce, setTempo } = useFleetStore.getState();
   const [open, setOpen] = useState(true);
+  const tfPicked = useSelectionStore((s) => s.tfs.includes(tf.id));
+  const toggleTf = useSelectionStore((s) => s.toggleTf);
   const list = taskForceShipIds(tf).map((id) => ships[id]).filter(Boolean);
   const counts = stateCounts(list);
   return (
@@ -304,6 +342,7 @@ function TaskForceNode({ tf }: { tf: TaskForce }) {
         <button aria-label={open ? 'Collapse' : 'Expand'} onClick={() => setOpen(!open)} className="text-phosphor">
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
+        <input type="checkbox" aria-label={`Select ${tf.name}`} checked={tfPicked} onChange={() => toggleTf(tf.id)} className="h-3 w-3 shrink-0 accent-[#35f2a0]" />
         <div role="button" tabIndex={0} onClick={() => selectTaskForce(selected ? null : tf.id)} onKeyDown={(e) => e.key === 'Enter' && selectTaskForce(selected ? null : tf.id)} className="cursor-pointer text-left text-[0.875rem] uppercase tracking-wider text-phosphor">
           <EditableName kind="TASKFORCE" id={tf.id} value={tf.name} />
         </div>
@@ -434,6 +473,99 @@ function Organise() {
   );
 }
 
+function BulkBar() {
+  const shipSel = useSelectionStore((s) => s.ships);
+  const tfSel = useSelectionStore((s) => s.tfs);
+  const clear = useSelectionStore((s) => s.clear);
+  const fleets = useFleetStore((s) => s.fleets);
+  const ships = useFleetStore((s) => s.ships);
+  const map = useFleetStore((s) => s.map);
+  const research = useFleetStore((s) => s.research);
+  const vendors = useFleetStore((s) => s.vendors);
+  const n = useNames();
+  const st = useFleetStore.getState();
+  const [sq, setSq] = useState('');
+  const [slot, setSlot] = useState<ModuleSlot | ''>('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const done = useMemo(() => new Set(research.completed), [research.completed]);
+  const shipIds = shipSel.filter((id) => ships[id]);
+  const tfIds = tfSel.filter((id) => fleets.some((f) => f.taskForces.some((t) => t.id === id)));
+  if (shipIds.length === 0 && tfIds.length === 0) return null;
+  const squadrons = fleets.flatMap((f) => f.taskForces.flatMap((t) => t.squadrons.map((q) => ({ id: q.id, label: `${t.name} / ${q.name}` }))));
+  const carried = new Map<string, { slot: ModuleSlot; id: string }>();
+  for (const id of shipIds) for (const m of ships[id].modules) carried.set(`${m.slot}:${m.moduleId}`, { slot: m.slot, id: m.moduleId });
+  const pick = from ? carried.get(from) : undefined;
+  const alts = pick ? MODULES.filter((x) => x.slot === pick.slot && x.id !== pick.id && procurability(x, vendors, done).ok) : [];
+  const sqId = squadrons.find((q) => q.id === sq)?.id ?? '';
+  return (
+    <Section anchor="bulk" title="Bulk orders" right={<Btn tone="dim" onClick={clear}>Clear selection</Btn>}>
+      <div className="space-y-1.5 text-[0.8125rem]">
+        {shipIds.length > 0 && (
+          <div className="space-y-1">
+            <div className="uppercase tracking-widest text-slate-500">{shipIds.length} ship{shipIds.length === 1 ? '' : 's'} selected</div>
+            <div className="flex flex-wrap items-center gap-1">
+              <select value={sqId} onChange={(e) => setSq(e.target.value)} className="min-w-0 flex-1 px-1 py-0.5" aria-label="Bulk transfer squadron">
+                <option value="">MOVE TO SQUADRON…</option>
+                {squadrons.map((q) => (
+                  <option key={q.id} value={q.id}>{q.label}</option>
+                ))}
+              </select>
+              <Btn tone="cyan" disabled={!sqId} onClick={() => st.moveShips(shipIds, sqId)}>Move</Btn>
+              <Btn tone="emerald" preview={(w) => previewSplit(w, shipIds)} onClick={() => { const r = st.splitTaskForce(shipIds); if (r.ok) clear(); }}>Detach as new task force</Btn>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              <select value={from} onChange={(e) => { setFrom(e.target.value); setTo(''); setSlot((carried.get(e.target.value)?.slot as ModuleSlot) ?? ''); }} className="min-w-0 flex-1 px-1 py-0.5" aria-label="Bulk refit from module">
+                <option value="">REFIT: REPLACE…</option>
+                {[...carried.entries()].map(([k, v]) => (
+                  <option key={k} value={k}>{v.slot} · {n.m(v.id)}</option>
+                ))}
+              </select>
+              <select value={to} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1 px-1 py-0.5" aria-label="Bulk refit to module" disabled={!pick}>
+                <option value="">WITH…</option>
+                {alts.map((a) => (
+                  <option key={a.id} value={a.id}>{n.m(a.id)} [{n.vs(a.vendorId)}] {refitCost(pick!.id, a.id).toFixed(0)}M each</option>
+                ))}
+              </select>
+              <Btn tone="amber" disabled={!pick || !to || !slot} preview={(w) => (pick && to && slot ? previewRefitMany(w, shipIds, slot, pick.id, to) : 'Choose a module to replace and its replacement · docked ships only')} onClick={() => pick && to && st.refitMany(shipIds, pick.slot, pick.id, to)}>
+                Refit all
+              </Btn>
+            </div>
+          </div>
+        )}
+        {tfIds.length > 0 && (
+          <div className="space-y-1">
+            <div className="uppercase tracking-widest text-slate-500">{tfIds.length} task force{tfIds.length === 1 ? '' : 's'} selected</div>
+            <div className="flex flex-wrap items-center gap-1">
+              <select value="" onChange={(e) => e.target.value !== '' && st.assignTaskForces(tfIds, e.target.value === 'PORT' ? null : Number(e.target.value))} className="min-w-0 flex-1 px-1 py-0.5" aria-label="Bulk assign sector">
+                <option value="">SEND ALL TO…</option>
+                <option value="PORT">IN PORT</option>
+                {map.sectors.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+              <Btn tone="cyan" onClick={() => st.setTempoMany(tfIds, 'ROTATE_THIRDS')}>Rotate ⅓</Btn>
+              <Btn tone="red" onClick={() => st.setTempoMany(tfIds, 'SURGE')}>Surge</Btn>
+              {tfIds.length >= 2 && (
+                <Btn
+                  tone="amber"
+                  preview={(w) => previewMerge(w, tfIds[1], tfIds[0])}
+                  onClick={() => {
+                    for (const id of tfIds.slice(1)) st.mergeTaskForces(id, tfIds[0]);
+                    clear();
+                  }}
+                >
+                  Merge into first
+                </Btn>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 function RollOfHonour() {
   const fallen = useFleetStore((s) => s.stats.fallen);
   if (!fallen || fallen.length === 0) return null;
@@ -461,6 +593,7 @@ export default function OrderOfBattle() {
   return (
     <div className="space-y-2">
       {showThirds && <ThirdsGauge ships={list} />}
+      <BulkBar />
       <Section title="Order of battle" right={<span className="text-slate-500">{list.length} hulls · {stats.hostilesDestroyed} kills · {stats.shipsLost} lost</span>}>
         <div className="space-y-2">
           {fleets.map((f) => (

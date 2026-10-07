@@ -440,6 +440,17 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
 - Sector panel shows Conditions (sea state). `npm run verify:narrative`.
 - Still to come from the evaluation list: refit and bulk fleet operations, sound cues, hull diversity analysis.
 
+## Refit and bulk fleet operations (evaluation phase 3)
+- `lib/sim/fleetOps.ts`: `refitShip` swaps one module of a *docked, commissioned* ship (cost = 0.8× new − 0.25× old + 8 M yard fee, `REFIT_DAYS` 12,
+  `Ship.refitDaysLeft` keeps it in dock; `advanceFleets` counts it down before repair/exit logic). Same checks as ordering a module
+  (procurability, sanction blocks, valid loadout, budget). `refitMany` applies it to every selected ship carrying a module.
+- Bulk: `moveShips`, `assignTaskForces`, `setTempoMany`, `splitTaskForce` (detach selected ships into a new task force with the parent's station,
+  route and tempo), `mergeTaskForces` (same station within 3 tiles; empty shell disbanded). Previews: `previewRefit`, `previewRefitMany`,
+  `previewSplit`, `previewMerge` (covered by `verify:preview`).
+- UI: checkboxes on ships and task forces (`store/useSelectionStore.ts`, UI-only, not saved), a "Bulk orders" panel in the Fleet tab, and a
+  per-module "Refit…" select in the ship detail when docked. `Btn` now clears its preview when it unmounts.
+- `npm run verify:fleetops`. Not done: refit is not visible to the tutorial; no refit queue / yard capacity limit.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

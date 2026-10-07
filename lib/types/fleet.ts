@@ -49,6 +49,8 @@ export interface Ship {
   commissionedTick: number | null;
   /** Engagements fought (service record). */
   engagements?: number;
+  /** Days of yard work left on a refit; the ship cannot leave the dock until it is 0. */
+  refitDaysLeft?: number;
 }
 
 export interface Squadron {

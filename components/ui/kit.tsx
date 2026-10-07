@@ -1,6 +1,6 @@
 'use client';
 /** Tiny terminal-styled UI kit shared by the panels. */
-import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { previewOwner, usePreviewStore, type PreviewFn } from '@/store/usePreviewStore';
 
 export function Section({ title, right, children, tone = 'cyan', anchor }: { title: ReactNode; right?: ReactNode; children: ReactNode; tone?: 'cyan' | 'amber' | 'red' | 'emerald'; anchor?: string }) {
@@ -32,6 +32,8 @@ export function Btn({
     dim: 'border-navy text-slate-400 hover:border-phosphor/50 hover:text-phosphor',
   }[tone];
   const [owner] = useState(previewOwner);
+  // A button that disappears while hovered (its action removed it) sends no pointer-leave: drop its preview here.
+  useEffect(() => () => usePreviewStore.getState().clear(owner), [owner]);
   const base = `border px-2 py-0.5 text-[0.8125rem] uppercase tracking-widest transition ${t} ${className}`;
   if (!preview) {
     return <button {...p} disabled={disabled} onClick={onClick} className={`${base} disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent`} />;
