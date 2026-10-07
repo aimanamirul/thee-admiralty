@@ -1,5 +1,8 @@
 'use client';
 
+import { cuesFor } from '@/lib/audio/cues';
+import { playCue } from '@/lib/audio/synth';
+import { useSoundStore } from '@/store/useSoundStore';
 import { useEffect, useState } from 'react';
 import CRTOverlay from '@/components/map/CRTOverlay';
 import TacticalMap from '@/components/map/TacticalMap';
@@ -65,6 +68,24 @@ function useSkinPersist() {
       localStorage.setItem(SKIN_STORAGE_KEY, skin);
     } catch {}
   }, [skin]);
+}
+
+/** Play the cue for new ledger events when sound is on. Catch-up batches and loaded games are silent (the log is replaced, not appended). */
+function useSoundCues(playing: boolean) {
+  useEffect(() => {
+    useSoundStore.getState().hydrate();
+  }, []);
+  useEffect(() => {
+    if (!playing) return;
+    let lastSeq = useFleetStore.getState().logSeq;
+    return useFleetStore.subscribe((s) => {
+      if (s.logSeq === lastSeq) return;
+      const fresh = s.logSeq > lastSeq ? s.log.filter((e) => e.id > lastSeq) : [];
+      lastSeq = s.logSeq;
+      if (!useSoundStore.getState().on || s.digest || fresh.length === 0 || fresh.length > 40) return;
+      cuesFor(fresh).forEach((k, i) => setTimeout(() => playCue(k), i * 700));
+    });
+  }, [playing]);
 }
 
 /**
@@ -147,6 +168,7 @@ export default function Cockpit() {
   const activeTab: PanelTab | null = shown[tab] ? tab : TABS.find((t) => shown[t.id])?.id ?? null;
   const [screen, setScreen] = useState<'title' | 'game'>('title');
   useAutosave(screen === 'game');
+  useSoundCues(screen === 'game');
 
   return (
     <main className="flex h-screen flex-col bg-void">

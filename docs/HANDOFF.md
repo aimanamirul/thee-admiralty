@@ -451,6 +451,14 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   per-module "Refit…" select in the ship detail when docked. `Btn` now clears its preview when it unmounts.
 - `npm run verify:fleetops`. Not done: refit is not visible to the tutorial; no refit queue / yard capacity limit.
 
+## Sound and diegetic cues (evaluation phase 4)
+- `lib/audio/cues.ts` (`cueOf`, `cuesFor`): pure mapping from ledger events to LOSS / ALARM / BATTLE / ALERT / SONAR / TELETYPE; INFO and the
+  indented lines of a battle report are silent; a batch yields at most two cues, most urgent first.
+- `lib/audio/synth.ts`: WebAudio oscillators and filtered noise, no sample files; every call is a no-op without audio support.
+- `store/useSoundStore.ts`: off by default, preference in `localStorage` (`al.sound`); `Cockpit.useSoundCues` plays cues for newly appended
+  log entries (silent for loaded games, catch-up digests and batches over 40 lines). Toggle is "Sound" in the command bar.
+- `npm run verify:audio`. Not done: volume slider, separate music bed, per-cue mute.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

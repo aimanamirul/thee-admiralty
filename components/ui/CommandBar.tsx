@@ -1,5 +1,7 @@
 'use client';
 
+import { playCue } from '@/lib/audio/synth';
+import { useSoundStore } from '@/store/useSoundStore';
 import { Coins, FastForward, GraduationCap, FlaskConical, Factory, Landmark, Pause, Play, Radar, StepForward, Wrench } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { daysToNextTranche, runningCosts, SUPPORT_HOSTILE, SUPPORT_STRAINED } from '@/lib/sim/politicsEngine';
@@ -38,6 +40,7 @@ export default function CommandBar() {
   const seed = useFleetStore((s) => s.seed);
   const archetype = useFleetStore((s) => s.map.archetype);
   const uiScale = useFleetStore((s) => s.uiScale);
+  const soundOn = useSoundStore((s) => s.on);
   const skin = useFleetStore((s) => s.skin);
   const { setRunning, setSpeed, step, newTheatre, setDesignerOpen, setUiScale, setSkin } = useFleetStore.getState();
 
@@ -109,6 +112,17 @@ export default function CommandBar() {
           <span className="w-9 text-center text-xs tabular-nums text-slate-500">{Math.round(uiScale * 100)}%</span>
           <Btn tone="dim" aria-label="Larger UI" onClick={() => setUiScale(uiScale + 0.1)}>A+</Btn>
         </div>
+        <Btn
+          tone={soundOn ? 'emerald' : 'dim'}
+          aria-label="Sound"
+          title="Bridge sounds: sonar, teletype, alarms. Off by default."
+          onClick={() => {
+            useSoundStore.getState().toggle();
+            if (!soundOn) playCue('SONAR');
+          }}
+        >
+          Sound: {soundOn ? 'On' : 'Off'}
+        </Btn>
         <Btn
           tone="dim"
           aria-label="Name skin"

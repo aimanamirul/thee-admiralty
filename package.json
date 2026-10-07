@@ -11,6 +11,7 @@
     "verify:sim": "tsx scripts/verifySim.ts",
     "verify:tutorial": "tsx scripts/verifyTutorial.ts",
     "verify:narrative": "tsx scripts/verifyNarrative.ts",
+    "verify:audio": "tsx scripts/verifyAudio.ts",
     "verify:fleetops": "tsx scripts/verifyFleetOps.ts",
     "verify:names": "tsx scripts/verifyNames.ts",
     "verify:preview": "tsx scripts/verifyPreview.ts",
