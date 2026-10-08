@@ -27,7 +27,13 @@ const lessonNo = async () => {
 };
 const waitLesson = async (n, ms = 30000) => {
   const t0 = Date.now();
-  while (Date.now() - t0 < ms) { if ((await lessonNo()) >= n) return; await page.waitForTimeout(150); }
+  while (Date.now() - t0 < ms) {
+    if ((await lessonNo()) >= n) return;
+    // Lessons no longer advance by themselves: press Next once the objective is complete.
+    const nextBtn = page.getByRole('button', { name: 'Next briefing' });
+    if ((await nextBtn.count()) && (await nextBtn.getAttribute('aria-disabled')) === null && (await nextBtn.isEnabled())) await nextBtn.click().catch(() => {});
+    await page.waitForTimeout(150);
+  }
   throw new Error(`stuck: expected lesson ${n}, on ${await lessonNo()}`);
 };
 let canvas = await page.locator('canvas').boundingBox();
@@ -38,7 +44,14 @@ console.log('L1 start', await lessonNo());
 await shot('01-plot');
 await page.mouse.click(...at(0.25, 0.6));
 await waitLesson(2); await shot('02-roe');
-await page.getByRole('button', { name: 'Return fire' }).click();
+// Back / Next recap: return to lesson 1, then forward again without redoing the objective
+await page.getByRole('button', { name: 'Previous briefing' }).click();
+await waitLesson(1, 5000);
+if ((await lessonNo()) !== 1) errors.push('back: expected lesson 1');
+if (!(await page.locator('[data-testid=tutorial-card]').innerText()).match(/recap/i)) errors.push('back: expected the recap marker');
+await page.getByRole('button', { name: 'Next briefing' }).click();
+if ((await lessonNo()) !== 2) errors.push('next: expected lesson 2 after the recap');
+await page.getByRole('button', { name: 'Return fire', exact: true }).first().click();
 await waitLesson(3); await shot('03-station');
 await page.getByText('TF 11', { exact: true }).first().click();
 await page.mouse.click(...at(0.25, 0.6), { button: 'right' });

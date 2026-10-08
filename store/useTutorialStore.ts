@@ -14,7 +14,6 @@ const STORAGE_KEY = 'al.tutorial';
 /** Progress checkpoint taken at the start of every lesson, so a reload resumes the briefing instead of restarting it. */
 const CHECKPOINT_KEY = 'al.tutorial.checkpoint';
 const CHECKPOINT_VERSION = 2;
-const COMPLETE_DELAY_MS = 1400;
 
 export type TutorialStatus = 'new' | 'done' | 'skipped';
 
@@ -23,8 +22,10 @@ interface TutorialState {
   lessonIndex: number;
   flags: UiFlag[];
   startSeq: number;
-  /** Objective met; showing "complete" before advancing. */
+  /** Objective met: the card says "complete" and waits for the player to press Next. */
   completing: boolean;
+  /** Highest lesson reached; lessons at or below it can be revisited with Back / Next. */
+  furthest: number;
   /** The clock was started by the lesson's `run.when` condition. */
   ranWhen: boolean;
   /** All lessons done; the final card offers keep-playing / new theatre. */
@@ -37,7 +38,26 @@ interface TutorialState {
   finish: (newTheatre: boolean) => void;
   evaluate: () => void;
   advance: () => void;
+  /** Next briefing: needs the objective met, or a lesson already reached (recap). */
+  next: () => void;
+  /** Previous briefing, restored to the state it started in. */
+  back: () => void;
 }
+
+/** What a lesson started with, kept in memory so Back / Next can return to it (only the latest one survives a reload). */
+interface Snap {
+  /** Sector selected on the plot, so a lesson that builds on the previous click still finds it. */
+  sector: number | null;
+  flags: UiFlag[];
+  world: Omit<WorldDraft, 'map'>;
+  log: ReturnType<typeof useFleetStore.getState>['log'];
+  logSeq: number;
+}
+let snapshots: Record<number, Snap> = {};
+/** Live state of the furthest lesson, saved when the player goes back so Next returns to it rather than to its start. */
+let progress: (Snap & { startSeq: number; ranWhen: boolean }) | null = null;
+
+export const canGoBack = (lessonIndex: number) => lessonIndex > 0 && !!snapshots[lessonIndex - 1];
 
 function readStatus(): TutorialStatus {
   try {
@@ -107,11 +127,14 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
     try {
       try {
         const { map: _map, ...world } = g.snapshotWorld();
+        snapshots[i] = { sector: g.selectedSectorId, flags: get().flags, world: structuredClone(world), log: g.log, logSeq: g.logSeq };
         const cp: Checkpoint = { version: CHECKPOINT_VERSION, lessonIndex: i, lessonId: lesson.id, flags: get().flags, world, log: g.log, logSeq: g.logSeq };
         localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(cp));
       } catch {}
+      if (i > get().furthest) progress = null;
       set((s) => ({
         lessonIndex: i,
+        furthest: Math.max(s.furthest, i),
         completing: false,
         ranWhen: false,
         flags: lesson.reveals.includes('*') ? ['*'] : [...new Set([...s.flags, ...lesson.reveals])],
@@ -133,11 +156,52 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
     } finally {
       entering = false;
     }
+    // A lesson whose objective already holds on entry shows as complete and waits for Next (no store change would re-evaluate it).
+    queueMicrotask(() => get().evaluate());
+  };
+
+  /** Save the live state of the furthest lesson before leaving it backwards. */
+  const keepProgress = () => {
+    const s = get();
+    if (s.lessonIndex !== s.furthest) return;
+    const g = useFleetStore.getState();
+    const { map: _map, ...world } = g.snapshotWorld();
+    progress = { sector: g.selectedSectorId, flags: s.flags, world, log: g.log, logSeq: g.logSeq, startSeq: s.startSeq, ranWhen: s.ranWhen };
+  };
+
+  /** Go to lesson `i`: its start state for a recap, or the saved live state when returning to the furthest lesson. */
+  const restore = (i: number) => {
+    const snap = snapshots[i];
+    if (!snap) return;
+    if (timer) clearTimeout(timer);
+    const g = useFleetStore.getState();
+    if (progress && i === get().furthest) {
+      const p = progress;
+      progress = null;
+      g.loadWorld({ ...structuredClone(p.world), map: createTutorialMap() } as WorldDraft, { log: p.log, logSeq: p.logSeq });
+      const lesson = LESSONS[i];
+      set({ lessonIndex: i, flags: p.flags, graduated: false, completing: false, ranWhen: p.ranWhen, startSeq: p.startSeq });
+      g.setDesignerPreset(lesson.preset ?? null);
+      if (lesson.tab) g.setTab(lesson.tab);
+      g.selectSector(p.sector);
+      if (lesson.select !== undefined) g.selectSector(lesson.select);
+      if (lesson.selectContact) g.selectContact(lesson.selectContact);
+      if (lesson.selectMerchant) g.selectMerchant(lesson.selectMerchant);
+      g.setRunning(!!lesson.run && (!lesson.run.when || p.ranWhen));
+      if (lesson.run) g.setSpeed(lesson.run.speed);
+      queueMicrotask(() => get().evaluate());
+      return;
+    }
+    g.loadWorld({ ...structuredClone(snap.world), map: createTutorialMap() } as WorldDraft, { log: snap.log, logSeq: snap.logSeq });
+    set({ flags: snap.flags, graduated: false, completing: false, ranWhen: false });
+    g.selectSector(snap.sector);
+    enter(i);
   };
 
   return {
     active: false,
     lessonIndex: -1,
+    furthest: -1,
     flags: [],
     startSeq: 0,
     completing: false,
@@ -151,7 +215,9 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       if (timer) clearTimeout(timer);
       const world = { ...c.world, map: createTutorialMap() } as WorldDraft;
       useFleetStore.getState().loadWorld(world, { log: c.log, logSeq: c.logSeq });
-      set({ active: true, lessonIndex: -1, flags: c.flags, graduated: false, completing: false, ranWhen: false });
+      snapshots = {};
+      progress = null;
+      set({ active: true, lessonIndex: -1, furthest: c.lessonIndex, flags: c.flags, graduated: false, completing: false, ranWhen: false });
       enter(c.lessonIndex);
       return true;
     },
@@ -160,7 +226,9 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       if (timer) clearTimeout(timer);
       clearCheckpoint();
       useFleetStore.getState().loadWorld(createTutorialWorld());
-      set({ active: true, lessonIndex: -1, flags: [], graduated: false, completing: false, ranWhen: false });
+      snapshots = {};
+      progress = null;
+      set({ active: true, lessonIndex: -1, furthest: -1, flags: [], graduated: false, completing: false, ranWhen: false });
       enter(0);
     },
 
@@ -196,6 +264,20 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       }
     },
 
+    next: () => {
+      const s = get();
+      if (!s.active || s.graduated || s.lessonIndex < 0) return;
+      if (s.lessonIndex < s.furthest) restore(s.lessonIndex + 1);
+      else if (s.completing) get().advance();
+    },
+
+    back: () => {
+      const s = get();
+      if (!s.active || s.lessonIndex <= 0 || !snapshots[s.lessonIndex - 1]) return;
+      keepProgress();
+      restore(s.lessonIndex - 1);
+    },
+
     evaluate: () => {
       const s = get();
       if (!s.active || s.completing || s.graduated || entering || s.lessonIndex < 0) return;
@@ -210,8 +292,6 @@ export const useTutorialStore = create<TutorialState>((set, get) => {
       if (lesson.gate(v)) {
         set({ completing: true });
         g.setRunning(false);
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => get().advance(), COMPLETE_DELAY_MS);
       }
     },
   };

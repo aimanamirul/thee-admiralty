@@ -1,8 +1,8 @@
 'use client';
 
-import { Check, GraduationCap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, GraduationCap } from 'lucide-react';
 import { LESSONS } from '@/lib/tutorial/lessons';
-import { useTutorialStore } from '@/store/useTutorialStore';
+import { canGoBack, useTutorialStore } from '@/store/useTutorialStore';
 import { Btn } from '@/components/ui/kit';
 import { useNames } from '@/store/useNames';
 
@@ -15,7 +15,8 @@ export default function TutorialCard({ compact = false }: { compact?: boolean })
   const index = useTutorialStore((s) => s.lessonIndex);
   const completing = useTutorialStore((s) => s.completing);
   const graduated = useTutorialStore((s) => s.graduated);
-  const { skip, finish } = useTutorialStore.getState();
+  const furthest = useTutorialStore((s) => s.furthest);
+  const { skip, finish, next, back } = useTutorialStore.getState();
   const n = useNames();
 
   if (!active || index < 0) return null;
@@ -68,7 +69,22 @@ export default function TutorialCard({ compact = false }: { compact?: boolean })
               {n.t(lesson.objective)}
             </span>
           </div>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {index < furthest && <span className="mr-auto text-[0.75rem] uppercase tracking-widest text-slate-500">Recap</span>}
+            <Btn tone="dim" aria-label="Previous briefing" disabled={!canGoBack(index)} onClick={() => back()} title="Return to the start of the previous briefing">
+              <ArrowLeft className="mr-1 inline h-3 w-3" />
+              Back
+            </Btn>
+            <Btn
+              tone={completing ? 'emerald' : 'dim'}
+              aria-label="Next briefing"
+              disabled={!completing && index >= furthest}
+              onClick={() => next()}
+              title={completing || index < furthest ? 'Continue to the next briefing' : 'Complete the objective to continue'}
+            >
+              {index === LESSONS.length - 1 ? 'Graduate' : 'Next'}
+              <ArrowRight className="ml-1 inline h-3 w-3" />
+            </Btn>
             <Btn tone="dim" onClick={() => skip()} title="Reveal everything and turn random events on">
               Skip briefing
             </Btn>

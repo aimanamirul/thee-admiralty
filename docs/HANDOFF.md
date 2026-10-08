@@ -482,6 +482,14 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   (stance, depth, indiscretion) exists; flip it there. Designer shows builder, hull-sale status, stealth and submerged days, sonar range.
 - Not done in S1: boats are not fielded, no stance, no enemy submarines, no Dahai family, no tutorial lesson. `verify:subs` covers S1 only and grows with S2–S5.
 
+## Tutorial: manual Back / Next (no auto-advance)
+- Lessons no longer advance on their own. When an objective is met (or already holds on entry) the card shows "Objective complete" and **Next** lights up;
+  **Back** returns to the previous briefing. Revisited lessons are marked "Recap" and Next works without redoing the objective.
+- `useTutorialStore`: `furthest`, `next()`, `back()`; in-memory `snapshots[i]` (state each lesson started in, with the selected sector) let Back / Next
+  restore a lesson; going Back from the furthest lesson saves its live state (`progress`) so Next resumes it rather than restarting it. After a page reload only the
+  current lesson is restorable (Back is disabled), because only the latest checkpoint is persisted.
+- `scripts/e2e-tutorial.mjs` presses Next between lessons and tests the Back / Next recap. `verify:tutorial` (engine-level) is unchanged.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
