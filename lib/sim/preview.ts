@@ -32,6 +32,7 @@ import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
+import { aswPowerNear, killChance } from './asw';
 import { boatFigures, depthMultiplier, indiscretionRisk, isBoat, RECHARGE_DAYS, STANCE_AMBUSH, STANCE_DETERRENCE, stanceBlocked, type Stance } from './submarines';
 import { mergeBlocked, REFIT_DAYS, refitBlocked, refitCandidates, refitCost, splitBlocked } from './fleetOps';
 import type { ModuleSlot } from '../types/equipment';
@@ -337,6 +338,14 @@ export function previewContactOrder(w: WorldDraft, contactId: string, action: La
   if (action === 'AUTO') return `Hand ${contactStatus(c).toLowerCase()} contact back to the sector SOP (${st.sop})`;
   const b = actionBlocked(c, st.roe, action);
   if (b) return blocked(b);
+  if (c.submerged && action === 'ENGAGE' && aswPowerNear(w, c.position.x, c.position.y).power <= 0) return blocked('no ASW weapon within reach of the contact');
+  if (c.submerged && action === 'SHADOW') return 'Hold the sonar contact and do not escalate: a held boat is cautious, one you are shadowing is half as likely to strike · it can still attack a ship that strays inside torpedo range';
+  if (c.submerged && action === 'WARN') return 'Active pinging: most intruders leave (hostile 65%, foreign 90%); a hostile boat that stays is identified and may strike · harassing a foreign boat costs tension +1';
+  if (c.submerged && action === 'ENGAGE') {
+    const { power } = aswPowerNear(w, c.position.x, c.position.y);
+    const odds = c.cls === 'HOSTILE' ? ` · kill ${(killChance(power, c.strength).kill * 100).toFixed(0)}% against this boat (ASW power ${power.toFixed(0)}), a miss risks a counter-attack` : ` · ASW power ${power.toFixed(0)} in reach; firing on a boat that has not attacked is an INCIDENT if it turns out to be foreign (PC −12, tension +15, support −10)`;
+    return `Torpedoes from every ASW weapon in reach${odds}`;
+  }
   const near = nearestActiveTf(w, c.position.x, c.position.y);
   const range = ACTION_RANGE[action];
   const when = !near ? 'no task force at sea to carry it out' : near.d <= range ? 'carried out tomorrow' : `carried out once a task force is within ${range} tiles (nearest ${near.d.toFixed(0)})`;

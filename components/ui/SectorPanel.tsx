@@ -7,6 +7,7 @@ import type { Roe, Sop } from '@/lib/types/world';
 import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
 import { conditionsText, seaState } from '@/lib/sim/narrative';
+import { datumContacts, visibleContacts } from '@/lib/sim/asw';
 import { depthMultiplier, isBoat, isExposed, stanceOf } from '@/lib/sim/submarines';
 import { DETERRENCE_PER_DAY, holdersOf, presenceLabel, sectorPresence } from '@/lib/sim/presence';
 import MerchantPanel from './MerchantPanel';
@@ -97,7 +98,8 @@ export default function SectorPanel() {
   const st = sectorStates[selected];
   const presence = sectorPresence({ fleets, ships, map }, selected);
   const chokes = map.chokepoints.filter((c) => c.links.includes(selected));
-  const here = contacts.filter((c) => c.sectorId === selected);
+  const here = visibleContacts(contacts.filter((c) => c.sectorId === selected));
+  const datums = datumContacts(contacts.filter((c) => c.sectorId === selected));
   const shipsHere = merchants.filter((m) => map.sectorGrid[Math.round(m.position.y) * map.width + Math.round(m.position.x)] === selected);
   const roe = ROES.find((r) => r.id === st.roe)!;
   const boatsHere = holdersOf({ fleets, ships, map }, selected).flatMap((tf) => taskForceShipIds(tf)).map((id) => ships[id]).filter((s) => s && s.buildStatus === 'COMMISSIONED' && isBoat(s) && s.state === 'ACTIVE_PATROL');
@@ -231,6 +233,7 @@ export default function SectorPanel() {
         <Stat k="Widest clearance" v={`${sec.maxClearance.toFixed(1)} tiles`} />
         <Stat k="Deep-draft grounding exposure" v={`${deepDraftRisk}%`} tone={deepDraftRisk > 50 ? 'text-warn' : 'text-slate-200'} />
         <Stat k="Neighbours" v={sec.neighbors.length ? sec.neighbors.map((n) => `S${n + 1}`).join(' ') : '—'} />
+        {datums.length > 0 && <Stat k="Possible submarines" v={`${datums.length} datum${datums.length === 1 ? '' : 's'} — add sonar to resolve`} tone="text-amber-radar" />}
         <Stat k="Contacts on plot" v={here.length ? `${here.length} (${here.filter((c) => c.cls === 'HOSTILE').length} hostile)` : 'none'} tone={here.some((c) => c.cls === 'HOSTILE') ? 'text-warn' : undefined} />
         {chokes.length > 0 && (
           <div className="mt-2 border-t border-navy pt-1">

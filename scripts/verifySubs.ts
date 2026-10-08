@@ -399,8 +399,280 @@ function deepFirst(a: { abyssalFraction: number; littoralFraction: number }, b: 
   void support0;
 }
 
+
+// =========================================================================================================== S3: enemy submarines and ASW
+import { afterAttack, aswCoverAt, aswPowerNear, datumRadius, DATUM_MAX, killChance, maybeSpawnSub, reachOf, sonarPlatforms, SUB_FIRST_TICK, SUB_WARNING_TICK, trackStep, TRACK_DATUM, TRACK_HELD, visibilityOf, visibleContacts, type Platform } from '../lib/sim/asw';
+import { actionBlocked, sopAction } from '../lib/sim/contactEngine';
+import { tickShipping } from '../lib/sim/shipping';
+import type { Contact } from '../lib/types/world';
+
+const ASW_FRIGATE = ['PP_DOM_D12', 'CMS_NG_TACTICOS', 'SEN_NG_SMARTS', 'SEN_SONAR_TOWED', 'ARM_NG_SYLVER8', 'ARM_DOM_TORP'];
+const copyOf = (w: WorldDraft) => ({ ...structuredClone({ ...w, map: undefined }), map: w.map }) as WorldDraft;
+function subContact(w: WorldDraft, over: Partial<Contact> = {}): Contact {
+  const a = w.map.sectors[0].anchor;
+  return { id: `CT-S3-${uid++}`, sectorId: 0, position: { x: a.x + 2, y: a.y }, heading: 0, cls: 'UNKNOWN', hostile: true, intent: 'SUBMARINE', strength: 70, bornTick: w.tick, expiresTick: 1e9, submerged: true, track: 0, stealth: 55, attacks: 0, nextAttackTick: w.tick, ...over };
+}
+const S3_BASE = createInitialWorld('S3-BASE', 'CORRIDOR');
+function s3world(_seed: string, sonar = false) {
+  const w = copyOf(S3_BASE);
+  w.contacts = [];
+  w.tension = 40;
+  const tf = allTaskForces(w.fleets)[0];
+  tf.position = { ...w.map.sectors[0].anchor };
+  tf.assignedSectorId = 0;
+  for (const id of taskForceShipIds(tf)) w.ships[id].state = 'ACTIVE_PATROL';
+  if (sonar) {
+    const ship = createShip({ id: `ASW-${uid++}`, name: 'Listener', pennant: 'F99', hullId: 'FRIGATE', designName: 'T', moduleIds: ASW_FRIGATE, constructing: false, state: 'ACTIVE_PATROL', readiness: 100, tick: w.tick });
+    w.ships[ship.id] = ship;
+    tf.squadrons[0].shipIds.push(ship.id);
+  }
+  return { w, tf };
+}
+
+// ---- visibility bands and the datum
+{
+  const c = subContact(copyOf(S3_BASE));
+  const v = (t: number) => { c.track = t; return visibilityOf(c); };
+  check(v(0) === 'HIDDEN' && v(TRACK_DATUM - 1) === 'HIDDEN' && v(TRACK_DATUM) === 'DATUM' && v(TRACK_HELD - 1) === 'DATUM' && v(TRACK_HELD) === 'HELD', 'visibility bands: hidden, datum, held');
+  c.track = TRACK_DATUM;
+  const r0 = datumRadius(c);
+  c.track = TRACK_HELD - 1;
+  const r1 = datumRadius(c);
+  check(Math.abs(r0 - DATUM_MAX) < 1e-9 && r1 < r0 && r1 >= 1.5, `the datum shrinks as sonar holds (${r0.toFixed(1)} -> ${r1.toFixed(1)} tiles)`);
+  const w = copyOf(S3_BASE);
+  const hidden = subContact(w, { track: 5 });
+  const held = subContact(w, { track: 90 });
+  const surface: Contact = { ...held, id: 'CT-SURF', submerged: false, intent: 'RAIDER' };
+  check(visibleContacts([hidden, held, surface]).map((x) => x.id).join() === `${held.id},CT-SURF`, 'only held submarines and surface contacts are listed on the plot');
+}
+
+// ---- sonar platforms and tracking
+{
+  const { w, tf } = s3world('S3-T');
+  check(sonarPlatforms(w).length === 0, 'the starter fleet has no sonar: it cannot find a submarine');
+  const { w: sw, tf: stf } = s3world('S3-T', true);
+  const plats = sonarPlatforms(sw);
+  check(plats.length === 1 && plats[0].tfId === stf.id && !plats[0].boat && plats[0].sonarKm === 45, 'a towed-array frigate is a sonar platform');
+  const listener = Object.values(sw.ships).find((x) => x.name === 'Listener')!;
+  listener.state = 'MAINTENANCE_DOCK';
+  check(sonarPlatforms(sw).length === 0, 'a docked ship does not listen');
+  listener.state = 'ACTIVE_PATROL';
+  const boat = addBoat(sw, stf, 'SUB_KB');
+  check(sonarPlatforms(sw).filter((p) => p.boat).length === 1, 'a patrolling boat is a sonar platform');
+  boat.exposedDays = 3;
+  check(sonarPlatforms(sw).filter((p) => p.boat).length === 0, 'a counter-detected boat is not');
+  void tf;
+  const p: Platform = { tfId: 'x', x: sw.map.sectors[0].anchor.x, y: sw.map.sectors[0].anchor.y, sonarKm: 45, quality: 1, boat: false };
+  const c = subContact(sw, { position: { x: p.x + 3, y: p.y } });
+  const quiet = subContact(sw, { stealth: 75 });
+  const loud = subContact(sw, { stealth: 45 });
+  check(reachOf(sw, p, loud) > reachOf(sw, p, quiet), 'a quieter submarine is held at shorter range');
+  let days = 0;
+  while (visibilityOf(c) !== 'HELD' && days++ < 10) trackStep(sw, c, [p]);
+  check(days <= 4, `a platform in reach holds the contact within four days (${days})`);
+  let decay = 0;
+  while (visibilityOf(c) !== 'HIDDEN' && decay++ < 30) trackStep(sw, c, []);
+  check(decay >= 3 && decay <= 12, `with nobody listening the track fades (${decay} days)`);
+  const far = subContact(sw, { position: { x: p.x + 60, y: p.y } });
+  for (let d = 0; d < 10; d++) trackStep(sw, far, [p]);
+  check(visibilityOf(far) === 'HIDDEN', 'out of reach nothing is heard');
+  check(aswCoverAt([p], p.x, p.y) > 0.5 && aswCoverAt([], p.x, p.y) === 0 && aswCoverAt([p, { ...p }], p.x, p.y) > aswCoverAt([p], p.x, p.y), 'sonar cover grows with platforms and is zero without any');
+  check(aswPowerNear(sw, p.x, p.y).power >= 60, 'the frigate carries ASW torpedoes');
+}
+
+// ---- spawning: gated by time, tension and scripting; listening discourages it
+{
+  const base = S3_BASE;
+  const count = (tick: number, tension: number, scripted = false, listening = false) => {
+    const w = copyOf(base);
+    w.contacts = [];
+    w.scripted = scripted;
+    w.tension = tension;
+    for (const s of Object.values(w.sectors)) s.threat = 55;
+    const platforms = listening ? w.map.sectors.map((sec) => ({ tfId: 'x', x: sec.anchor.x, y: sec.anchor.y, sonarKm: 40, quality: 1, boat: false })) : [];
+    let n = 0;
+    for (let d = 0; d < 1500; d++) {
+      w.tick = tick + d;
+      for (const sec of w.map.sectors) {
+        w.contacts = [];
+        if (maybeSpawnSub(w, sec.id, platforms)) n++;
+      }
+    }
+    return n;
+  };
+  check(count(0, 40) === 0 || SUB_FIRST_TICK <= 0 ? true : count(SUB_FIRST_TICK - 1600, 40) === 0, 'no enemy submarines before the first year');
+  check(count(SUB_FIRST_TICK, 10) === 0, 'none while tension is low');
+  check(count(SUB_FIRST_TICK, 40, true) === 0, 'none in scripted worlds (the briefing)');
+  const open = count(SUB_FIRST_TICK, 40);
+  const listening = count(SUB_FIRST_TICK, 40, false, true);
+  check(open > 20, `they do appear later in the game (${open} in 1500 days x sectors)`);
+  check(listening < open * 0.8, `sonar on station discourages them (${open} -> ${listening})`);
+  const w = copyOf(base);
+  w.tick = 0;
+  w.contacts = [];
+  const seen: string[] = [];
+  const w2 = createInitialWorld('S3-W', 'CORRIDOR');
+  w2.scripted = false;
+  for (let d = 0; d < SUB_WARNING_TICK + 3; d++) {
+    advanceDay(w2);
+    for (const e of w2.events) seen.push(e.text);
+    w2.events = [];
+  }
+  check(seen.filter((t) => /UNUSUAL ACOUSTIC ACTIVITY/.test(t)).length === 1, 'the acoustic advisory is issued once, before any submarine can appear');
+  check(!w2.contacts.some((c) => c.submerged), 'no submarine before the advisory');
+}
+
+// ---- an undetected hostile boat strikes warships; sonar cover protects; held and shadowed boats are cautious
+{
+  const trial = (sonar: boolean, mode: 'UNHELD' | 'HELD' | 'SHADOW', seed: number) => {
+    const { w } = s3world(`S3-A${seed}`, sonar);
+    w.scripted = true;
+    const c = subContact(w, mode === 'UNHELD' ? {} : { track: 95 });
+    if (mode === 'SHADOW') c.order = 'SHADOW';
+    w.contacts.push(c);
+    let first = -1;
+    for (let d = 0; d < 25 && first < 0; d++) {
+      w.tick = 400 + d;
+      c.nextAttackTick = 0;
+      if (mode !== 'UNHELD') c.track = 95;
+      const before = w.events.length;
+      tickContacts(w, new Rng(`sa${seed}:${d}`), new Set());
+      if (w.events.slice(before).some((e) => /^TORPEDO/.test(e.text))) first = d;
+      if (!w.contacts.some((x) => x.id === c.id)) break;
+    }
+    return { struck: first >= 0, w, c };
+  };
+  const N = 80;
+  const rate = (sonar: boolean, mode: 'UNHELD' | 'HELD' | 'SHADOW') => Array.from({ length: N }, (_, i) => trial(sonar, mode, i)).filter((r) => r.struck).length / N;
+  const bold = rate(false, 'UNHELD');
+  const covered = rate(true, 'UNHELD');
+  const held = rate(false, 'HELD');
+  const shadowed = rate(false, 'SHADOW');
+  check(bold > 0.8, `an unheard boat among warships strikes within weeks (${(bold * 100).toFixed(0)}%)`);
+  check(covered < bold - 0.05 || covered < 0.9, `sonar cover foils launches (${(bold * 100).toFixed(0)}% -> ${(covered * 100).toFixed(0)}%)`);
+  check(held < bold * 0.8, `a held boat is cautious (${(held * 100).toFixed(0)}% vs ${(bold * 100).toFixed(0)}%)`);
+  check(shadowed < bold * 0.8, `a shadowed boat is cautious (${(shadowed * 100).toFixed(0)}%)`);
+  console.log(`warship strike within 25 days: unheard ${(bold * 100).toFixed(0)}% · sonar cover ${(covered * 100).toFixed(0)}% · held ${(held * 100).toFixed(0)}% · shadowed ${(shadowed * 100).toFixed(0)}%`);
+  const r = trial(false, 'UNHELD', 3);
+  if (r.struck) {
+    const c = r.w.contacts.find((x) => x.id === r.c.id);
+    check(!c || (c.cls === 'HOSTILE' && (c.track ?? 0) >= 60 && (c.attacks ?? 0) >= 1), 'the launch reveals the boat: identified hostile on a fresh datum');
+    check(r.w.stats.shipsLost + Object.values(r.w.ships).filter((x) => x.integrity < 100).length >= 1, 'a ship was hit');
+  }
+  // two attacks and it breaks off
+  const { w } = s3world('S3-B');
+  w.scripted = true;
+  const c = subContact(w);
+  w.contacts.push(c);
+  afterAttack(w, c);
+  check(c.nextAttackTick === w.tick + 7 && c.cls === 'HOSTILE', 'cooldown after a launch');
+  afterAttack(w, c);
+  check(c.expiresTick <= w.tick + 2, 'after its second attack it breaks off');
+}
+
+// ---- lane ships: torpedoed, or saved by sonar cover
+{
+  const shipBase = createInitialWorld('S3-SHIP', 'CORRIDOR');
+  shipBase.scripted = false;
+  for (let d = 0; d < 60 && shipBase.shipping.ships.length < 3; d++) advanceDay(shipBase);
+  const trial = (cover: boolean, seed: number) => {
+    const w = copyOf(shipBase);
+    w.contacts = [];
+    if (w.shipping.ships.length === 0) return null;
+    const m = w.shipping.ships[seed % w.shipping.ships.length];
+    const tf = allTaskForces(w.fleets)[0];
+    tf.position = { x: -400, y: -400 };
+    if (cover) {
+      const ship = createShip({ id: `COV-${uid++}`, name: 'Cover', pennant: 'F98', hullId: 'FRIGATE', designName: 'T', moduleIds: ASW_FRIGATE, constructing: false, state: 'ACTIVE_PATROL', readiness: 100, tick: w.tick });
+      w.ships[ship.id] = ship;
+      tf.squadrons[0].shipIds.push(ship.id);
+      tf.position = { x: m.position.x + 2, y: m.position.y };
+    }
+    const c = subContact(w, { position: { x: m.position.x + 1, y: m.position.y }, sectorId: w.map.sectorGrid[Math.round(m.position.y) * w.map.width + Math.round(m.position.x)] });
+    w.contacts.push(c);
+    w.events = [];
+    tickShipping(w, new Rng(`ms${seed}`));
+    const hit = w.events.some((e) => /torpedoed/.test(e.text));
+    const foiled = w.events.some((e) => /torpedo launch/.test(e.text));
+    return { hit, foiled, attacks: c.attacks ?? 0, revealed: c.cls === 'HOSTILE', risk: w.shipping.lanes.reduce((a, l) => a + l.risk, 0) };
+  };
+  const rs = Array.from({ length: 40 }, (_, i) => trial(false, i)).filter((x) => x);
+  const cs = Array.from({ length: 40 }, (_, i) => trial(true, i)).filter((x) => x);
+  check(rs.length > 20, `merchant ships exist to attack (${rs.length} trials)`);
+  check(rs.every((r) => r!.hit && r!.attacks === 1 && r!.revealed), 'with no cover every launch lands and reveals the boat');
+  const foiled = cs.filter((r) => r!.foiled).length / Math.max(1, cs.length);
+  check(foiled > 0.3, `sonar cover foils a good share of launches (${(foiled * 100).toFixed(0)}%)`);
+  check(cs.every((r) => r!.foiled || r!.hit), 'every launch is either foiled or lands');
+}
+
+// ---- the ladder against a held submarine
+{
+  const mk = (over: Partial<Contact> = {}, roe: 'RETURN_FIRE' | 'WEAPONS_FREE' = 'RETURN_FIRE', sonar = true) => {
+    const { w, tf } = s3world('S3-L', sonar);
+    w.scripted = true;
+    w.sectors[0].roe = roe;
+    const c = subContact(w, { track: 95, position: { x: tf.position.x + 2, y: tf.position.y }, ...over });
+    w.contacts.push(c);
+    return { w, c, tf };
+  };
+  const { w, c } = mk();
+  check(!!actionBlocked(c, 'WEAPONS_FREE', 'HAIL') && !!actionBlocked(c, 'WEAPONS_FREE', 'BOARD'), 'a submerged contact cannot be hailed or boarded');
+  check(actionBlocked(c, 'WEAPONS_FREE', 'WARN') === null && actionBlocked(c, 'WEAPONS_FREE', 'SHADOW') === null, 'it can be pinged and shadowed');
+  check(!!actionBlocked(c, 'RETURN_FIRE', 'ENGAGE') && actionBlocked(c, 'WEAPONS_FREE', 'ENGAGE') === null, 'an unidentified boat cannot be engaged under RETURN FIRE, only at WEAPONS FREE');
+  c.cls = 'HOSTILE';
+  check(actionBlocked(c, 'RETURN_FIRE', 'ENGAGE') === null, 'a boat that has attacked can be engaged at RETURN FIRE');
+  const datum = subContact(w, { track: 50 });
+  check(!!actionBlocked(datum, 'WEAPONS_FREE', 'WARN'), 'a datum is not a target');
+  check(sopAction(subContact(w, { track: 95 }), 'CHALLENGE', 10) === 'WARN' && sopAction(subContact(w, { track: 95 }), 'OBSERVE', 10) === null && sopAction(subContact(w, { track: 95 }), 'CHALLENGE', 30) === null, 'CHALLENGE pings a held submarine in range; OBSERVE never; never hail');
+  check(!cmd.orderContact(mk({}, 'WEAPONS_FREE', false).w, 'x', 'ENGAGE').ok, 'orders against a missing contact fail');
+
+  // order validation needs ASW weapons in reach
+  const none = copyOf(S3_BASE);
+  none.contacts = [];
+  const lone = subContact(none, { track: 95, cls: 'HOSTILE', position: { x: -300, y: -300 } });
+  none.contacts.push(lone);
+  none.sectors[0].roe = 'WEAPONS_FREE';
+  check(!cmd.orderContact(none, lone.id, 'ENGAGE').ok, 'ENGAGE is refused with no ASW weapon in reach');
+
+  // outcomes over many trials
+  const run = (hostile: boolean, order: 'WARN' | 'ENGAGE', boat: boolean, seed: number) => {
+    const { w, c, tf } = mk({ hostile, cls: hostile ? 'HOSTILE' : 'UNKNOWN', strength: 70, stealth: 55 }, 'WEAPONS_FREE', !boat);
+    if (boat) addBoat(w, tf, 'SUB_SEORAK'); // the surface force carries out the order; the boat adds its torpedoes
+    c.order = order;
+    w.tick = 500;
+    const incidents0 = w.stats.incidents;
+    tickContacts(w, new Rng(`ld${seed}`), new Set());
+    return { gone: !w.contacts.some((x) => x.id === c.id), killed: (w.stats.subsSunk ?? 0) > 0, incident: w.stats.incidents > incidents0, w };
+  };
+  const frac = (f: (i: number) => boolean) => Array.from({ length: 200 }, (_, i) => f(i)).filter(Boolean).length / 200;
+  const warnHostile = frac((i) => run(true, 'WARN', false, i).gone);
+  const warnForeign = frac((i) => run(false, 'WARN', false, i).gone);
+  check(warnHostile > 0.5 && warnHostile < 0.8, `most hostile boats leave when pinged (${(warnHostile * 100).toFixed(0)}%)`);
+  check(warnForeign > 0.8, `foreign boats nearly always leave (${(warnForeign * 100).toFixed(0)}%)`);
+  const killSurface = frac((i) => run(true, 'ENGAGE', false, i).killed);
+  const killBoat = frac((i) => run(true, 'ENGAGE', true, i).killed);
+  check(killBoat > killSurface + 0.1, `a boat's heavyweight torpedoes on top of the ships' tubes raise the kill rate (${(killBoat * 100).toFixed(0)}% vs ${(killSurface * 100).toFixed(0)}%)`);
+  check(Math.abs(killChance(60, 70).kill - 60 / (60 + 280)) < 1e-9 && killChance(1e6, 70).kill <= 0.85 && killChance(0.1, 70).kill >= 0.05, 'kill chance is bounded');
+  check(frac((i) => run(false, 'ENGAGE', false, i).incident) === 1, 'torpedoing a foreign submarine is always an incident');
+  console.log(`ladder: ping hostile ${(warnHostile * 100).toFixed(0)}% · ping foreign ${(warnForeign * 100).toFixed(0)}% · kill with the ships' tubes ${(killSurface * 100).toFixed(0)}% · with a boat ${(killBoat * 100).toFixed(0)}%`);
+}
+
+// ---- a boat is a sonar platform: the first reason to field them
+{
+  const { w, tf } = s3world('S3-Q');
+  for (const id of taskForceShipIds(tf)) delete w.ships[id];
+  tf.squadrons.forEach((q) => (q.shipIds = []));
+  addBoat(w, tf, 'SUB_KB');
+  const c = subContact(w, { position: { x: tf.position.x + 4, y: tf.position.y } });
+  let d = 0;
+  while (visibilityOf(c) !== 'HELD' && d++ < 12) trackStep(w, c, sonarPlatforms(w));
+  check(d <= 8, `a quiet boat's sonar holds a contact (${d} days)`);
+  const copy = JSON.parse(JSON.stringify(c));
+  check(copy.submerged === true && copy.track === c.track && copy.stealth === c.stealth, 'submarine contacts survive a save round trip');
+}
+
 if (failures) {
   console.log(`\nSUBS FAILED (${failures})`);
   process.exit(1);
 }
-console.log('SUBS OK (S1 data and designer, S2 service)');
+console.log('SUBS OK (S1 data and designer, S2 service, S3 enemy submarines and ASW)');

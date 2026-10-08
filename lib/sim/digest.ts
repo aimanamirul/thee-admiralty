@@ -85,7 +85,7 @@ export function buildDigest(before: DigestSnapshot, after: WorldDraft, entries: 
     if (e) losses.push(`Day ${e.tick}: ${s.pennant} ${s.name.toUpperCase()} (${s.hull}) — ${e.text.replace(/^LOST: /, '').replace(/^.*?— /, '')}`);
   }
   const rank = (e: GameEvent) => (e.severity === 'CRITICAL' ? 0 : e.severity === 'WARNING' ? 1 : e.severity === 'COMBAT' ? 3 : 2);
-  const noteworthy = entries.filter((e) => (e.severity === 'CRITICAL' || e.severity === 'WARNING' || /ENGAGEMENT|SEIZURE|DETERRED|RESCUE|SAFE PASSAGE|ELECTION|APPROPRIATION|COMMISSIONED|SANCTION|EMBARGO/.test(e.text)) && !e.text.startsWith('  '));
+  const noteworthy = entries.filter((e) => (e.severity === 'CRITICAL' || e.severity === 'WARNING' || /ENGAGEMENT|SEIZURE|DETERRED|SUBMARINE|TORPEDO|SONAR|RESCUE|SAFE PASSAGE|ELECTION|APPROPRIATION|COMMISSIONED|SANCTION|EMBARGO/.test(e.text)) && !e.text.startsWith('  '));
   const highlights = noteworthy
     .sort((a, b) => rank(a) - rank(b) || a.id - b.id)
     .slice(0, 10)

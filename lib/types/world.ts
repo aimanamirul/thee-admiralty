@@ -26,7 +26,7 @@ export interface SectorState {
 }
 
 /** Hidden ground truth of a contact, revealed by hailing, boarding or visual identification. */
-export type ContactIntent = 'MERCHANT' | 'FISHING' | 'SMUGGLER' | 'SHADOWER' | 'WARSHIP' | 'RAIDER';
+export type ContactIntent = 'MERCHANT' | 'FISHING' | 'SMUGGLER' | 'SHADOWER' | 'WARSHIP' | 'RAIDER' | 'SUBMARINE';
 
 /** Escalation ladder steps. SHADOW as a manual order means "hold: do not escalate". */
 export type LadderAction = 'SHADOW' | 'HAIL' | 'WARN' | 'BOARD' | 'ENGAGE';
@@ -60,6 +60,13 @@ export interface Contact {
   expiresTick: number;
   /** Scripted contacts steer straight at this task force instead of drifting. */
   pursue?: string;
+  /** SUBMARINE contacts: hidden below TRACK_DATUM, a "possible submarine" datum above it, a held contact above TRACK_HELD (0-100). */
+  submerged?: boolean;
+  track?: number;
+  /** Acoustic stealth 0-100 (how hard it is to hold) and torpedo attacks made so far. */
+  stealth?: number;
+  attacks?: number;
+  nextAttackTick?: number;
 }
 
 /** Roll of honour entry: a warship lost with her crew. */
@@ -153,7 +160,7 @@ export interface WorldDraft {
   /** Civilian shipping: lanes, merchant ships, trade index. */
   shipping: ShippingState;
   /** Running statistics for the ledger. */
-  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number; fallen?: FallenShip[]; firstBoatTick?: number };
+  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number; fallen?: FallenShip[]; firstBoatTick?: number; subsSunk?: number };
 }
 
 export type Bridges = ReadonlySet<BridgeKey>;

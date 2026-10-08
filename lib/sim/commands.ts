@@ -7,6 +7,7 @@ import type { HierarchyKind, NamingTradition, Tempo } from '../types/fleet';
 import type { HullClassId } from '../types/hull';
 import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { actionBlocked, INTENT_LABEL } from './contactEngine';
+import { aswPowerNear } from './asw';
 import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { startDiligence } from './supplyChain';
 import { cancelContract, newContract, resellHull } from './contracts';
@@ -257,6 +258,7 @@ export function orderContact(world: WorldDraft, contactId: string, action: Ladde
   }
   const blocked = actionBlocked(c, world.sectors[c.sectorId].roe, action);
   if (blocked) return fail(blocked);
+  if (c.submerged && action === 'ENGAGE' && aswPowerNear(world, c.position.x, c.position.y).power <= 0) return fail('NO ASW WEAPON WITHIN REACH OF THE CONTACT');
   c.order = action;
   const what = c.cls === 'UNKNOWN' ? 'unidentified contact' : INTENT_LABEL[c.intent].toLowerCase();
   world.events.push({ severity: 'INFO', text: `ORDERS: ${action === 'SHADOW' ? 'shadow and hold' : action.toLowerCase()} the ${what} ${c.id.slice(3, 11)}` });

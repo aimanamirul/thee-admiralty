@@ -68,6 +68,7 @@ export default function ContactPanel() {
       <Stat k="Sector" v={map.sectors[contact.sectorId].label} />
       <Stat k="Nearest task force" v={near ? `${near.d.toFixed(0)} tiles` : 'none at sea'} tone={near && near.d <= 12 ? 'text-amber-radar' : undefined} />
       <Stat k="ROE ceiling" v={st.roe.replace('_', ' ')} />
+      {contact.submerged && <Stat k="Sonar hold" v={`${Math.round(contact.track ?? 0)} / 100`} tone={(contact.track ?? 0) >= 75 ? undefined : 'text-amber-radar'} />}
       {contact.cls === 'HOSTILE' && <Stat k="Estimated strength" v={contact.strength.toFixed(0)} tone="text-warn" />}
 
       <div className="mt-2 text-[0.75rem] uppercase tracking-widest text-slate-500">

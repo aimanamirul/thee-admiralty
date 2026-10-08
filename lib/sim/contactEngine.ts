@@ -13,6 +13,7 @@ import { allTaskForces, combatantOf, removeShip, sendToRepair, taskForceShipIds 
 import { adjustSupport } from './politicsEngine';
 import { battleStory, compass, fallenRecord, LOSS_PC, LOSS_SUPPORT, lossText, ROLL_CAP, type StoryShip } from './narrative';
 import { laneAmbush, nearestMerchant, PREY_RANGE } from './shipping';
+import { afterAttack, MAX_ATTACKS, STRIKE_RANGE, SUB_WARNING_TICK, aswCoverAt, aswPowerNear, killChance, maybeSpawnSub, sonarPlatforms, trackStep, visibilityOf, type Platform } from './asw';
 import { AMBUSH_ROUT, ambushLine, ambushOf, boatFigures, isBoat, isExposed } from './submarines';
 import { DETER_STRENGTH_PER_PRESENCE, SPAWN_DETERRENCE, SPAWN_DETERRENCE_CAP, holdersOf, sectorPresence, taskForcePresence } from './presence';
 
@@ -37,9 +38,10 @@ export const INTENT_LABEL: Record<ContactIntent, string> = {
   SHADOWER: 'SURVEILLANCE SHADOWER',
   WARSHIP: 'FOREIGN WARSHIP',
   RAIDER: 'RAIDER',
+  SUBMARINE: 'SUBMARINE',
 };
 /** Intents that answer a hail. */
-export const ANSWERS_HAIL: Record<ContactIntent, boolean> = { MERCHANT: true, FISHING: true, WARSHIP: true, SMUGGLER: false, SHADOWER: false, RAIDER: false };
+export const ANSWERS_HAIL: Record<ContactIntent, boolean> = { MERCHANT: true, FISHING: true, WARSHIP: true, SMUGGLER: false, SHADOWER: false, RAIDER: false, SUBMARINE: false };
 
 const clamp = (v: number, lo = 0, hi = 100) => (v < lo ? lo : v > hi ? hi : v);
 const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
@@ -47,6 +49,7 @@ const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax -
 /** What the player may know about a contact (never the hidden intent unless revealed). */
 export function contactStatus(c: Contact): string {
   if (c.cls !== 'UNKNOWN') return INTENT_LABEL[c.intent];
+  if (c.submerged) return 'SUBMERGED CONTACT';
   if (c.fleeing) return 'RUNNING';
   if (c.suspicious) return 'NO RESPONSE';
   return 'UNIDENTIFIED';
@@ -55,7 +58,8 @@ export function contactStatus(c: Contact): string {
 /** Label for the plot: short. */
 export function contactTag(c: Contact): string {
   if (c.cls === 'HOSTILE') return `HOSTILE ${c.strength.toFixed(0)}`;
-  if (c.cls === 'NEUTRAL') return { MERCHANT: 'MERCH', FISHING: 'FISH', WARSHIP: 'WARSHIP', SMUGGLER: 'SMUG', SHADOWER: 'SHADOW', RAIDER: 'RAIDER' }[c.intent];
+  if (c.cls === 'NEUTRAL') return { MERCHANT: 'MERCH', FISHING: 'FISH', WARSHIP: 'WARSHIP', SMUGGLER: 'SMUG', SHADOWER: 'SHADOW', RAIDER: 'RAIDER', SUBMARINE: 'SUB' }[c.intent];
+  if (c.submerged) return 'SUB?';
   if (c.fleeing) return 'RUNNING';
   if (c.suspicious) return 'NO RESP';
   return 'UNK';
@@ -108,6 +112,10 @@ export function nearestActiveTf(w: WorldDraft, x: number, y: number): { id: stri
 
 /** Why an action may not be taken against this contact under this ROE (null = allowed). Range is checked separately. */
 export function actionBlocked(c: Contact, roe: Roe, action: LadderAction): string | null {
+  if (c.submerged) {
+    if (visibilityOf(c) !== 'HELD') return 'NO SONAR HOLD ON THE CONTACT';
+    if (action === 'HAIL' || action === 'BOARD') return 'NOT POSSIBLE AGAINST A SUBMERGED CONTACT';
+  }
   switch (action) {
     case 'SHADOW':
       return null;
@@ -128,6 +136,7 @@ export function actionBlocked(c: Contact, roe: Roe, action: LadderAction): strin
 export function sopAction(c: Contact, sop: Sop, d: number): LadderAction | null {
   const r = SOP_RANGES[sop];
   if (sop === 'OBSERVE' || c.cls === 'HOSTILE') return null;
+  if (c.submerged) return !c.warned && d <= r.warn ? 'WARN' : null; // submerged contacts are pinged, never hailed or boarded
   if (!c.hailed && c.cls === 'UNKNOWN' && d <= r.hail) return 'HAIL';
   if (sop === 'CHALLENGE') {
     if (c.suspicious && !c.warned && d <= r.warn) return 'WARN';
@@ -277,6 +286,16 @@ function execute(w: WorldDraft, c: Contact, action: LadderAction, tfId: string, 
   }
 }
 
+/** A warship is lost: the ledger line, the roll of honour, the hull's weight in support and political capital. */
+function registerLoss(w: WorldDraft, ship: Ship, rec: ReturnType<typeof fallenRecord>) {
+  w.events.push({ severity: 'CRITICAL', text: lossText(rec, ship.hullId, ship.veterancy) });
+  w.stats.fallen = [rec, ...(w.stats.fallen ?? [])].slice(0, ROLL_CAP);
+  removeShip(w, ship.id);
+  w.stats.shipsLost++;
+  adjustSupport(w, -LOSS_SUPPORT[ship.hullId]);
+  if (LOSS_PC[ship.hullId] > 0) w.resources.politicalCapital = clamp(w.resources.politicalCapital - LOSS_PC[ship.hullId], 0, 60);
+}
+
 function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, rng: Rng, bridges: Bridges) {
   const map = w.map;
   const st = w.sectors[c.sectorId];
@@ -336,15 +355,7 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
     seed: w.seed, tick: w.tick, contactId: c.id, sectorLabel: sectorName, sectorId: c.sectorId, strength, missiles: res.incoming,
     bearing: compass(c.position, tf.position), surprise, outcome: res.outcome, result: res, ships: storyShips,
   })) w.events.push({ severity: 'COMBAT', text: `  » ${line}` });
-  losses.forEach((ship, i) => {
-    const rec = fallen[i];
-    w.events.push({ severity: 'CRITICAL', text: lossText(rec, ship.hullId, ship.veterancy) });
-    w.stats.fallen = [rec, ...(w.stats.fallen ?? [])].slice(0, ROLL_CAP);
-    removeShip(w, ship.id);
-    w.stats.shipsLost++;
-    adjustSupport(w, -LOSS_SUPPORT[ship.hullId]);
-    if (LOSS_PC[ship.hullId] > 0) w.resources.politicalCapital = clamp(w.resources.politicalCapital - LOSS_PC[ship.hullId], 0, 60);
-  });
+  losses.forEach((ship, i) => registerLoss(w, ship, fallen[i]));
   if (res.outcome === 'DESTROYED') {
     st.threat = clamp(st.threat - 8);
     w.stats.hostilesDestroyed++;
@@ -352,6 +363,150 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
     w.resources.politicalCapital = clamp(w.resources.politicalCapital + 1.5, 0, 60);
   } else if (res.outcome === 'REPELLED') st.threat = clamp(st.threat - 3);
   else st.threat = clamp(st.threat + 6);
+}
+
+// ------------------------------------------------------------------------------------------ submarines
+
+/** A torpedo hit on a warship: crippled rather than deleted unless the hit is heavy overkill (same rule as a raid). Returns what happened. */
+function torpedoHit(w: WorldDraft, ship: Ship, dmg: number, rng: Rng, c: Contact): string {
+  const where = w.map.sectors[c.sectorId].name;
+  const name = `${ship.pennant} ${ship.name.toUpperCase()}`;
+  const before = ship.integrity;
+  ship.engagements = (ship.engagements ?? 0) + 1;
+  if (dmg >= ship.integrity && rng.chance(sinkChance(ship.integrity, dmg))) {
+    registerLoss(w, ship, fallenRecord(ship, w.tick, where));
+    return `TORPEDO: an unseen submarine sinks ${name} in ${where}`;
+  }
+  ship.integrity = dmg >= ship.integrity ? CRIPPLED_FLOOR : ship.integrity - dmg;
+  if (ship.integrity < WITHDRAW_BELOW) sendToRepair(w, ship, ship.integrity <= CRIPPLED_FLOOR ? 'CRIPPLED by a torpedo' : 'torpedo damage');
+  return `TORPEDO: ${name} is hit in ${where} by an unseen submarine — integrity ${before.toFixed(0)}% → ${ship.integrity.toFixed(0)}%`;
+}
+
+/** A hostile submarine's attack on a warship of the task force: the launch reveals it. */
+function subStrike(w: WorldDraft, c: Contact, tfId: string, rng: Rng) {
+  const targets = activeShipsOf(w, tfId);
+  if (targets.length === 0) return;
+  const ship = targets[rng.int(0, targets.length - 1)];
+  const dmg = clamp(30 + c.strength * 0.45 + rng.range(0, 30), 30, 110);
+  const text = torpedoHit(w, ship, dmg, rng.fork(`${c.id}:torp:${ship.id}`), c);
+  w.events.push({ severity: 'CRITICAL', text });
+  afterAttack(w, c);
+}
+
+/** Ladder steps against a held submarine contact. REMOVE = it is gone. */
+function executeSub(w: WorldDraft, c: Contact, action: LadderAction, platforms: Platform[], rng: Rng): 'KEEP' | 'REMOVE' {
+  const st = w.sectors[c.sectorId];
+  const L = label(w, c);
+  if (action === 'WARN') {
+    c.warned = true;
+    if (c.hostile) {
+      if (rng.chance(0.65)) {
+        st.threat = clamp(st.threat - 2);
+        adjustSupport(w, 0.3);
+        w.events.push({ severity: 'ADVISORY', text: `${L}: active sonar pings a submerged contact — it breaks off and withdraws (threat −2, support +0.3)` });
+        return 'REMOVE';
+      }
+      identify(c);
+      w.events.push({ severity: 'WARNING', text: `${L}: the pings draw no reaction — HOSTILE SUBMARINE, still closing` });
+      return 'KEEP';
+    }
+    if (rng.chance(0.9)) {
+      w.tension = clamp(w.tension + 1);
+      w.events.push({ severity: 'INFO', text: `${L}: a foreign submarine hears the pings and departs; its navy notes the harassment (tension +1)` });
+      return 'REMOVE';
+    }
+    return 'KEEP';
+  }
+  if (action === 'ENGAGE') {
+    const { power, shooters } = aswPowerNear(w, c.position.x, c.position.y);
+    if (power <= 0) {
+      w.events.push({ severity: 'INFO', text: `${L}: no ASW weapon within reach — the order cannot be carried out` });
+      return 'KEEP';
+    }
+    for (const id of shooters) if (w.ships[id]) w.ships[id].readiness = clamp(w.ships[id].readiness - 3);
+    if (!c.hostile) {
+      incident(w, c, 'torpedoes fired on a foreign submarine', { pc: 12, tension: 15, support: 10 });
+      return 'REMOVE';
+    }
+    const { kill, damage } = killChance(power, c.strength);
+    const r = rng.next();
+    if (r < kill) {
+      st.threat = clamp(st.threat - 8);
+      w.stats.hostilesDestroyed++;
+      w.stats.subsSunk = (w.stats.subsSunk ?? 0) + 1;
+      adjustSupport(w, 3);
+      w.resources.politicalCapital = clamp(w.resources.politicalCapital + 1.5, 0, 60);
+      w.events.push({ severity: 'COMBAT', text: `SUBMARINE KILLED ${L}: torpedoes find the boat — debris and an oil slick (support +3)` });
+      return 'REMOVE';
+    }
+    if (r < kill + damage) {
+      st.threat = clamp(st.threat - 3);
+      w.events.push({ severity: 'COMBAT', text: `${L}: torpedoes damage the submarine — it breaks off and limps away (threat −3)` });
+      return 'REMOVE';
+    }
+    identify(c);
+    w.events.push({ severity: 'COMBAT', text: `${L}: torpedoes miss — the submarine evades` });
+    const tf = allTaskForces(w.fleets).filter((t) => activeShipsOf(w, t.id).length > 0).sort((a, b) => dist(a.position.x, a.position.y, c.position.x, c.position.y) - dist(b.position.x, b.position.y, c.position.x, c.position.y))[0];
+    if (tf && rng.chance(0.35) && (c.attacks ?? 0) < MAX_ATTACKS) subStrike(w, c, tf.id, rng.fork('counter'));
+    void platforms;
+    return 'KEEP';
+  }
+  return 'KEEP';
+}
+
+/** One day of an enemy (or foreign) submarine. Returns false when it is gone. */
+function tickSubmarine(w: WorldDraft, c: Contact, platforms: Platform[], rng: Rng): boolean {
+  const map = w.map;
+  const st = w.sectors[c.sectorId];
+  const L = label(w, c);
+  const sector = map.sectors[c.sectorId].name;
+  const before = visibilityOf(c);
+  const after = trackStep(w, c, platforms);
+  if (after !== before) {
+    if (after === 'DATUM' && before === 'HIDDEN') w.events.push({ severity: 'WARNING', text: `SONAR: possible submarine datum in ${sector} — more sonar coverage would resolve it` });
+    else if (after === 'HELD') w.events.push({ severity: 'WARNING', text: `SONAR CONTACT HELD: submerged contact ${c.id.slice(3, 11)} in ${sector}` });
+    else if (before === 'HELD') w.events.push({ severity: 'INFO', text: `SONAR CONTACT LOST: ${c.id.slice(3, 11)} in ${sector} drops back to a datum` });
+  }
+
+  // movement: slow; a hostile boat hunts the nearest lane ship in reach, otherwise it drifts. It stays in its sector.
+  const prey = c.hostile ? nearestMerchant(w.shipping, c.position, PREY_RANGE) : null;
+  if (prey) c.heading = Math.atan2(prey.position.y - c.position.y, prey.position.x - c.position.x);
+  else if (rng.chance(0.2)) c.heading = rng.range(0, Math.PI * 2);
+  const nx = c.position.x + Math.cos(c.heading) * 1.2;
+  const ny = c.position.y + Math.sin(c.heading) * 1.2;
+  const cell = Math.round(ny) * map.width + Math.round(nx);
+  if (nx >= 0 && ny >= 0 && nx < map.width && ny < map.height && map.sectorGrid[cell] === c.sectorId) c.position = { x: nx, y: ny };
+  else c.heading = rng.range(0, Math.PI * 2);
+
+  // the player's order, else the sector SOP (held contacts only)
+  const near = nearestActiveTf(w, c.position.x, c.position.y);
+  if (visibilityOf(c) === 'HELD' && near) {
+    let action: LadderAction | null = null;
+    if (c.order) {
+      if (c.order !== 'SHADOW' && !actionBlocked(c, st.roe, c.order) && (c.order !== 'ENGAGE' || aswPowerNear(w, c.position.x, c.position.y).power > 0) && near.d <= ACTION_RANGE[c.order]) {
+        action = c.order;
+        c.order = null;
+      }
+    } else action = sopAction(c, st.sop, near.d);
+    if (action && executeSub(w, c, action, platforms, rng.fork('ladder')) === 'REMOVE') return false;
+  }
+
+  // a hostile boat strikes warships inside torpedo range: bold when unheard, cautious when held, quiet when shadowed; sonar cover foils launches
+  if (c.hostile && (c.attacks ?? 0) < MAX_ATTACKS && w.tick >= (c.nextAttackTick ?? 0)) {
+    const tfs = allTaskForces(w.fleets).filter((t) => activeShipsOf(w, t.id).length > 0 && dist(t.position.x, t.position.y, c.position.x, c.position.y) <= STRIKE_RANGE);
+    if (tfs.length) {
+      const tf = tfs[0];
+      let p = 0.28;
+      if (visibilityOf(c) === 'HELD') p *= 0.3;
+      if (c.order === 'SHADOW') p *= 0.5;
+      p *= 1 - aswCoverAt(platforms, tf.position.x, tf.position.y);
+      if (rng.fork('strike').chance(p)) subStrike(w, c, tf.id, rng.fork('strike-hit'));
+    }
+  }
+
+  if (w.tick >= c.expiresTick) return false;
+  void L;
+  return true;
 }
 
 // ------------------------------------------------------------------------------------------ spawning & movement
@@ -455,8 +610,26 @@ export function tickContacts(w: WorldDraft, rng: Rng, bridges: Bridges): void {
     }
   }
 
+  // Enemy submarines (own random streams: no other roll changes): advisory a while before they appear, then spawns and daily tracking
+  const platforms = !w.scripted || w.contacts.some((c) => c.submerged) ? sonarPlatforms(w) : [];
+  if (!w.scripted && w.tick === SUB_WARNING_TICK) w.events.push({ severity: 'ADVISORY', text: 'UNUSUAL ACOUSTIC ACTIVITY reported by the allied listening posts — enemy submarines may soon enter the theatre. Sonar on surface ships (refit) or boats would let you find them.' });
+  if (!w.scripted) for (const sec of map.sectors) {
+    const sc = maybeSpawnSub(w, sec.id, platforms);
+    if (sc) {
+      // Hunting boats lie in wait on the shipping route, like raiders (own stream)
+      const lane = new Rng(`${w.seed}:subambush:${w.tick}:${sec.id}`);
+      const at = lane.chance(0.7) ? laneAmbush(w, sec.id, lane) : null;
+      if (at && map.sectorGrid[Math.round(at.y) * map.width + Math.round(at.x)] === sec.id) sc.position = at;
+      w.contacts.push(sc);
+    }
+  }
+
   const survivors: Contact[] = [];
   for (const c of w.contacts) {
+    if (c.submerged) {
+      if (tickSubmarine(w, c, platforms, rng.fork(`${c.id}:sub:${w.tick}`))) survivors.push(c);
+      continue;
+    }
     move(w, c, rng);
     const st = w.sectors[c.sectorId];
     const near = nearestActiveTf(w, c.position.x, c.position.y);

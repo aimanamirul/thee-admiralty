@@ -509,6 +509,26 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   not a cheap deterrent: their value is ambush, early identification and, from S3, ASW. Upkeep (about 2 M/day) was left alone until S3 shows what boats are worth.
 - Not done: enemy submarines and ASW (S3), vendor packages / first-of-class training / Dahai and S26T / licences (S4), plot layer and tutorial (S5).
 
+## Submarines S3: enemy submarines and ASW (docs/PLAN-submarines.md)
+- `lib/sim/asw.ts`: `SUBMARINE` contacts (`submerged`, `track` 0-100, `stealth` 45-75, `attacks`, `nextAttackTick`). Hidden below `TRACK_DATUM` 30, a dashed "possible submarine" circle
+  above it (radius shrinks 12 -> 1.5 tiles as track rises), a held contact above `TRACK_HELD` 75 (the only state the ladder, lists and previews act on).
+  Sonar platforms (`sonarPlatforms`: surface ships with hull sonar or a towed array, boats on patrol and not exposed; friction with the CMS lowers quality) raise track
+  inside `reachOf` = sonar km x 0.5 tiles x (1.3 - stealth) x (0.7 + 0.3 x depth); track fades 12/day unheard.
+- Spawns (`maybeSpawnSub`, own random stream, 70% placed on a lane): not before tick 270 (`SUB_FIRST_TICK`), tension >= 20, never in scripted worlds, at most 2 at once, halved in a
+  sector with sonar on station; 75% hostile, the rest foreign boats. An advisory ("unusual acoustic activity") comes at tick 90 so the player can buy sonar first.
+- Behaviour (`contactEngine.tickSubmarine`): hostile boats hunt lane ships and strike warships inside 9 tiles (0.28/day unheard, x0.3 held, x0.5 more when shadowed, reduced by sonar cover);
+  a launch reveals the boat (identified hostile, datum at 60, 7-day cooldown) and after its second attack it leaves. Torpedoes use the raid damage rule (`torpedoHit`: crippled not deleted
+  unless heavy overkill; `registerLoss` shared with engagements). Shipping (`tickShipping`): launches on lane ships are foiled by `aswCoverAt` (independent platforms within 14 tiles) or land
+  (55% sunk "torpedoed and sunk by a submarine", else distress); subs are excluded from the raider loop. Held foreign boats leave when pinged.
+- Ladder: HAIL and BOARD are refused; SHADOW holds; WARN pings (hostile boat leaves 65%, foreign 90%); ENGAGE needs ASW weapons in reach (`aswPowerNear`: ARM_DOM_TORP finally matters,
+  boats' heavyweight tubes add) and a surface task force close enough to carry the order out; kill chance = power / (power + 4 x strength), clamped 5-85%, a miss risks a 35% counter-attack;
+  an unidentified boat can only be engaged at WEAPONS FREE and a foreign one is an incident (PC -12, tension +15, support -10). CHALLENGE/ASSERTIVE SOPs ping held boats automatically.
+- UI: dashed datum + "POSSIBLE SUB" on the plot, held contacts like others (SUB?), "Possible submarines" line and "Sonar hold" stat; previews for each step (`previewContactOrder`).
+- Measured (`verify:subs` plus scratch soaks): about 8 enemy boats in 720 days per theatre, a few warship hits and 3-4 merchants torpedoed per world with no sonar; two sonar frigates parked
+  on lanes found 3 contacts and foiled 2 launches over three worlds. Coverage is sparse by design (maps are ~190 x 120 tiles): sonar has to go where the lanes are (escorts, boats).
+- Known limits: a boat-only task force cannot carry out ladder orders (it supplies sonar and torpedoes to a surface force); no sonar cue/event when a launch creates a datum; no tutorial lesson.
+- Not done: S4 (vendor packages, first-of-class training, Dahai / S26T, licences), S5 polish (plot toggle, tutorial / advisor lesson, balance soak).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

@@ -20,6 +20,7 @@ import { allTaskForces, taskForceShipIds } from './fleetEngine';
 import { holdersOf, presenceFrom, taskForcePower } from './presence';
 import { findRoute, isWater, snapToWater } from './navigation';
 import { adjustSupport } from './politicsEngine';
+import { afterAttack, aswCoverAt, MAX_ATTACKS, sonarPlatforms } from './asw';
 
 export const MERCHANT_SPEED = 4;
 export const MAX_MERCHANTS = 20;
@@ -413,17 +414,17 @@ export function removeMerchant(w: WorldDraft, m: Merchant) {
 export const merchantTag = (m: Merchant) => `${KIND_TAG[m.kind]} ${m.name.toUpperCase()} (${flagText(m.flag)})`;
 
 /** A ship is lost: sunk, taken or foundered. Everyone sees the cost. */
-function loss(w: WorldDraft, m: Merchant, lane: Lane, how: 'SUNK' | 'SEIZED' | 'FOUNDERED', sectorId: number) {
+function loss(w: WorldDraft, m: Merchant, lane: Lane, how: 'SUNK' | 'SEIZED' | 'FOUNDERED' | 'TORPEDOED', sectorId: number) {
   const where = w.map.sectors[sectorId].label;
   const sh = w.shipping;
   count(sh, 'lost');
   count(sh, 'cargoLost', m.cargo);
   sh.year.lossBySector[sectorId] = (sh.year.lossBySector[sectorId] ?? 0) + 1;
-  lane.risk = clamp(lane.risk + (how === 'SUNK' ? 30 : how === 'SEIZED' ? 25 : 10));
+  lane.risk = clamp(lane.risk + (how === 'SUNK' ? 30 : how === 'TORPEDOED' ? 35 : how === 'SEIZED' ? 25 : 10));
   const home = m.flag === 'DOMESTIC_YARDS';
   adjustSupport(w, -(home ? 2 : 1) - (how === 'SEIZED' ? 0.5 : 0));
   w.tension = clamp(w.tension + 1);
-  const verb = how === 'SUNK' ? 'sunk by a raider' : how === 'SEIZED' ? 'seized by a raider' : 'foundered before help arrived';
+  const verb = how === 'TORPEDOED' ? 'torpedoed and sunk by a submarine' : how === 'SUNK' ? 'sunk by a raider' : how === 'SEIZED' ? 'seized by a raider' : 'foundered before help arrived';
   w.events.push({ severity: 'CRITICAL', text: `SHIPPING LOSS: ${merchantTag(m)} ${verb} in ${where} — ${m.cargo} M cargo lost, support −${home ? 2 : 1}` });
   const escorts = allTaskForces(w.fleets).filter((t) => t.escort === m.id);
   for (const tf of escorts) w.events.push({ severity: 'WARNING', text: `ESCORT FAILED: ${tf.name} lost the ship it was assigned to` });
@@ -492,7 +493,7 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
   }
 
   // ---- raider attacks on unprotected lane ships
-  const raiders = w.contacts.filter((c) => c.hostile);
+  const raiders = w.contacts.filter((c) => c.hostile && !c.submerged);
   const attacked = new Set<string>();
   for (const c of raiders) {
     const prey = [...sh.ships].sort((a, b) => dist(a.position, c.position) - dist(b.position, c.position))[0];
@@ -514,6 +515,36 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
       lane.risk = clamp(lane.risk + 15);
       adjustSupport(w, -0.3);
       w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} damaged by a raider in ${where} — help needed within ${DISTRESS_DAYS} days` });
+    }
+  }
+
+  // ---- submarine attacks on lane ships: sonar cover can foil the launch; a hit sinks the ship or leaves it crippled
+  const hunters = w.contacts.filter((c) => c.submerged && c.hostile && (c.attacks ?? 0) < MAX_ATTACKS && w.tick >= (c.nextAttackTick ?? 0));
+  if (hunters.length) {
+    const platforms = sonarPlatforms(w);
+    for (const c of hunters) {
+      const prey = [...sh.ships].sort((a, b) => dist(a.position, c.position) - dist(b.position, c.position))[0];
+      if (!prey || dist(prey.position, c.position) > ATTACK_RANGE || attacked.has(prey.id)) continue;
+      attacked.add(prey.id);
+      const lane = laneOf(sh, prey.laneId)!;
+      const secId = sectorOf(w, prey, lane);
+      if (new Rng(`${w.seed}:sub-cover:${w.tick}:${prey.id}`).chance(aswCoverAt(platforms, prey.position.x, prey.position.y))) {
+        c.track = Math.max(c.track ?? 0, 55);
+        c.nextAttackTick = w.tick + 3;
+        w.events.push({ severity: 'WARNING', text: `SONAR: a torpedo launch near ${merchantTag(prey)} is detected and the ship evades — the submarine is marked on a datum` });
+        continue;
+      }
+      afterAttack(w, c);
+      w.sectors[c.sectorId].threat = clamp(w.sectors[c.sectorId].threat + 2);
+      const r = new Rng(`${w.seed}:sub-attack:${w.tick}:${prey.id}`).next();
+      if (prey.status === 'DISTRESS' || r < 0.55) loss(w, prey, lane, 'TORPEDOED', secId);
+      else {
+        prey.status = 'DISTRESS';
+        prey.distressUntil = w.tick + DISTRESS_DAYS;
+        lane.risk = clamp(lane.risk + 20);
+        adjustSupport(w, -0.3);
+        w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} torpedoed in ${w.map.sectors[secId].label} — help needed within ${DISTRESS_DAYS} days` });
+      }
     }
   }
 

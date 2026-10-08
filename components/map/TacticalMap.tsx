@@ -15,6 +15,7 @@ import { usePreviewStore } from '@/store/usePreviewStore';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { previewAssign } from '@/lib/sim/preview';
 import { contactTag } from '@/lib/sim/contactEngine';
+import { datumContacts, datumRadius, visibleContacts } from '@/lib/sim/asw';
 import { KIND_TAG } from '@/lib/types/shipping';
 
 const C = {
@@ -242,7 +243,7 @@ export default function TacticalMap() {
       // Contacts first (they sit on top of task forces when close), then task forces, then sectors.
       let contactHit: string | null = null;
       let contactBest = 12;
-      for (const c of st.contacts) {
+      for (const c of visibleContacts(st.contacts)) {
         const p = toScreen(c.position.x, c.position.y);
         const dd = Math.hypot(p.x - e.offsetX, p.y - e.offsetY);
         if (dd < contactBest) {
@@ -706,7 +707,21 @@ export default function TacticalMap() {
       }
 
       // Contacts: amber = unidentified (blinking until hailed), red = hostile, green = identified neutral. Click to open the ladder.
-      for (const c of st.contacts) {
+      // Possible submarines: a dashed circle that shrinks as sonar holds the contact
+      for (const c of datumContacts(st.contacts)) {
+        const p = toScreen(c.position.x, c.position.y);
+        const px = Math.abs(toScreen(c.position.x + 1, c.position.y).x - p.x) * datumRadius(c);
+        ctx.save();
+        ctx.strokeStyle = C.amber;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(6, px), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        label('POSSIBLE SUB', p.x + Math.max(6, px) + 4, p.y + 3, C.amber, 'left', 8);
+      }
+      for (const c of visibleContacts(st.contacts)) {
         const p = toScreen(c.position.x, c.position.y);
         const tag = contactTag(c);
         if (c.cls === 'UNKNOWN') {
