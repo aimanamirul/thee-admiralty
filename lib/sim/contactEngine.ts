@@ -13,7 +13,8 @@ import { allTaskForces, combatantOf, removeShip, sendToRepair, taskForceShipIds 
 import { adjustSupport } from './politicsEngine';
 import { battleStory, compass, fallenRecord, LOSS_PC, LOSS_SUPPORT, lossText, ROLL_CAP, type StoryShip } from './narrative';
 import { laneAmbush, nearestMerchant, PREY_RANGE } from './shipping';
-import { DETER_STRENGTH_PER_PRESENCE, SPAWN_DETERRENCE, SPAWN_DETERRENCE_CAP, sectorPresence, taskForcePresence } from './presence';
+import { AMBUSH_ROUT, ambushLine, ambushOf, boatFigures, isBoat, isExposed } from './submarines';
+import { DETER_STRENGTH_PER_PRESENCE, SPAWN_DETERRENCE, SPAWN_DETERRENCE_CAP, holdersOf, sectorPresence, taskForcePresence } from './presence';
 
 export const IDENTIFY_RANGE = 10;
 export const ENGAGE_RANGE = 12;
@@ -67,7 +68,30 @@ export function activeShipsOf(w: WorldDraft, tfId: string): Ship[] {
   if (!tf) return [];
   return taskForceShipIds(tf)
     .map((id) => w.ships[id])
-    .filter((s): s is Ship => !!s && s.buildStatus === 'COMMISSIONED' && !s.isPartsHulk && s.state !== 'MAINTENANCE_DOCK');
+    .filter((s): s is Ship => !!s && s.buildStatus === 'COMMISSIONED' && !s.isPartsHulk && s.state !== 'MAINTENANCE_DOCK' && !isBoat(s));
+}
+
+/** Submarines of the forces holding a sector that can act now (on patrol, not counter-detected). */
+export function boatsHolding(w: WorldDraft, sectorId: number): Ship[] {
+  return holdersOf(w, sectorId)
+    .flatMap((tf) => taskForceShipIds(tf))
+    .map((id) => w.ships[id])
+    .filter((s): s is Ship => !!s && s.buildStatus === 'COMMISSIONED' && !s.isPartsHulk && isBoat(s) && s.state === 'ACTIVE_PATROL' && !isExposed(s));
+}
+
+/** Early identification by passive sonar: reach of the best boat on patrol near a point (0 = none). */
+function boatIdentifyReach(w: WorldDraft, x: number, y: number): number {
+  let best = 0;
+  for (const tf of allTaskForces(w.fleets)) {
+    if (dist(tf.position.x, tf.position.y, x, y) > IDENTIFY_RANGE * 2.5) continue;
+    for (const id of taskForceShipIds(tf)) {
+      const s = w.ships[id];
+      if (!s || !isBoat(s) || s.state !== 'ACTIVE_PATROL' || isExposed(s)) continue;
+      const reach = IDENTIFY_RANGE * (1 + Math.min(1.5, boatFigures(s).sonarKm / 40));
+      if (dist(tf.position.x, tf.position.y, x, y) <= reach) best = Math.max(best, reach);
+    }
+  }
+  return best;
 }
 
 /** Nearest task force with at least one ship at sea, at any range. */
@@ -258,7 +282,29 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
   const st = w.sectors[c.sectorId];
   const tf = allTaskForces(w.fleets).find((t) => t.id === tfId)!;
   const defenders = activeShipsOf(w, tfId).map((s) => combatantOf(s, bridges));
-  const res = resolveEngagement(rng.fork(c.id), defenders, { strength: c.strength }, { roe: st.roe, surprise, littoralFraction: map.sectors[c.sectorId].littoralFraction });
+  // Submarines holding the sector strike first, before the surface engagement.
+  let strength = c.strength;
+  const boats = boatsHolding(w, c.sectorId);
+  if (boats.length) {
+    const { reduction, strikers } = ambushOf(boats, map.sectors[c.sectorId], c.strength);
+    if (strikers.length && reduction > 0) {
+      strength = c.strength - reduction;
+      w.events.push({ severity: 'COMBAT', text: ambushLine(strikers, c.strength, strength) });
+      for (const b of strikers) {
+        b.readiness = clamp(b.readiness - 3);
+        b.veterancy = clamp(b.veterancy + 2);
+      }
+      if (strength <= AMBUSH_ROUT) {
+        st.threat = clamp(st.threat - 8);
+        w.stats.hostilesDestroyed++;
+        adjustSupport(w, 2);
+        w.resources.politicalCapital = clamp(w.resources.politicalCapital + 1.5, 0, 60);
+        w.events.push({ severity: 'COMBAT', text: `  » The raiding group is destroyed before it reaches the force; no ship fires a shot.` });
+        return;
+      }
+    }
+  }
+  const res = resolveEngagement(rng.fork(c.id), defenders, { strength }, { roe: st.roe, surprise, littoralFraction: map.sectors[c.sectorId].littoralFraction });
   w.events.push({
     severity: 'COMBAT',
     text: `ENGAGEMENT ${map.sectors[c.sectorId].name} vs hostile str ${c.strength.toFixed(0)} [${tf.name}, ROE ${st.roe.replace('_', ' ')}${surprise ? ', SURPRISED' : ''}]: ${res.outcome}`,
@@ -287,7 +333,7 @@ function engagement(w: WorldDraft, c: Contact, tfId: string, surprise: boolean, 
     if (ship.integrity < WITHDRAW_BELOW) sendToRepair(w, ship, ship.integrity <= CRIPPLED_FLOOR ? 'CRIPPLED in action' : 'heavy damage');
   }
   for (const line of battleStory({
-    seed: w.seed, tick: w.tick, contactId: c.id, sectorLabel: sectorName, sectorId: c.sectorId, strength: c.strength, missiles: res.incoming,
+    seed: w.seed, tick: w.tick, contactId: c.id, sectorLabel: sectorName, sectorId: c.sectorId, strength, missiles: res.incoming,
     bearing: compass(c.position, tf.position), surprise, outcome: res.outcome, result: res, ships: storyShips,
   })) w.events.push({ severity: 'COMBAT', text: `  » ${line}` });
   losses.forEach((ship, i) => {
@@ -415,10 +461,11 @@ export function tickContacts(w: WorldDraft, rng: Rng, bridges: Bridges): void {
     const st = w.sectors[c.sectorId];
     const near = nearestActiveTf(w, c.position.x, c.position.y);
 
-    // Visual identification at close range.
-    if (c.cls === 'UNKNOWN' && near && near.d <= IDENTIFY_RANGE) {
+    // Visual identification at close range, or earlier by a submarine's passive sonar.
+    const bySonar = c.cls === 'UNKNOWN' && !(near && near.d <= IDENTIFY_RANGE) && boatIdentifyReach(w, c.position.x, c.position.y) > 0;
+    if (c.cls === 'UNKNOWN' && ((near && near.d <= IDENTIFY_RANGE) || bySonar)) {
       identify(c);
-      w.events.push({ severity: c.hostile ? 'WARNING' : 'INFO', text: `${label(w, c)}: identified ${INTENT_LABEL[c.intent]}` });
+      w.events.push({ severity: c.hostile ? 'WARNING' : 'INFO', text: `${label(w, c)}: identified ${INTENT_LABEL[c.intent]}${bySonar ? ' (passive sonar)' : ''}` });
     }
 
     // One ladder step per day: the player's order, else the sector SOP, else (weapons free) engage unidentified tracks in range.

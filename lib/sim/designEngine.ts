@@ -220,8 +220,8 @@ export const SLOT_LABEL: Record<ModuleSlot, string> = {
   ARMAMENT: 'ARMAMENT',
 };
 
-/** Submarines are designed in S1 but not yet commissioned: the service (stance, depth, indiscretion) arrives with S2 of docs/PLAN-submarines.md. */
-export const SUBMARINE_SERVICE = false;
+/** The submarine service (stance, depth, indiscretion: docs/PLAN-submarines.md S2) exists; set false to withdraw boats from sale. */
+export const SUBMARINE_SERVICE = true;
 
 /** Why this hull cannot be laid down right now (service not established, or its builder will not sell), or null. */
 export function hullBlocked(hullId: HullClassId, vendors: Record<string, Vendor>, done: ReadonlySet<string>): string | null {

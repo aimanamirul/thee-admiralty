@@ -8,7 +8,8 @@ import type { WorldDraft } from '../types/world';
 import { tickContacts } from './contactEngine';
 import { tickDiplomacy } from './diplomacyEngine';
 import { advanceFleets, allTaskForces, taskForceShipIds } from './fleetEngine';
-import { tickPolitics } from './politicsEngine';
+import { adjustSupport, tickPolitics } from './politicsEngine';
+import { isBoat } from './submarines';
 import { tickRelations } from './relationsEngine';
 import { tickSupplyChain } from './supplyChain';
 import { payInstalment } from './contracts';
@@ -62,6 +63,11 @@ function progressConstruction(world: WorldDraft): void {
       s.readiness = 55;
       s.commissionedTick = world.tick;
       world.events.push({ severity: 'ADVISORY', text: `COMMISSIONED: ${s.pennant} ${s.name.toUpperCase()} (${HULLS[s.hullId].name}, ${s.designName}) joins the fleet` });
+      if (isBoat(s) && world.stats.firstBoatTick === undefined) {
+        world.stats.firstBoatTick = world.tick;
+        adjustSupport(world, 4);
+        world.events.push({ severity: 'ADVISORY', text: `THE NAVY'S FIRST SUBMARINE: ${s.pennant} ${s.name.toUpperCase()} — national pride (support +4)` });
+      }
     }
   }
 }

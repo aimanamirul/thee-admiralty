@@ -14,6 +14,7 @@ import { advanceDay } from '../lib/sim/worldEngine';
 import { lobbyVendor } from '../lib/sim/diplomacyEngine';
 import * as hulk from '../lib/sim/fleetEngine';
 import * as ops from '../lib/sim/fleetOps';
+import { setStance as setStanceCmd, type Stance } from '../lib/sim/submarines';
 import type { ModuleSlot } from '../lib/types/equipment';
 import type { Fleet, HierarchyKind, Ship, Tempo } from '../lib/types/fleet';
 import type { ShipDesign } from '../lib/types/hull';
@@ -150,6 +151,8 @@ interface Actions {
   setTempoMany: (tfIds: string[], tempo: Tempo) => CommandResult;
   splitTaskForce: (shipIds: string[], name?: string) => CommandResult;
   mergeTaskForces: (fromId: string, intoId: string) => CommandResult;
+  setStance: (shipId: string, stance: Stance) => CommandResult;
+  setStanceMany: (shipIds: string[], stance: Stance) => CommandResult;
 }
 
 export type GameState = WorldSlice & UiSlice & Actions;
@@ -355,6 +358,8 @@ export const useFleetStore = create<GameState>((set, get) => {
     setTempoMany: (tfIds, tempo) => run((w) => ops.setTempoMany(w, tfIds, tempo)),
     splitTaskForce: (shipIds, name) => run((w) => ops.splitTaskForce(w, shipIds, name)),
     mergeTaskForces: (fromId, intoId) => run((w) => ops.mergeTaskForces(w, fromId, intoId)),
+    setStance: (shipId, stance) => run((w) => setStanceCmd(w, shipId, stance)),
+    setStanceMany: (shipIds, stance) => run((w) => ops.setStanceMany(w, shipIds, stance)),
   };
 });
 

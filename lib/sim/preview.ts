@@ -32,6 +32,7 @@ import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
+import { boatFigures, depthMultiplier, indiscretionRisk, isBoat, RECHARGE_DAYS, STANCE_AMBUSH, STANCE_DETERRENCE, stanceBlocked, type Stance } from './submarines';
 import { mergeBlocked, REFIT_DAYS, refitBlocked, refitCandidates, refitCost, splitBlocked } from './fleetOps';
 import type { ModuleSlot } from '../types/equipment';
 
@@ -563,4 +564,27 @@ export function previewMerge(w: WorldDraft, fromId: string, intoId: string): Pre
   const from = tfById(w, fromId)!;
   const into = tfById(w, intoId)!;
   return `${from.name} (${taskForceShipIds(from).length} ships) joins ${into.name} (${taskForceShipIds(into).length}) · ${from.name} is disbanded · station and tempo follow ${into.name}`;
+}
+
+// ------------------------------------------------------------------------------------------ submarines
+
+export function previewStance(w: WorldDraft, shipId: string, stance: Stance): Preview {
+  const b = stanceBlocked(w, shipId, stance);
+  if (b) return blocked(b);
+  const s = w.ships[shipId];
+  const tf = allTaskForces(w.fleets).find((t) => taskForceShipIds(t).includes(shipId));
+  const sec = tf && tf.assignedSectorId !== null ? w.map.sectors[tf.assignedSectorId] : undefined;
+  const fig = boatFigures(s);
+  const risk = indiscretionRisk(fig.stealth, sec, w.tension) * (stance === 'STEALTH' ? 0.1 : 1);
+  const where = sec ? `${sec.label}: depth ×${depthMultiplier(sec).toFixed(2)}` : 'no sector assigned';
+  const tail = stance === 'STEALTH' ? `${s.submergedLeft ?? fig.submergedDays} days submerged, then ${RECHARGE_DAYS} days snorkelling to recharge` : 'snorkels on schedule, endurance never runs out';
+  return `${shipLabel(w, shipId)} → ${stance} · deterrence ×${STANCE_DETERRENCE[stance]} · ambush ×${STANCE_AMBUSH[stance]} · counter-detection ${(risk * 100).toFixed(1)}%/day (stealth ${fig.stealth.toFixed(0)}, ${where}) · ${tail}`;
+}
+
+export function previewStanceMany(w: WorldDraft, shipIds: string[], stance: Stance): Preview {
+  const boats = shipIds.filter((id) => w.ships[id] && isBoat(w.ships[id]));
+  if (boats.length === 0) return blocked('no submarine selected');
+  const ready = boats.filter((id) => !stanceBlocked(w, id, stance));
+  if (ready.length === 0) return blocked(`all ${boats.length} selected boat${boats.length === 1 ? ' is' : 's are'} already on ${stance}`);
+  return `${ready.length} of ${boats.length} boat${boats.length === 1 ? '' : 's'} → ${stance} · deterrence ×${STANCE_DETERRENCE[stance]} · ambush ×${STANCE_AMBUSH[stance]}`;
 }

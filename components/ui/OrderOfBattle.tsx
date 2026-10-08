@@ -4,7 +4,8 @@ import { Check, ChevronDown, ChevronRight, Pencil, Skull } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { HULLS, MODULE_BY_ID, MODULES } from '@/lib/data/catalog';
 import { evaluateLoadout, procurability } from '@/lib/sim/designEngine';
-import { OP_STATE_LABEL, PATROL_LIMIT_DAYS, stateCounts, taskForceShipIds } from '@/lib/sim/fleetEngine';
+import { OP_STATE_LABEL, stateCounts, taskForceShipIds } from '@/lib/sim/fleetEngine';
+import { boatFigures, isBoat, isExposed, isRecharging, patrolLimit, stanceOf } from '@/lib/sim/submarines';
 import { bridgeSet } from '@/lib/sim/researchEngine';
 import { exposure, originView } from '@/lib/sim/supplyChain';
 import type { HierarchyKind, OpState, Ship, TaskForce } from '@/lib/types/fleet';
@@ -17,7 +18,7 @@ import { refitCost, REFIT_DAYS } from '@/lib/sim/fleetOps';
 import type { ModuleSlot } from '@/lib/types/equipment';
 import { useUiFlag } from '@/store/useTutorialStore';
 import { Btn, Chip, fmtM, Meter, Section, Stat } from './kit';
-import { previewBuySpare, previewCancel, previewMerge, previewRefit, previewRefitMany, previewSplit, previewHold, previewHulk, previewResell, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
+import { previewBuySpare, previewCancel, previewMerge, previewRefit, previewRefitMany, previewSplit, previewStance, previewStanceMany, previewHold, previewHulk, previewResell, previewRestore, previewStrip, previewTempo } from '@/lib/sim/preview';
 import { cancelBlocked, instalment, resaleBlocked } from '@/lib/sim/contracts';
 
 const STATE_TONE: Record<OpState, 'emerald' | 'cyan' | 'amber'> = { ACTIVE_PATROL: 'emerald', TRANSIT_WORKUP: 'cyan', MAINTENANCE_DOCK: 'amber' };
@@ -99,6 +100,30 @@ function ThirdsGauge({ ships }: { ships: Ship[] }) {
   );
 }
 
+function BoatPanel({ ship }: { ship: Ship }) {
+  const st = useFleetStore.getState();
+  const stance = stanceOf(ship);
+  const fig = boatFigures(ship);
+  const left = ship.submergedLeft ?? fig.submergedDays;
+  return (
+    <div className="space-y-1 border border-navy p-1.5" data-tutorial={`boat-${ship.id}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-[0.8125rem] uppercase tracking-widest text-slate-500">Stance</span>
+        <Btn tone={stance === 'PATROL' ? 'cyan' : 'dim'} preview={(w) => previewStance(w, ship.id, 'PATROL')} onClick={() => st.setStance(ship.id, 'PATROL')}>Patrol</Btn>
+        <Btn tone={stance === 'STEALTH' ? 'emerald' : 'dim'} preview={(w) => previewStance(w, ship.id, 'STEALTH')} onClick={() => st.setStance(ship.id, 'STEALTH')}>Stealth</Btn>
+        {isExposed(ship) && <Chip tone="red">COUNTER-DETECTED {ship.exposedDays}d</Chip>}
+        {isRecharging(ship) && <Chip tone="amber">RECHARGING {ship.rechargeDays}d</Chip>}
+      </div>
+      <div className="grid grid-cols-2 gap-x-3">
+        <Stat k="Stealth" v={`${fig.stealth.toFixed(0)} / 100`} />
+        <Stat k="Sonar" v={fig.sonarKm > 0 ? `${fig.sonarKm} km` : '—'} tone={fig.sonarKm > 0 ? undefined : 'text-warn'} />
+      </div>
+      <div className="text-[0.8125rem] text-slate-500">SUBMERGED {Math.round(left)} / {fig.submergedDays} days</div>
+      <Meter value={left} max={Math.max(1, fig.submergedDays)} tone={left / Math.max(1, fig.submergedDays) < 0.3 ? 'amber' : 'emerald'} label={`${Math.round(left)}d`} />
+    </div>
+  );
+}
+
 function ShipDetail({ ship }: { ship: Ship }) {
   const showHulk = useUiFlag('HULK');
   const n = useNames();
@@ -121,8 +146,9 @@ function ShipDetail({ ship }: { ship: Ship }) {
             <div>INTEGRITY<Meter value={ship.integrity} label={ship.integrity.toFixed(0)} /></div>
             <div>VETERANCY<Meter value={ship.veterancy} tone="emerald" label={ship.veterancy.toFixed(0)} /></div>
           </div>
-          {(ship.refitDaysLeft ?? 0) > 0 && <Stat k="Refit" v={`${ship.refitDaysLeft} days left in the yard`} tone="text-cyan-radar" />}
-          <Stat k="Days in state" v={`${ship.stateDays}${ship.state === 'ACTIVE_PATROL' ? ` / ${PATROL_LIMIT_DAYS}` : ''}`} />
+        {(ship.refitDaysLeft ?? 0) > 0 && <Stat k="Refit" v={`${ship.refitDaysLeft} days left in the yard`} tone="text-cyan-radar" />}
+          <Stat k="Days in state" v={`${ship.stateDays}${ship.state === 'ACTIVE_PATROL' ? ` / ${patrolLimit(ship)}` : ''}`} />
+          {isBoat(ship) && <BoatPanel ship={ship} />}
           {ship.overdeployDays > 0 && <Stat k="Over-deployed" v={`${ship.overdeployDays} days — breakdown risk ×${(1 + (ship.overdeployDays / 10) ** 1.5).toFixed(1)}`} tone="text-warn" />}
         </>
       ) : (
@@ -291,6 +317,9 @@ function ShipRow({ ship }: { ship: Ship }) {
         </span>
         {failed > 0 && !ship.isPartsHulk && <Chip tone="red">{failed}× FAULT</Chip>}
         {ship.holdStation && <Chip tone="amber">HOLD</Chip>}
+        {isBoat(ship) && ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && (
+          isExposed(ship) ? <Chip tone="red">EXPOSED</Chip> : isRecharging(ship) ? <Chip tone="amber">RECHARGE</Chip> : <Chip tone={stanceOf(ship) === 'STEALTH' ? 'emerald' : 'cyan'}>{stanceOf(ship) === 'STEALTH' ? 'STL' : 'PAT'}</Chip>
+        )}
         {(ship.refitDaysLeft ?? 0) > 0 && <Chip tone="cyan">REFIT {ship.refitDaysLeft}d</Chip>}
         {showHulk && ship.buildStatus === 'COMMISSIONED' && !ship.isPartsHulk && ship.state === 'MAINTENANCE_DOCK' && (
           <button
@@ -514,6 +543,13 @@ function BulkBar() {
               <Btn tone="cyan" disabled={!sqId} onClick={() => st.moveShips(shipIds, sqId)}>Move</Btn>
               <Btn tone="emerald" preview={(w) => previewSplit(w, shipIds)} onClick={() => { const r = st.splitTaskForce(shipIds); if (r.ok) clear(); }}>Detach as new task force</Btn>
             </div>
+            {shipIds.some((id) => isBoat(ships[id])) && (
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="uppercase tracking-widest text-slate-500">Boats</span>
+                <Btn tone="cyan" preview={(w) => previewStanceMany(w, shipIds, 'PATROL')} onClick={() => st.setStanceMany(shipIds, 'PATROL')}>All patrol</Btn>
+                <Btn tone="emerald" preview={(w) => previewStanceMany(w, shipIds, 'STEALTH')} onClick={() => st.setStanceMany(shipIds, 'STEALTH')}>All stealth</Btn>
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-1">
               <select value={from} onChange={(e) => { setFrom(e.target.value); setTo(''); setSlot((carried.get(e.target.value)?.slot as ModuleSlot) ?? ''); }} className="min-w-0 flex-1 px-1 py-0.5" aria-label="Bulk refit from module">
                 <option value="">REFIT: REPLACE…</option>

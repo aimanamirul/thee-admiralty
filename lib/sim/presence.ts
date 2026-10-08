@@ -13,6 +13,8 @@ import type { Vec2 } from '../types/map';
 import type { WorldDraft } from '../types/world';
 import { evaluateLoadout } from './designEngine';
 import { allTaskForces, taskForceShipIds } from './fleetEngine';
+import { deterrenceFactor, depthMultiplier, isBoat } from './submarines';
+import type { MapData } from '../types/map';
 
 /** Structure + air defence + firepower + air group of one healthy frigate. */
 export const REF_POWER = 430;
@@ -35,19 +37,21 @@ export const CLASS_WEIGHT: Record<HullClassId, number> = { FAC: 0.7, CORVETTE: 0
 const NO_BRIDGES: ReadonlySet<never> = new Set();
 
 /** Frigate-equivalents of one ship (0 if it cannot fight). */
-export function shipPower(ship: Ship): number {
+export function shipPower(ship: Ship, depth = 1): number {
   const working = ship.modules.filter((m) => !m.failed).map((m) => m.moduleId);
   const hull = HULLS[ship.hullId];
   const ev = evaluateLoadout(ship.hullId, working, NO_BRIDGES);
   const raw = hull.structuralHP * 0.5 + Math.min(ev.interceptors, hull.structuralHP * INTERCEPTORS_PER_HP) * 12 + ev.firepower * 0.12 + hull.strikeRating * 3;
   const condition = (0.5 + 0.5 * ship.readiness / 100) * (0.4 + 0.6 * ship.integrity / 100);
-  return (raw / REF_POWER) * condition * CLASS_WEIGHT[ship.hullId];
+  // A boat deters by uncertainty: its stance, whether it has been counter-detected, and the depth of water it works in
+  const boat = isBoat(ship) ? deterrenceFactor(ship) * depth : 1;
+  return (raw / REF_POWER) * condition * CLASS_WEIGHT[ship.hullId] * boat;
 }
 
 /** Diminishing returns: frigate-equivalents -> presence (1 -> 1.0, 2 -> 1.6, 4 -> 2.2, cap 2.5). */
 export const presenceFrom = (power: number) => (power <= 0 ? 0 : PRESENCE_CAP * (1 - Math.exp(-K * power)));
 
-type View = Pick<WorldDraft, 'fleets' | 'ships'>;
+type View = Pick<WorldDraft, 'fleets' | 'ships'> & { map?: MapData };
 
 function shipsOf(w: View, tf: TaskForce, activeOnly: boolean): Ship[] {
   return taskForceShipIds(tf)
@@ -57,7 +61,9 @@ function shipsOf(w: View, tf: TaskForce, activeOnly: boolean): Ship[] {
 
 /** Power of a task force's ships: those on active patrol, or all ships at sea. */
 export function taskForcePower(w: View, tf: TaskForce, activeOnly: boolean): number {
-  return shipsOf(w, tf, activeOnly).reduce((a, s) => a + shipPower(s), 0);
+  const sec = tf.assignedSectorId !== null ? w.map?.sectors[tf.assignedSectorId] : undefined;
+  const depth = sec ? depthMultiplier(sec) : 1;
+  return shipsOf(w, tf, activeOnly).reduce((a, s) => a + shipPower(s, depth), 0);
 }
 
 export const taskForcePresence = (w: View, tf: TaskForce, activeOnly = true) => presenceFrom(taskForcePower(w, tf, activeOnly));

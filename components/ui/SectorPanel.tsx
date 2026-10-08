@@ -7,7 +7,8 @@ import type { Roe, Sop } from '@/lib/types/world';
 import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
 import { conditionsText, seaState } from '@/lib/sim/narrative';
-import { DETERRENCE_PER_DAY, presenceLabel, sectorPresence } from '@/lib/sim/presence';
+import { depthMultiplier, isBoat, isExposed, stanceOf } from '@/lib/sim/submarines';
+import { DETERRENCE_PER_DAY, holdersOf, presenceLabel, sectorPresence } from '@/lib/sim/presence';
 import MerchantPanel from './MerchantPanel';
 import ShippingLanes from './ShippingLanes';
 import InterdictionPanel from './InterdictionPanel';
@@ -99,6 +100,7 @@ export default function SectorPanel() {
   const here = contacts.filter((c) => c.sectorId === selected);
   const shipsHere = merchants.filter((m) => map.sectorGrid[Math.round(m.position.y) * map.width + Math.round(m.position.x)] === selected);
   const roe = ROES.find((r) => r.id === st.roe)!;
+  const boatsHere = holdersOf({ fleets, ships, map }, selected).flatMap((tf) => taskForceShipIds(tf)).map((id) => ships[id]).filter((s) => s && s.buildStatus === 'COMMISSIONED' && isBoat(s) && s.state === 'ACTIVE_PATROL');
   const deepDraftRisk = Math.round(sec.littoralFraction * 100 * 2.5);
 
   return (
@@ -123,6 +125,12 @@ export default function SectorPanel() {
             tone={presence.presence > 0 ? 'text-emerald-accent' : 'text-slate-500'}
           />
         </div>
+        {boatsHere.length > 0 && (
+          <Stat
+            k="Submarines on station"
+            v={`${boatsHere.length} · ${boatsHere.filter((b) => isExposed(b)).length} exposed · ${boatsHere.filter((b) => !isExposed(b) && stanceOf(b) === 'STEALTH').length} stealth · depth ×${depthMultiplier(sec).toFixed(2)}`}
+          />
+        )}
         <Stat k="Conditions" v={conditionsText(seed, tick, sec.id)} tone={seaState(seed, tick, sec.id) === 'HEAVY' ? 'text-warn' : 'text-slate-400'} />
         <div data-tutorial="roe">
         <div className="mt-2 text-[0.8125rem] uppercase tracking-widest text-slate-500">

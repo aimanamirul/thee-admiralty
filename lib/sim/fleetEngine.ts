@@ -14,6 +14,7 @@ import type { Combatant } from './combatSim';
 import { moduleOrdersBlocked, moduleSpareUseBlocked } from './diplomacyEngine';
 import { evaluateLoadout } from './designEngine';
 import { findRoute, snapToWater } from './navigation';
+import { boatDay, dockDays, isBoat, patrolLimit } from './submarines';
 
 export const PATROL_LIMIT_DAYS = 30;
 export const WORKUP_DAYS = 14;
@@ -246,7 +247,9 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
       const label = `${ship.pennant} ${ship.name.toUpperCase()}`;
 
       if (ship.state === 'ACTIVE_PATROL') {
-        if (ship.stateDays > PATROL_LIMIT_DAYS) ship.overdeployDays++;
+        const boat = isBoat(ship);
+        if (ship.stateDays > patrolLimit(ship)) ship.overdeployDays++;
+        if (boat && onStation) boatDay(world, ship, sector);
         const over = ship.overdeployDays;
         const stress = 1 + over / 20;
         if (!onStation) {
@@ -259,7 +262,7 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
           const draftM = HULLS[ship.hullId].draftM;
           const draftMult = draftM >= DEEP_DRAFT_M ? 2.5 : draftM >= 4.2 ? 0.8 : 0.1;
           const groundP = 0.004 * (sector?.littoralFraction ?? 0) * draftMult * stress;
-          if (!world.scripted && rng.chance(groundP)) {
+          if (!world.scripted && !boat && rng.chance(groundP)) {
             const dmg = rng.range(4, 14);
             ship.integrity -= dmg;
             world.events.push({ severity: 'WARNING', text: `${label}: GROUNDING on shoal in ${sector?.label ?? 'sector'} — hull −${dmg.toFixed(0)}%` });
@@ -288,7 +291,7 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
         const forced = ship.readiness < 12 || ship.integrity < 25;
         const rotate =
           tf.tempo === 'ROTATE_THIRDS' && !ship.holdStation &&
-          (ship.stateDays >= PATROL_LIMIT_DAYS || ship.readiness < 35 || isCriticalFailure(ship));
+          (ship.stateDays >= patrolLimit(ship) || ship.readiness < 35 || isCriticalFailure(ship));
         if (forced || rotate) {
           setState(ship, 'MAINTENANCE_DOCK');
           world.events.push({ severity: 'INFO', text: `${label}: rotating to MAINTENANCE DOCK (readiness ${ship.readiness.toFixed(0)}%)` });
@@ -322,7 +325,7 @@ export function advanceFleets(world: WorldDraft, rng: Rng): void {
           } else if (ship.stateDays % 10 === 0) {
             world.events.push({ severity: 'WARNING', text: `${label}: DOCK STALLED — no spare ${mt(failed.moduleId)} (buy spares or designate a parts hulk)` });
           }
-        } else if (ship.readiness >= 90 && ship.integrity >= 90 && ship.stateDays >= MIN_DOCK_DAYS) {
+        } else if (ship.readiness >= 90 && ship.integrity >= 90 && ship.stateDays >= dockDays(ship, MIN_DOCK_DAYS)) {
           setState(ship, 'TRANSIT_WORKUP');
         }
       }

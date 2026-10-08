@@ -490,6 +490,25 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   current lesson is restorable (Back is disabled), because only the latest checkpoint is persisted.
 - `scripts/e2e-tutorial.mjs` presses Next between lessons and tests the Back / Next recap. `verify:tutorial` (engine-level) is unchanged.
 
+## Submarines S2: the service (docs/PLAN-submarines.md)
+- `lib/sim/submarines.ts`: stance (STEALTH / PATROL per boat, default PATROL), depth multiplier (abyssal 1.0, shelf 0.7, littoral 0.3), endurance
+  (STEALTH drains `submergedLeft`, then 4 days recharging; PATROL snorkels on schedule), indiscretion (`dailyRisk`: quiet hulls, shallow water, tension;
+  STEALTH ×0.1, recharging ×1.6; counter-detected = `exposedDays` 6), ambush (`ambushOf`: firepower × 0.04 × depth × stance, capped at 60% of the raid;
+  a raid cut below `AMBUSH_ROUT` 10 is destroyed before any ship fires). `boatDay` runs from `advanceFleets` for boats on station; boats have a 45-day
+  patrol limit and 14-day overhauls (`patrolLimit`, `dockDays`) and never ground.
+- Presence: `shipPower(ship, depth)` multiplies a boat's power by `deterrenceFactor` (stance 0.4 / 1.0, zero when exposed, half when recharging) and depth;
+  `taskForcePower` takes the depth from the assigned sector (View may carry `map`). Boats count for sector presence and shipping cover, not for the raider
+  deterrence check (that uses the task force that meets the raid).
+- Contacts: `activeShipsOf` excludes boats, so a boat-only task force never fights a surface engagement and boats are never hit by raids; boats on
+  patrol identify contacts early by passive sonar (`boatIdentifyReach`, up to 2.5x visual range); ambush runs at the start of `engagement()`.
+- First commissioned boat: support +4 once (`stats.firstBoatTick`). `SUBMARINE_SERVICE` is now true: boats can be bought once the builder sells (standing).
+- Orders: `setStance` / `setStanceMany` (`fleetOps`), previews `previewStance` / `previewStanceMany` (in `verify:preview`). UI: stance buttons, endurance meter
+  and counter-detection chips in the ship detail, STL / PAT / EXPOSED / RECHARGE chip on the row, bulk "All patrol / All stealth", "Submarines on station" in the sector panel.
+- Balance as measured (`verify:subs`, `verify:hulls`): quiet boat exposure about 1%/day open water, 3% littoral, 0.25% in STEALTH; one Seorak boat cuts a
+  120-strength raid to about 100 (STEALTH) or 108 (PATROL). A boat costs about 1,000 M per frigate-equivalent of visible deterrence (frigate 217), so boats are
+  not a cheap deterrent: their value is ambush, early identification and, from S3, ASW. Upkeep (about 2 M/day) was left alone until S3 shows what boats are worth.
+- Not done: enemy submarines and ASW (S3), vendor packages / first-of-class training / Dahai and S26T / licences (S4), plot layer and tutorial (S5).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

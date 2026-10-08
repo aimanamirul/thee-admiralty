@@ -51,6 +51,11 @@ export interface Ship {
   engagements?: number;
   /** Days of yard work left on a refit; the ship cannot leave the dock until it is 0. */
   refitDaysLeft?: number;
+  /** Submarines: STEALTH or PATROL (default PATROL), submerged days left, days counter-detected, days left recharging. */
+  stance?: 'STEALTH' | 'PATROL';
+  submergedLeft?: number;
+  exposedDays?: number;
+  rechargeDays?: number;
 }
 
 export interface Squadron {

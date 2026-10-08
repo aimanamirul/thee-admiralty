@@ -13,6 +13,7 @@ import { evaluateLoadout, procurability } from './designEngine';
 import { moduleOrdersBlocked } from './diplomacyEngine';
 import { allTaskForces, findTaskForceOfShip, taskForceShipIds } from './fleetEngine';
 import { bridgeSet } from './researchEngine';
+import { setStance, type Stance } from './submarines';
 
 export const REFIT_DAYS = 12;
 export const REFIT_YARD_FEE = 8;
@@ -179,3 +180,16 @@ export function mergeTaskForces(world: WorldDraft, fromId: string, intoId: strin
 }
 
 export const hullName = (shipId: string, world: WorldDraft) => HULLS[world.ships[shipId].hullId].name;
+
+/** Set the stance of every selected submarine (surface ships and boats already on that stance are skipped). */
+export function setStanceMany(world: WorldDraft, shipIds: string[], stance: Stance): CommandResult {
+  if (shipIds.length === 0) return fail('NO SHIPS SELECTED');
+  let n = 0;
+  let why = '';
+  for (const id of shipIds) {
+    const r = setStance(world, id, stance);
+    if (r.ok) n++;
+    else if (!why && !/SURFACE/.test(r.reason ?? '')) why = r.reason ?? '';
+  }
+  return n ? done(`${n} boat${n === 1 ? '' : 's'} on ${stance}`) : fail(why || 'NO SUBMARINE SELECTED');
+}

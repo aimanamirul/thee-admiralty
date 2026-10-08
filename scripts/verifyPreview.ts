@@ -8,6 +8,7 @@ import { realNameLiterals, resolveText } from '../lib/data/names';
 import * as cmd from '../lib/sim/commands';
 import { designateHulk } from '../lib/sim/fleetEngine';
 import * as ops from '../lib/sim/fleetOps';
+import { setStance } from '../lib/sim/submarines';
 import * as pv from '../lib/sim/preview';
 import { createInitialWorld } from '../lib/sim/scenario';
 import { createTutorialWorld } from '../lib/sim/tutorialScenario';
@@ -76,6 +77,10 @@ function sweep(tag: string, w: WorldDraft) {
     s.modules.forEach((m, i) => {
       for (const alt of MODULES.filter((x) => x.slot === m.slot && x.id !== m.moduleId).slice(0, 4)) agree(`${tag} refit ${s.id}/${i}->${alt.id}`, w, pv.previewRefit(w, s.id, i, alt.id), (c) => ops.refitShip(c, s.id, i, alt.id));
     });
+  }
+  for (const s of Object.values(w.ships)) {
+    if (s.buildStatus !== 'COMMISSIONED' || s.isPartsHulk) continue;
+    for (const st of ['STEALTH', 'PATROL'] as const) agree(`${tag} stance ${s.id}/${st}`, w, pv.previewStance(w, s.id, st), (c) => setStance(c, s.id, st));
   }
   const tfs = w.fleets.flatMap((f) => f.taskForces);
   for (const a of tfs) {

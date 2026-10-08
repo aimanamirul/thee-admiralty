@@ -4,7 +4,7 @@
  * The checks fail only on a degenerate meta (one hull class dominating on every axis, or an unusable class).
  * Usage: npm run verify:hulls
  */
-import { HULL_LIST, MODULES } from '../lib/data/catalog';
+import { hullPlatform, HULL_LIST, MODULES, modulePlatform } from '../lib/data/catalog';
 import { evaluateLoadout } from '../lib/sim/designEngine';
 import { createShip } from '../lib/sim/fleetEngine';
 import { hullDailyCost } from '../lib/sim/politicsEngine';
@@ -36,13 +36,13 @@ function bestLoadout(h: HullBase): string[] | null {
     return !slotErr;
   };
   for (const slot of ['POWERPLANT', 'CMS', 'SENSOR', 'ARMAMENT'] as const) {
-    const pool = MODULES.filter((m) => m.slot === slot && m.requiredTier <= 1 && !m.unlockedBy).sort((a, b) => byValue(b) / (b.cost + 1) - byValue(a) / (a.cost + 1));
+    const pool = MODULES.filter((m) => m.slot === slot && m.requiredTier <= (hullPlatform(h) === 'SUBSURFACE' ? 2 : 1) && !m.unlockedBy && (modulePlatform(m) === 'ANY' || modulePlatform(m) === hullPlatform(h))).sort((a, b) => byValue(b) / (b.cost + 1) - byValue(a) / (a.cost + 1));
     for (let i = 0; i < h.sockets[slot]; i++) for (const m of pool) if (tryAdd(m)) break;
   }
   return evaluateLoadout(h.id, chosen, bridges).valid ? chosen : null;
 }
 
-interface Row { id: string; cost: number; upkeep: number; power: number; hp: number; presence1: number }
+interface Row { sub: boolean; id: string; cost: number; upkeep: number; power: number; hp: number; presence1: number }
 const rows: Row[] = [];
 console.log('hull        cost   upkeep/d  power(fe)  cost/fe   upkeep/fe   HP    presence of 1');
 for (const h of HULL_LIST) {
@@ -55,7 +55,7 @@ for (const h of HULL_LIST) {
   const ship = createShip({ id: 'x', name: 'x', pennant: 'x', hullId: h.id, designName: 'x', moduleIds: mods, constructing: false, state: 'ACTIVE_PATROL', readiness: 100, tick: 0 });
   const power = shipPower(ship);
   const up = hullDailyCost(h.id, 'ACTIVE_PATROL');
-  rows.push({ id: h.id, cost: ev.cost, upkeep: up, power, hp: h.structuralHP, presence1: presenceFrom(power) });
+  rows.push({ sub: hullPlatform(h) === 'SUBSURFACE', id: h.id, cost: ev.cost, upkeep: up, power, hp: h.structuralHP, presence1: presenceFrom(power) });
   console.log(`${h.id.padEnd(10)} ${ev.cost.toFixed(0).padStart(5)} ${up.toFixed(2).padStart(9)} ${power.toFixed(2).padStart(10)} ${(ev.cost / power).toFixed(0).padStart(9)} ${(up / power).toFixed(2).padStart(11)} ${String(h.structuralHP).padStart(5)} ${presenceFrom(power).toFixed(2).padStart(8)}`);
 }
 
@@ -74,7 +74,7 @@ const fail = (m: string) => {
   failures++;
   console.log(`  FAIL: ${m}`);
 };
-if (rows.length < 4) fail('fewer than four hull classes have a usable loadout');
+if (rows.length < 7) fail('a hull class has no usable loadout');
 // no class strictly dominates every other on cost-efficiency AND running-cost-efficiency AND durability per money
 for (const a of rows) {
   const dominated = rows.filter((b) => b.id !== a.id && a.cost / a.power <= b.cost / b.power && a.upkeep / a.power <= b.upkeep / b.power && a.hp / a.cost >= b.hp / b.cost);
@@ -91,7 +91,13 @@ if (!(table['FAC']?.[0] > 0)) fail('a 300 M budget buys no presence at all');
     if (!(swarm < dd.presence1)) fail(`${Math.floor(dd.cost / fac.cost)} FACs (same money) give ${swarm.toFixed(2)} presence, a destroyer ${dd.presence1.toFixed(2)}`);
   }
 }
-const spread = Math.max(...rows.map((r) => r.cost / r.power)) / Math.min(...rows.map((r) => r.cost / r.power));
+// boats deter by uncertainty and ambush, so they must not be a cheaper way to buy deterrence than a frigate
+{
+  const frigate = rows.find((r) => r.id === 'FRIGATE');
+  for (const b of rows.filter((r) => r.sub)) if (frigate && !(b.cost / b.power > frigate.cost / frigate.power)) fail(`${b.id} buys deterrence cheaper than a frigate (${(b.cost / b.power).toFixed(0)} vs ${(frigate.cost / frigate.power).toFixed(0)} M per frigate-equivalent)`);
+}
+const surface = rows.filter((r) => !r.sub);
+const spread = Math.max(...surface.map((r) => r.cost / r.power)) / Math.min(...surface.map((r) => r.cost / r.power));
 console.log(`\ncost-per-presence spread (worst / best): ${spread.toFixed(2)}x`);
 if (spread > 2.5) fail(`cost per frigate-equivalent varies ${spread.toFixed(1)}x across classes: some class is a trap or a bargain`);
 if (failures) {

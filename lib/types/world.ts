@@ -153,7 +153,7 @@ export interface WorldDraft {
   /** Civilian shipping: lanes, merchant ships, trade index. */
   shipping: ShippingState;
   /** Running statistics for the ledger. */
-  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number; fallen?: FallenShip[] };
+  stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number; fallen?: FallenShip[]; firstBoatTick?: number };
 }
 
 export type Bridges = ReadonlySet<BridgeKey>;
