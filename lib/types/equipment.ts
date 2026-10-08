@@ -13,6 +13,9 @@ export type ArmamentRole = 'SAM' | 'SSM' | 'GUN' | 'ASW';
 
 export interface PowerStats {
   kind: 'POWER';
+  /** Submarine plants: change in acoustic stealth (0-100 scale), and extra days submerged before the boat must snorkel. */
+  stealth?: number;
+  enduranceDays?: number;
 }
 export interface CmsStats {
   kind: 'CMS';
@@ -23,10 +26,14 @@ export interface CmsStats {
   /** Multiplier on integration friction with foreign modules (open-architecture CMS < 1). */
   integration?: number;
 }
+export type SensorDomain = 'RADAR' | 'SONAR';
+
 export interface SensorStats {
   kind: 'SENSOR';
   rangeKm: number;
   tracks: number;
+  /** RADAR (default) detects air and surface tracks; SONAR detects submerged contacts and never counts toward radar detection. */
+  domain?: SensorDomain;
 }
 export interface ArmamentStats {
   kind: 'ARMAMENT';
@@ -39,10 +46,15 @@ export interface ArmamentStats {
 }
 export type ModuleStats = PowerStats | CmsStats | SensorStats | ArmamentStats;
 
+/** Where a module can be fitted: surface hulls, submarines, or both. */
+export type ModulePlatform = 'SURFACE' | 'SUBSURFACE' | 'ANY';
+
 export interface EquipmentModule {
   id: string;
   name: string;
   slot: ModuleSlot;
+  /** Hull types that can carry it. Absent = SURFACE for plants, sensors and weapons, ANY for combat systems (see `modulePlatform`). */
+  platform?: ModulePlatform;
   vendorId: VendorId;
   protocol: Protocol;
   /** Continuous electrical demand in MW. */

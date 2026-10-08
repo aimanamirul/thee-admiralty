@@ -11,7 +11,7 @@ import type { Tempo } from '../types/fleet';
 import type { HullClassId } from '../types/hull';
 import type { Roe, WorldDraft } from '../types/world';
 import * as cmd from './commands';
-import { evaluateLoadout, procurability } from './designEngine';
+import { evaluateLoadout, hullBlocked, procurability } from './designEngine';
 import { AVERT_STANDING, REINSTATE_STANDING } from './diplomacyEngine';
 import { allTaskForces, DEEP_DRAFT_M, PATROL_LIMIT_DAYS, taskForceShipIds } from './fleetEngine';
 import { findRoute } from './navigation';
@@ -231,6 +231,8 @@ export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; module
   if (!ev.valid) return blocked(ev.errors[0]);
   const vendors = w.vendors as unknown as Record<string, WorldDraft['vendors'][VendorId]>;
   const done = new Set(w.research.completed);
+  const hullWhy = hullBlocked(a.hullId, vendors, done);
+  if (hullWhy) return blocked(hullWhy);
   for (const id of a.moduleIds) {
     const p = procurability(MODULE_BY_ID[id], vendors, done);
     if (!p.ok) return blocked(`${mt(id)}: ${p.reason}`);

@@ -1,6 +1,6 @@
 /** Static game data: vendors, hulls, equipment modules, ministries, R&D projects, starter designs. */
 import type { Bloc, Ministry, RegimeId, Rung, Vendor, VendorId } from '../types/diplomacy';
-import type { EquipmentModule, Protocol } from '../types/equipment';
+import type { EquipmentModule, ModulePlatform, Protocol } from '../types/equipment';
 import type { HullBase, HullClassId, ShipDesign } from '../types/hull';
 
 // ------------------------------------------------------------------------------- vendors
@@ -72,14 +72,33 @@ export const HULLS: Record<HullClassId, HullBase> = {
     baseGenerationMW: 10, hotelLoadMW: 9, payloadT: 6500, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 4 },
     cost: 1500, buildDays: 320, upkeepPerDay: 3.2, strikeRating: 90,
   },
+  // Conventional submarines (see docs/PLAN-submarines.md). Vendor hulls: the price goes to the builder and its sanctions stall construction.
+  SUB_SEORAK: {
+    id: 'SUB_SEORAK', name: 'Patrol Submarine (large)', pennantPrefix: 'S', displacementT: 3000, draftM: 5.5, structuralHP: 380,
+    baseGenerationMW: 1.5, hotelLoadMW: 1.2, payloadT: 700, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 4 },
+    cost: 300, buildDays: 130, upkeepPerDay: 0.8, strikeRating: 0,
+    platform: 'SUBSURFACE', vendorId: 'SEORAK', requiredTier: 1, stealth: 50, enduranceDays: 5,
+  },
+  SUB_KB: {
+    id: 'SUB_KB', name: 'Coastal Submarine (quiet)', pennantPrefix: 'S', displacementT: 1800, draftM: 5.2, structuralHP: 280,
+    baseGenerationMW: 1.2, hotelLoadMW: 0.9, payloadT: 480, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 3 },
+    cost: 330, buildDays: 200, upkeepPerDay: 0.7, strikeRating: 0,
+    platform: 'SUBSURFACE', vendorId: 'KESSLER_BRANDT', requiredTier: 2, stealth: 70, enduranceDays: 3,
+  },
 };
+
+export const hullPlatform = (h: HullBase) => h.platform ?? 'SURFACE';
+export const hullVendor = (id: HullClassId): VendorId => HULLS[id].vendorId ?? 'DOMESTIC_YARDS';
 
 export const HULL_LIST: HullBase[] = Object.values(HULLS);
 
 // ------------------------------------------------------------------------------ modules
 
 type ModuleSeed = Omit<EquipmentModule, 'powerGenerationMW'> & { powerGenerationMW?: number };
-const mod = (m: ModuleSeed): EquipmentModule => ({ powerGenerationMW: 0, ...m });
+/** Combat systems fit anywhere; every other module is surface-only unless it says otherwise. */
+const defaultPlatform = (m: ModuleSeed): ModulePlatform => (m.slot === 'CMS' ? 'ANY' : 'SURFACE');
+const mod = (m: ModuleSeed): EquipmentModule => ({ powerGenerationMW: 0, ...m, platform: m.platform ?? defaultPlatform(m) });
+export const modulePlatform = (m: EquipmentModule): ModulePlatform => m.platform ?? defaultPlatform(m);
 
 const powerplant = (
   id: string, name: string, vendorId: VendorId, gen: number, weightT: number, cost: number,
@@ -118,6 +137,29 @@ const arm = (
     id, name, slot: 'ARMAMENT', vendorId, protocol, powerDrawMW: draw, weightT, cost, requiredTier, reliability,
     unlockedBy, stats: { kind: 'ARMAMENT', role, rounds, damage, rangeKm }, blurb,
   });
+
+const subPlant = (
+  id: string, name: string, vendorId: VendorId, gen: number, weightT: number, cost: number,
+  requiredTier: 0 | 1 | 2 | 3, reliability: number, stealth: number, enduranceDays: number, blurb: string,
+): EquipmentModule => ({
+  ...powerplant(id, name, vendorId, gen, weightT, cost, requiredTier, reliability, blurb),
+  platform: 'SUBSURFACE',
+  stats: { kind: 'POWER', stealth, enduranceDays },
+});
+
+const sonar = (
+  id: string, name: string, vendorId: VendorId, protocol: Protocol, draw: number, weightT: number, cost: number,
+  requiredTier: 0 | 1 | 2 | 3, reliability: number, rangeKm: number, tracks: number, platform: ModulePlatform, blurb: string,
+): EquipmentModule => ({
+  ...sensor(id, name, vendorId, protocol, draw, weightT, cost, requiredTier, reliability, rangeKm, tracks, blurb),
+  platform,
+  stats: { kind: 'SENSOR', rangeKm, tracks, domain: 'SONAR' },
+});
+
+const subArm = (
+  id: string, name: string, vendorId: VendorId, protocol: Protocol, draw: number, weightT: number, cost: number,
+  requiredTier: 0 | 1 | 2 | 3, reliability: number, role: 'SSM' | 'ASW', rounds: number, damage: number, rangeKm: number, blurb: string,
+): EquipmentModule => ({ ...arm(id, name, vendorId, protocol, draw, weightT, cost, requiredTier, reliability, role, rounds, damage, rangeKm, blurb), platform: 'SUBSURFACE' });
 
 export const MODULES: EquipmentModule[] = [
   // Power plants
@@ -181,6 +223,23 @@ export const MODULES: EquipmentModule[] = [
   // Vayu-Sarath Aerospace (JV): supersonic anti-ship missiles; either parent state can stop deliveries.
   arm('ARM_VS_SEAWIND', 'Vayu-Sarath Seawind SSM Quad', 'VAYU_SARATH', 'DOMESTIC_OPEN', 0.4, 30, 30, 1, 0.9, 'SSM', 4, 110, 290, 'Supersonic sea-skimmer; plugs into open-bus combat systems.'),
   arm('ARM_VS_SEAWIND8', 'Vayu-Sarath Seawind VL x8', 'VAYU_SARATH', 'DOMESTIC_OPEN', 0.8, 64, 56, 2, 0.9, 'SSM', 8, 110, 290, 'Eight-cell vertical Seawind launcher.'),
+  // ---- Underwater warfare (submarine plants, sonar, torpedoes). Hull sonar and towed arrays also fit surface ships for ASW.
+  subPlant('PP_SUB_DOM_DE', 'D-4S Submarine Diesel Set', 'DOMESTIC_YARDS', 4, 80, 8, 0, 0.9, -8, 0, 'Cheap and loud: the boat must snorkel often.'),
+  subPlant('PP_SUB_SK_DE', 'Seorak SD-5 Diesel Generator', 'SEORAK', 5, 85, 12, 1, 0.92, -2, 0, 'Large-battery diesel-electric plant for long transits.'),
+  subPlant('PP_SUB_KB_DE', 'Kessler-Brandt KD-4 Quiet Diesel', 'KESSLER_BRANDT', 4, 80, 14, 2, 0.96, 6, 0, 'Raft-mounted diesel; the quietest set on the market.'),
+  subPlant('PP_SUB_SK_AIP', 'Seorak Closed-Cycle AIP Module', 'SEORAK', 1.5, 70, 20, 1, 0.9, 6, 9, 'Air-independent plant: weeks without snorkelling.'),
+  subPlant('PP_SUB_KB_AIP', 'Kessler-Brandt Fuel-Cell AIP', 'KESSLER_BRANDT', 2, 75, 28, 2, 0.94, 10, 12, 'Fuel-cell AIP: silent, long submerged endurance.'),
+  subPlant('PP_SUB_SK_LI', 'Seorak Li-ion Battery Bank', 'SEORAK', 0.5, 60, 34, 3, 0.9, 8, 7, 'Lithium-ion batteries: long sprints and quiet running; premium price.'),
+
+  sonar('SEN_SONAR_HULL', 'Hull-Mounted Sonar', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 1, 12, 6, 0, 0.92, 18, 8, 'SURFACE', 'Bow sonar for surface ships.'),
+  sonar('SEN_SONAR_TOWED', 'Towed Array Sonar', 'NAVAL_GROUP_THALES', 'TACTICOS_ETHERNET', 1.5, 30, 20, 1, 0.9, 45, 14, 'SURFACE', 'Long towed array: the surface ship\'s answer to quiet submarines.'),
+  sonar('SEN_SONAR_SUB_DOM', 'DS-1 Flank and Bow Array', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 0.8, 10, 8, 0, 0.9, 22, 8, 'SUBSURFACE', 'Basic passive array for a submarine.'),
+  sonar('SEN_SONAR_SUB_SK', 'Seorak SA-3 Sonar Suite', 'SEORAK', 'DOMESTIC_OPEN', 1, 14, 14, 1, 0.92, 28, 10, 'SUBSURFACE', 'Bow, flank and towed arrays on an open bus.'),
+  sonar('SEN_SONAR_SUB_KB', 'Kessler-Brandt CSU Sonar', 'KESSLER_BRANDT', 'TACTICOS_ETHERNET', 1.2, 16, 24, 2, 0.94, 38, 12, 'SUBSURFACE', 'Integrated sonar suite with long-range passive detection.'),
+
+  subArm('ARM_SUB_DOM_HWT', '533mm Heavyweight Tubes', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 0.4, 40, 14, 0, 0.92, 'ASW', 6, 55, 30, 'Wire-guided heavyweight torpedoes.'),
+  subArm('ARM_SUB_KB_HWT', 'Kessler-Brandt DM-class Torpedo Tubes', 'KESSLER_BRANDT', 'TACTICOS_ETHERNET', 0.4, 42, 26, 2, 0.95, 'ASW', 6, 70, 38, 'Heavyweight torpedoes with a fibre-optic guidance link.'),
+  subArm('ARM_SUB_SK_TASM', 'Seorak Tube-Launched SSM', 'SEORAK', 'DOMESTIC_OPEN', 0.4, 26, 22, 1, 0.9, 'SSM', 4, 70, 120, 'Capsule-launched anti-ship missiles fired from the torpedo tubes.'),
 ];
 
 /**

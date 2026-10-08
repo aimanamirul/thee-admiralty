@@ -57,6 +57,14 @@ const REAL_MODULE: Record<string, string> = {
   ARM_DH_VLS32: 'HHQ-16 32-Cell VLS',
   ARM_VS_SEAWIND: 'BrahMos SSM Quad',
   ARM_VS_SEAWIND8: 'BrahMos VL x8',
+  PP_SUB_KB_DE: 'MTU 12V 396 Submarine Diesel',
+  PP_SUB_KB_AIP: 'PEM Fuel-Cell AIP (Type 212A-class)',
+  PP_SUB_SK_AIP: 'Stirling AIP Module',
+  PP_SUB_SK_LI: 'Li-ion Submarine Battery Bank',
+  SEN_SONAR_TOWED: 'CAPTAS-4 Towed Array',
+  SEN_SONAR_SUB_KB: 'ISUS 90 Sonar Suite',
+  ARM_SUB_KB_HWT: 'DM2A4 Heavyweight Torpedo Tubes',
+  ARM_SUB_SK_TASM: 'Tube-Launched SSM (Hae Sung-class)',
 };
 
 const REAL_PROJECT: Record<string, string> = {

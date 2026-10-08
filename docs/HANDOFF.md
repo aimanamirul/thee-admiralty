@@ -470,6 +470,18 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   Hull purchase costs were left alone. The same interceptor stacking exists in `combatSim` (real defence uses the raw count, limited by CMS channels);
   that was not changed. Submarines (S1–S5) remain unbuilt; they would need rows in this analysis.
 
+## Submarines S1: data and designer (docs/PLAN-submarines.md)
+- Hulls `SUB_SEORAK` (3,000 t, large battery, 130 d) and `SUB_KB` (1,800 t, quiet, 200 d); `HullBase` gained `platform`, `vendorId`, `origins`, `requiredTier`,
+  `stealth`, `enduranceDays`. `HullClassId` now has the two boat ids; every `Record<HullClassId, …>` table has provisional entries (presence weight 0.5,
+  loss weights from the plan) until S2.
+- Modules have a `platform` (SURFACE / SUBSURFACE / ANY; CMS default ANY, everything else SURFACE). `evaluateLoadout` refuses mismatches, reports `stealth`,
+  `submergedDays`, `sonarKm`, and never lets sonar count as radar detection or track capacity. New kit: six submarine plants (diesel, AIP, Li-ion), five sonars
+  (two also fit surface ships: hull sonar, towed array), three torpedo / tube-missile modules. Warnings: no sonar, no diesel, surface ship with no radar.
+- A hull is a vendor product: contract shares, `cannotDeliver`, construction freezes and resale checks use the hull's builder (and `origins`), and
+  `hullBlocked` applies the builder's standing tier. **`SUBMARINE_SERVICE = false` in `designEngine.ts`: boats can be designed but not laid down** until S2
+  (stance, depth, indiscretion) exists; flip it there. Designer shows builder, hull-sale status, stealth and submerged days, sonar range.
+- Not done in S1: boats are not fielded, no stance, no enemy submarines, no Dahai family, no tutorial lesson. `verify:subs` covers S1 only and grows with S2–S5.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

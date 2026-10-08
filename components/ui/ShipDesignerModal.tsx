@@ -2,9 +2,9 @@
 
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { HULL_LIST, HULLS, MODULE_BY_ID, MODULES } from '@/lib/data/catalog';
+import { hullPlatform, HULL_LIST, HULLS, MODULE_BY_ID, MODULES, modulePlatform } from '@/lib/data/catalog';
 import { TRADITIONS, TRADITION_LABEL } from '@/lib/generator/nameGenerator';
-import { evaluateLoadout, procurability, SLOT_LABEL } from '@/lib/sim/designEngine';
+import { evaluateLoadout, hullBlocked, procurability, SLOT_LABEL } from '@/lib/sim/designEngine';
 import { bridgeSet } from '@/lib/sim/researchEngine';
 import { SLOT_ORDER, type ModuleSlot } from '@/lib/types/equipment';
 import type { NamingTradition } from '@/lib/types/fleet';
@@ -67,6 +67,8 @@ export default function ShipDesignerModal() {
     return { via: [...new Set(views.flatMap((o) => o.known))], unverified: views.filter((o) => !o.verified).length };
   }, [moduleIds, vendors]);
 
+  const isSub = hullPlatform(hull) === 'SUBSURFACE';
+  const hullWhy = useMemo(() => hullBlocked(hullId, vendors, done), [hullId, vendors, done]);
   const blocked = useMemo(
     () =>
       moduleIds
@@ -103,11 +105,11 @@ export default function ShipDesignerModal() {
           </div>
           <div className="space-y-2">
             <Section title="Hull base">
-              <div className="grid grid-cols-2 gap-1 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
                 {HULL_LIST.map((h) => (
                   <button key={h.id} onClick={() => changeHull(h.id)} className={`border px-1.5 py-1 text-left text-[0.8125rem] ${hullId === h.id ? 'border-phosphor bg-phosphor/10 text-phosphor shadow-glow' : 'border-navy text-slate-400 hover:border-phosphor/50'}`}>
                     <div className="uppercase tracking-wider">{h.name}</div>
-                    <div className="text-slate-500">{h.displacementT.toLocaleString()} t · {h.draftM} m</div>
+                    <div className="text-slate-500">{h.displacementT.toLocaleString()} t · {hullPlatform(h) === 'SUBSURFACE' ? `stealth ${h.stealth}` : `${h.draftM} m`}{h.vendorId ? ` · ${n.vs(h.vendorId)}` : ''}</div>
                     <div className="text-slate-500">{fmtM(h.cost)} · {h.buildDays}d</div>
                   </button>
                 ))}
@@ -117,6 +119,8 @@ export default function ShipDesignerModal() {
                 <Stat k="Aux gen" v={`${hull.baseGenerationMW} MW`} />
                 <Stat k="Hotel load" v={`${hull.hotelLoadMW} MW`} />
                 <Stat k="Payload" v={`${hull.payloadT} t`} />
+                {hull.vendorId && <Stat k="Builder" v={n.v(hull.vendorId)} tone={hullWhy && !isSub ? 'text-warn' : undefined} />}
+                {hull.vendorId && <Stat k="Hull sale" v={hullWhy ? n.t(hullWhy) : 'available'} tone={hullWhy ? 'text-warn' : 'text-emerald-accent'} />}
               </div>
               <input value={name} onChange={(e) => setName(e.target.value)} className="mt-2 w-full px-2 py-1 text-[0.9375rem]" aria-label="Design name" placeholder="Design / class name" />
             </Section>
@@ -127,14 +131,15 @@ export default function ShipDesignerModal() {
                   {sel[slot].map((val, idx) => (
                     <select key={idx} value={val} onChange={(e) => setSlot(slot, idx, e.target.value)} className="w-full px-1.5 py-1 text-[0.875rem]" aria-label={`${SLOT_LABEL[slot]} socket ${idx + 1}`}>
                       <option value="">— empty —</option>
-                      {MODULES.filter((m) => m.slot === slot && vendors[m.vendorId]?.rung !== 'UNKNOWN').map((m) => {
+                      {MODULES.filter((m) => m.slot === slot && vendors[m.vendorId]?.rung !== 'UNKNOWN' && (modulePlatform(m) === 'ANY' || modulePlatform(m) === hullPlatform(hull))).map((m) => {
                         const p = procurability(m, vendors, done);
                         const stat = slot === 'POWERPLANT' ? `+${m.powerGenerationMW}MW` : `${m.powerDrawMW}MW`;
+                        const sonarTag = m.stats.kind === 'SENSOR' && m.stats.domain === 'SONAR' ? `SONAR ${m.stats.rangeKm}km · ` : m.stats.kind === 'POWER' && m.platform === 'SUBSURFACE' ? `stealth ${(m.stats.stealth ?? 0) >= 0 ? '+' : ''}${m.stats.stealth ?? 0}${m.stats.enduranceDays ? ` · +${m.stats.enduranceDays}d submerged` : ''} · ` : '';
                         const o = originView({ vendors }, m);
                         const chain = o.known.length ? ` · +${o.known.map((k) => n.vs(k)).join('+')} parts` : o.verified ? '' : ' · unverified';
                         return (
                           <option key={m.id} value={m.id} disabled={!p.ok}>
-                            {n.m(m.id)} · {n.vs(m.vendorId)}{chain} · {n.x(m.protocol)} · {stat} · {m.weightT}t · {m.cost}M{p.ok ? '' : ` — ${n.t(p.reason ?? '')}`}
+                            {n.m(m.id)} · {sonarTag}{n.vs(m.vendorId)}{chain} · {n.x(m.protocol)} · {stat} · {m.weightT}t · {m.cost}M{p.ok ? '' : ` — ${n.t(p.reason ?? '')}`}
                           </option>
                         );
                       })}
@@ -162,15 +167,16 @@ export default function ShipDesignerModal() {
           <div className="space-y-2">
             <Section title="Design readout" tone={ev.valid ? 'emerald' : 'red'} right={<Chip tone={ev.valid ? 'emerald' : 'red'}>{ev.valid ? 'VALID' : 'INVALID'}</Chip>}>
               {ev.errors.map((e) => (
-                <div key={e} className="text-[0.875rem] text-warn">✖ {e}</div>
+                <div key={e} className="text-[0.875rem] text-warn">✖ {n.t(e)}</div>
               ))}
+              {hullWhy && <div className="text-[0.875rem] text-warn">✖ {n.t(hullWhy)}</div>}
               {ev.warnings.map((w) => (
                 <div key={w} className="text-[0.875rem] text-amber-radar">▲ {w}</div>
               ))}
               {blocked.map(({ m, p }) => (
                 <div key={m.id} className="text-[0.875rem] text-warn">✖ {n.m(m.id)}: {n.t(p.reason ?? "")}</div>
               ))}
-              {ev.valid && ev.warnings.length === 0 && blocked.length === 0 && <div className="text-[0.875rem] text-emerald-accent">✔ All systems nominal</div>}
+              {ev.valid && ev.warnings.length === 0 && blocked.length === 0 && !hullWhy && <div className="text-[0.875rem] text-emerald-accent">✔ All systems nominal</div>}
             </Section>
 
             <Section title="Power grid & displacement">
@@ -185,7 +191,12 @@ export default function ShipDesignerModal() {
               <Meter value={Math.min(100, payloadPct)} tone={payloadPct > 100 ? 'red' : payloadPct > 90 ? 'amber' : 'cyan'} label={`${payloadPct.toFixed(0)}%`} />
               <div className="mt-2 grid grid-cols-2 gap-x-3">
                 <Stat k="Displacement" v={`${ev.displacementT.toLocaleString()} t`} />
-                <Stat k="Draft" v={`${ev.draftM.toFixed(1)} m · ${ev.draft}`} tone={ev.draft === 'Deep' ? 'text-amber-radar' : undefined} />
+                {isSub ? (
+                  <Stat k="Stealth" v={`${ev.stealth.toFixed(0)} / 100`} tone={ev.stealth >= 65 ? 'text-emerald-accent' : ev.stealth < 40 ? 'text-amber-radar' : undefined} />
+                ) : (
+                  <Stat k="Draft" v={`${ev.draftM.toFixed(1)} m · ${ev.draft}`} tone={ev.draft === 'Deep' ? 'text-amber-radar' : undefined} />
+                )}
+                {isSub && <Stat k="Submerged" v={`${ev.submergedDays} days before snorkelling`} />}
               </div>
             </Section>
 
@@ -205,7 +216,8 @@ export default function ShipDesignerModal() {
               <div className="grid grid-cols-2 gap-x-3">
                 <Stat k="CMS reaction" v={`${ev.reactionSec >= 99 ? '—' : ev.reactionSec.toFixed(1) + 's'}`} tone={ev.frictionIndex > 0 ? 'text-amber-radar' : undefined} />
                 <Stat k="Tracking lag" v={`${ev.trackingLagSec.toFixed(1)}s`} />
-                <Stat k="Detection" v={`${ev.detectionKm} km`} />
+                <Stat k="Detection (radar)" v={ev.detectionKm > 0 ? `${ev.detectionKm} km` : '—'} />
+                <Stat k="Sonar" v={ev.sonarKm > 0 ? `${ev.sonarKm} km` : '—'} />
                 <Stat k="Track capacity" v={ev.trackCapacity} />
                 <Stat k="Firepower" v={ev.firepower} />
                 <Stat k="Interceptors" v={ev.interceptors} />
@@ -253,7 +265,7 @@ export default function ShipDesignerModal() {
                 <Btn
                   tone="emerald"
                   className="flex-1"
-                  disabled={!ev.valid || blocked.length > 0}
+                  disabled={!ev.valid || blocked.length > 0 || !!hullWhy}
                   preview={(w) => `Lay down: ${previewOrderShip(w, { hullId, moduleIds, squadronId })}`}
                   onClick={() => {
                     const r = orderShip({ designName: name.trim() || 'Unnamed', hullId, moduleIds, squadronId, tradition, customName: custom });

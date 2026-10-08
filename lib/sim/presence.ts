@@ -30,7 +30,7 @@ export const SPAWN_DETERRENCE_CAP = 0.6;
 export const INTERCEPTORS_PER_HP = 1 / 13;
 
 /** A force of small hulls is a nuisance, a capital ship a statement: per-class weight on a ship's power (a frigate is the yardstick). */
-export const CLASS_WEIGHT: Record<HullClassId, number> = { FAC: 0.7, CORVETTE: 0.85, FRIGATE: 1, DESTROYER: 1.15, CARRIER: 1.3 };
+export const CLASS_WEIGHT: Record<HullClassId, number> = { FAC: 0.7, CORVETTE: 0.85, FRIGATE: 1, DESTROYER: 1.15, CARRIER: 1.3, SUB_SEORAK: 0.5, SUB_KB: 0.5 };
 
 const NO_BRIDGES: ReadonlySet<never> = new Set();
 

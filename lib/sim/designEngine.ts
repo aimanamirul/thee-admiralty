@@ -1,10 +1,11 @@
 /** Equipment designer: power grid, payload, draft, protocol integration friction and combat figures. */
-import { HULLS, MODULE_BY_ID } from '../data/catalog';
+import { hullPlatform, HULLS, MODULE_BY_ID, modulePlatform } from '../data/catalog';
 import type { Vendor } from '../types/diplomacy';
 import { RUNG_LABEL, sellableTier } from './relationsEngine';
 import type { BridgeKey, EquipmentModule, ModuleSlot, Protocol } from '../types/equipment';
 import { bridgeKey, SLOT_ORDER } from '../types/equipment';
 import type { Draft, DesignEvaluation, HullClassId, IntegrationFriction } from '../types/hull';
+import { mt } from '../data/tokens';
 
 /** Severity of a protocol mismatch before any R&D bridge exists (0 = compatible). */
 const SEVERITY: Record<BridgeKey, number> = {
@@ -37,6 +38,13 @@ export function evaluateLoadout(
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  // Platform: surface kit does not go in a pressure hull, and boats' kit does not go on a ship
+  const platform = hullPlatform(hull);
+  for (const m of mods) {
+    const mp = modulePlatform(m);
+    if (mp !== 'ANY' && mp !== platform) errors.push(`${mt(m.id)}: ${mp === 'SURFACE' ? 'SURFACE-ONLY KIT' : 'SUBMARINE-ONLY KIT'}`);
+  }
+
   // Sockets
   for (const slot of SLOT_ORDER) {
     const used = mods.filter((m) => m.slot === slot).length;
@@ -45,6 +53,9 @@ export function evaluateLoadout(
   const plants = mods.filter((m) => m.slot === 'POWERPLANT');
   const cmsList = mods.filter((m) => m.slot === 'CMS');
   const sensors = mods.filter((m) => m.slot === 'SENSOR');
+  const isSonar = (m: EquipmentModule) => m.stats.kind === 'SENSOR' && m.stats.domain === 'SONAR';
+  const radars = sensors.filter((m) => !isSonar(m));
+  const sonars = sensors.filter(isSonar);
   const arms = mods.filter((m) => m.slot === 'ARMAMENT');
   if (plants.length === 0) errors.push('NO POWER PLANT FITTED');
   if (cmsList.length === 0) errors.push('NO COMBAT MANAGEMENT SYSTEM');
@@ -63,7 +74,7 @@ export function evaluateLoadout(
   const displacementT = hull.displacementT + payloadUsedT;
   const draftM = hull.draftM * Math.cbrt(displacementT / hull.displacementT);
   const draft = draftClass(draftM);
-  if (draft === 'Deep') warnings.push('DEEP DRAFT — grounding hazard in littoral sectors');
+  if (platform === 'SURFACE' && draft === 'Deep') warnings.push('DEEP DRAFT — grounding hazard in littoral sectors');
 
   // Protocol friction
   const frictions: IntegrationFriction[] = [];
@@ -93,6 +104,7 @@ export function evaluateLoadout(
   if (frictionIndex > 0.6) warnings.push(`INTEGRATION FRICTION ${frictionIndex.toFixed(2)} — reaction x${reactionMultiplier.toFixed(2)}`);
 
   if (sensors.length === 0) warnings.push('NO SENSOR — ship is blind');
+  else if (hullPlatform(hull) === 'SURFACE' && radars.length === 0) warnings.push('NO RADAR — no air or surface picture');
   if (arms.length === 0) warnings.push('NO ARMAMENT');
 
   // Combat figures
@@ -100,10 +112,28 @@ export function evaluateLoadout(
   const channels = cms && cms.stats.kind === 'CMS' ? cms.stats.channels : 0;
   let detectionKm = 0;
   let tracks = 0;
-  for (const s of sensors) {
+  for (const s of radars) {
     if (s.stats.kind !== 'SENSOR') continue;
     detectionKm = Math.max(detectionKm, s.stats.rangeKm);
     tracks += s.stats.tracks;
+  }
+  const sonarKm = sonars.reduce((best, s) => Math.max(best, s.stats.kind === 'SENSOR' ? s.stats.rangeKm : 0), 0);
+  if (platform === 'SUBSURFACE') {
+    if (sonars.length === 0) warnings.push('NO SONAR — the boat is deaf');
+    if (!plants.some((p) => p.stats.kind === 'POWER' && (p.stats.enduranceDays ?? 0) === 0 && p.powerGenerationMW >= 3)) warnings.push('NO DIESEL GENERATOR — the boat cannot recharge at sea');
+  }
+  // Submarine figures: stealth and days submerged from the hull and the plants
+  let stealth = 0;
+  let submergedDays = 0;
+  if (platform === 'SUBSURFACE') {
+    stealth = hull.stealth ?? 0;
+    submergedDays = hull.enduranceDays ?? 0;
+    for (const p of plants) {
+      if (p.stats.kind !== 'POWER') continue;
+      stealth += p.stats.stealth ?? 0;
+      submergedDays += p.stats.enduranceDays ?? 0;
+    }
+    stealth = Math.max(0, Math.min(100, stealth));
   }
   const trackCapacity = Math.min(tracks, channels * 12);
   let firepower = 0;
@@ -123,7 +153,7 @@ export function evaluateLoadout(
   );
 
   const cost = hull.cost + mods.reduce((s, m) => s + m.cost, 0);
-  const vendors = [...new Set(mods.map((m) => m.vendorId))];
+  const vendors = [...new Set([...(hull.vendorId ? [hull.vendorId] : []), ...mods.map((m) => m.vendorId)])];
 
   return {
     valid: errors.length === 0,
@@ -152,6 +182,10 @@ export function evaluateLoadout(
     combatRating,
     upkeepPerDay: hull.upkeepPerDay * (1 + 0.02 * mods.length),
     vendors,
+    stealth,
+    submergedDays,
+    sonarKm,
+    platform,
   };
 }
 
@@ -161,7 +195,7 @@ export interface Procurability {
 }
 
 /** Can this module currently be procured given R&D unlocks and the vendor's standing / licence status? */
-export function procurability(m: EquipmentModule, vendors: Record<string, Vendor>, done: ReadonlySet<string>): Procurability {
+export function procurability(m: Pick<EquipmentModule, 'vendorId' | 'requiredTier' | 'origins' | 'unlockedBy'>, vendors: Record<string, Vendor>, done: ReadonlySet<string>): Procurability {
   if (m.unlockedBy && !done.has(m.unlockedBy)) return { ok: false, reason: 'REQUIRES R&D' };
   const v = vendors[m.vendorId];
   if (!v) return { ok: true };
@@ -185,3 +219,15 @@ export const SLOT_LABEL: Record<ModuleSlot, string> = {
   SENSOR: 'SENSOR / RADAR',
   ARMAMENT: 'ARMAMENT',
 };
+
+/** Submarines are designed in S1 but not yet commissioned: the service (stance, depth, indiscretion) arrives with S2 of docs/PLAN-submarines.md. */
+export const SUBMARINE_SERVICE = false;
+
+/** Why this hull cannot be laid down right now (service not established, or its builder will not sell), or null. */
+export function hullBlocked(hullId: HullClassId, vendors: Record<string, Vendor>, done: ReadonlySet<string>): string | null {
+  const hull = HULLS[hullId];
+  if (hullPlatform(hull) === 'SUBSURFACE' && !SUBMARINE_SERVICE) return 'NO SUBMARINE SERVICE YET: BOATS CAN BE DESIGNED BUT NOT LAID DOWN';
+  if (!hull.vendorId) return null;
+  const p = procurability({ vendorId: hull.vendorId, requiredTier: hull.requiredTier ?? 0, origins: hull.origins }, vendors, done);
+  return p.ok ? null : `HULL FROM {v:${hull.vendorId}}: ${p.reason}`;
+}

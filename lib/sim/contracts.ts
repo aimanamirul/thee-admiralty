@@ -9,7 +9,7 @@
  * - Resale (the Mistral case): a third-party navy takes over a well-advanced hull for part of what has been paid, unless a
  *   state involved has revoked its licence (re-export not approved).
  */
-import { HULLS, MODULE_BY_ID } from '../data/catalog';
+import { hullVendor, HULLS, MODULE_BY_ID } from '../data/catalog';
 import { vt } from '../data/tokens';
 import type { VendorId } from '../types/diplomacy';
 import type { HullClassId } from '../types/hull';
@@ -28,9 +28,9 @@ export const BREACH_STANDING = 6;
 export const RESALE_RATE = 0.7;
 export const RESALE_MIN_PROGRESS = 0.4;
 
-/** Each vendor's share of the price: modules by their prime vendor, the hull by the domestic yards. */
+/** Each vendor's share of the price: modules by their prime vendor, the hull by its builder (the domestic yards unless it is a vendor hull). */
 export function contractShares(hullId: HullClassId, moduleIds: readonly string[]): Partial<Record<VendorId, number>> {
-  const raw: Partial<Record<VendorId, number>> = { DOMESTIC_YARDS: HULLS[hullId].cost };
+  const raw: Partial<Record<VendorId, number>> = { [hullVendor(hullId)]: HULLS[hullId].cost };
   for (const id of moduleIds) {
     const m = MODULE_BY_ID[id];
     if (m) raw[m.vendorId] = (raw[m.vendorId] ?? 0) + m.cost;
@@ -78,6 +78,8 @@ export function payInstalment(w: WorldDraft, s: Ship): boolean {
 /** A vendor cannot deliver its part of this hull: some product of theirs on it is hit by a sanction (theirs or a sub-supplier's). */
 export function cannotDeliver(w: WorldDraft, s: Ship, vendorId: VendorId): boolean {
   if (vendorId === 'DOMESTIC_YARDS') return false;
+  const h = HULLS[s.hullId];
+  if (h.vendorId === vendorId && [vendorId, ...(h.origins ?? [])].some((x) => w.vendors[x].status === 'FROZEN' || w.vendors[x].status === 'REVOKED')) return true;
   return s.modules.some((im) => {
     const m = MODULE_BY_ID[im.moduleId];
     return m?.vendorId === vendorId && exposure(m).some((x) => w.vendors[x].status === 'FROZEN' || w.vendors[x].status === 'REVOKED');
@@ -159,6 +161,9 @@ export function resaleBlocked(w: WorldDraft, shipId: string): string | null {
   if (b) return b;
   const s = w.ships[shipId];
   if (s.buildProgressDays / s.buildTotalDays < RESALE_MIN_PROGRESS) return `NO BUYER BEFORE ${Math.round(RESALE_MIN_PROGRESS * 100)}% BUILT`;
+  const hull = HULLS[s.hullId];
+  const hullRevoked = [hull.vendorId, ...(hull.origins ?? [])].find((x) => x && w.vendors[x].status === 'REVOKED');
+  if (hullRevoked) return `RE-EXPORT NOT APPROVED ({vs:${hullRevoked}} LICENCE REVOKED)`;
   for (const im of s.modules) {
     const m = MODULE_BY_ID[im.moduleId];
     const revoked = m && exposure(m).find((x) => w.vendors[x].status === 'REVOKED');

@@ -13,7 +13,7 @@ import { cancelContract, newContract, resellHull } from './contracts';
 import { cancelEscort, orderEscort } from './shipping';
 import { declareZone, engageMerchant, liftZone, orderInspect, setSectorInspect, setZonePolicy } from './interdiction';
 import type { FlagFilter, InterdictionPolicy } from '../types/shipping';
-import { evaluateLoadout, procurability } from './designEngine';
+import { evaluateLoadout, hullBlocked, procurability } from './designEngine';
 import { lobbyVendor, moduleOrdersBlocked } from './diplomacyEngine';
 import { budgetHearing, procurementFrozen } from './politicsEngine';
 import type { VendorId } from '../types/diplomacy';
@@ -42,6 +42,8 @@ export function orderShip(
   const ev = evaluateLoadout(a.hullId, a.moduleIds, bridgeSet(world.research.completed));
   if (!ev.valid) return fail(ev.errors[0]);
   const done_ = new Set(world.research.completed);
+  const hullWhy = hullBlocked(a.hullId, vendorMap(world), done_);
+  if (hullWhy) return fail(hullWhy);
   for (const id of a.moduleIds) {
     const m = MODULE_BY_ID[id];
     const p = procurability(m, vendorMap(world), done_);

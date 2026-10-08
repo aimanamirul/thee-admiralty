@@ -1,5 +1,5 @@
 /** Vendors, lobbying, geopolitical tension and export-sanction hazards. */
-import { MINISTRIES, MODULE_BY_ID } from '../data/catalog';
+import { HULLS, MINISTRIES, MODULE_BY_ID } from '../data/catalog';
 import { vt } from '../data/tokens';
 import { adjustSupport, lobbyCost, ministriesRefuse } from './politicsEngine';
 import { REGIMES, rollSanctionKind, sanctionRiskPerDay } from './relationsEngine';
@@ -164,7 +164,15 @@ export function syncConstructionFreezes(world: WorldDraft): void {
   for (const ship of Object.values(world.ships)) {
     if (ship.buildStatus !== 'CONSTRUCTING') continue;
     let culprit: VendorId | null = null;
-    outer: for (const m of ship.modules) {
+    const hull = HULLS[ship.hullId];
+    for (const vid of hull.vendorId ? [hull.vendorId, ...(hull.origins ?? [])] : []) {
+      const v = world.vendors[vid];
+      if (v.status === 'REVOKED' || (v.status === 'FROZEN' && !!activeSanction(world, vid, 'EXPORT_FREEZE'))) {
+        culprit = vid;
+        break;
+      }
+    }
+    outer: for (const m of culprit ? [] : ship.modules) {
       const def = MODULE_BY_ID[m.moduleId];
       if (!def) continue;
       for (const vid of exposure(def)) {
