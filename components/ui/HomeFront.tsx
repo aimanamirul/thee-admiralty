@@ -1,5 +1,6 @@
 'use client';
 
+import { stationUpkeep } from '@/lib/sim/moc';
 import { Landmark } from 'lucide-react';
 import { useMemo } from 'react';
 import { Term } from '@/components/tutorial/Term';
@@ -45,7 +46,8 @@ export default function HomeFront() {
   const view = { politics, resources, tick, tension, shipping };
   const fc = forecast(view);
   const spent = spentThisYear(view);
-  const costs = useMemo(() => runningCosts(Object.values(ships), tick), [ships, tick]);
+  const stations = useFleetStore((s) => s.stations);
+  const costs = useMemo(() => { const c = runningCosts(Object.values(ships), tick); const shore = stationUpkeep(stations); return { ...c, shore, total: c.total + shore }; }, [ships, tick, stations]);
   const f = politics.fiscal;
   const doy = dayOfYear(tick);
   const effect = supportEffect(politics.support);
@@ -114,7 +116,7 @@ export default function HomeFront() {
         </div>
         <Stat k="Appropriation" v={fmtM(f.appropriation)} />
         <Stat k="Spent this year" v={`${fmtM(spent)} (pace ${(fc.pace * 100).toFixed(0)}%)`} tone={fc.pace < UNDERSPEND_PACE ? 'text-amber-radar' : undefined} />
-        <Stat k="Running costs" v={`${costs.total.toFixed(1)}M/day (crew ${costs.wages.toFixed(1)} · ops ${costs.operations.toFixed(1)} · base ${costs.overhead.toFixed(1)})`} />
+        <Stat k="Running costs" v={`${costs.total.toFixed(1)}M/day (crew ${costs.wages.toFixed(1)} · ops ${costs.operations.toFixed(1)} · base ${costs.overhead.toFixed(1)} · shore ${costs.shore.toFixed(2)})`} />
         <Stat k="Carryover cap at year end" v={fmtM(carryCap)} />
         {atRisk > 1 && <Stat k="Projected return to Treasury" v={fmtM(atRisk)} tone="text-amber-radar" />}
       </div>

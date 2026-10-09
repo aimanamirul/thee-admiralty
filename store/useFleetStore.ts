@@ -14,6 +14,7 @@ import { advanceDay } from '../lib/sim/worldEngine';
 import { lobbyVendor } from '../lib/sim/diplomacyEngine';
 import * as hulk from '../lib/sim/fleetEngine';
 import * as ops from '../lib/sim/fleetOps';
+import { normalizeStations } from '../lib/sim/moc';
 import { setStance as setStanceCmd, type Stance } from '../lib/sim/submarines';
 import type { ModuleSlot } from '../lib/types/equipment';
 import type { Fleet, HierarchyKind, Ship, Tempo } from '../lib/types/fleet';
@@ -46,6 +47,7 @@ interface WorldSlice {
   research: ResearchState;
   contacts: Contact[];
   shipping: ShippingState;
+  stations: WorldDraft['stations'];
   tension: number;
   scripted: boolean;
   policy: { autoSpares: boolean };
@@ -153,6 +155,9 @@ interface Actions {
   mergeTaskForces: (fromId: string, intoId: string) => CommandResult;
   setStance: (shipId: string, stance: Stance) => CommandResult;
   negotiateLicence: (vendorId: VendorId, hullId: HullClassId) => CommandResult;
+  buildStation: (site: string) => CommandResult;
+  upgradeStation: (id: string) => CommandResult;
+  removeStation: (id: string) => CommandResult;
   setStanceMany: (shipIds: string[], stance: Stance) => CommandResult;
 }
 
@@ -162,14 +167,14 @@ const pickWorld = (s: GameState): WorldDraft => {
   // The map is large and immutable during play: share it, clone everything else.
   const mutable = structuredClone({
     resources: s.resources, ships: s.ships, fleets: s.fleets, spares: s.spares, sectors: s.sectors, vendors: s.vendors,
-    sanctions: s.sanctions, research: s.research, contacts: s.contacts, shipping: s.shipping, tension: s.tension, scripted: s.scripted, policy: s.policy, politics: s.politics, stats: s.stats,
+    sanctions: s.sanctions, research: s.research, contacts: s.contacts, shipping: s.shipping, stations: s.stations, tension: s.tension, scripted: s.scripted, policy: s.policy, politics: s.politics, stats: s.stats,
   });
   return { seed: s.seed, tick: s.tick, map: s.map, events: [], ...mutable };
 };
 
 const worldPatch = (w: WorldDraft): WorldSlice => ({
   seed: w.seed, tick: w.tick, map: w.map, resources: w.resources, ships: w.ships, fleets: w.fleets, spares: w.spares,
-  sectors: w.sectors, vendors: w.vendors, sanctions: w.sanctions, research: w.research, contacts: w.contacts, shipping: w.shipping,
+  sectors: w.sectors, vendors: w.vendors, sanctions: w.sanctions, research: w.research, contacts: w.contacts, shipping: w.shipping, stations: w.stations,
   tension: w.tension, scripted: w.scripted, policy: w.policy, politics: w.politics, stats: w.stats,
 });
 
@@ -250,6 +255,7 @@ export const useFleetStore = create<GameState>((set, get) => {
       // Checkpoints saved before a vendor existed: add it in its starting state.
       for (const v of INITIAL_VENDORS) if (!w.vendors[v.id]) w.vendors[v.id] = structuredClone(v);
       w.shipping = normalizeShipping(w.shipping);
+      normalizeStations(w);
       const { log, logSeq } = appendLog(ledger?.log ?? [], ledger?.logSeq ?? 0, w.tick, w.events);
       w.events = [];
       set({
@@ -361,6 +367,9 @@ export const useFleetStore = create<GameState>((set, get) => {
     mergeTaskForces: (fromId, intoId) => run((w) => ops.mergeTaskForces(w, fromId, intoId)),
     setStance: (shipId, stance) => run((w) => setStanceCmd(w, shipId, stance)),
     negotiateLicence: (vendorId, hullId) => run((w) => cmd.negotiateLicenceCmd(w, vendorId, hullId)),
+    buildStation: (site) => run((w) => cmd.buildStationCmd(w, site)),
+    upgradeStation: (id) => run((w) => cmd.upgradeStationCmd(w, id)),
+    removeStation: (id) => run((w) => cmd.removeStationCmd(w, id)),
     setStanceMany: (shipIds, stance) => run((w) => ops.setStanceMany(w, shipIds, stance)),
   };
 });

@@ -67,6 +67,23 @@ export interface Contact {
   stealth?: number;
   attacks?: number;
   nextAttackTick?: number;
+  /** Fog of war (MOC): inside a task force's radar reach today / inside shore station coverage today. Undefined = not yet assessed (shown). */
+  inRadar?: boolean;
+  tracked?: boolean;
+  /** Highest MOC advisory already issued for this track (1 = new track, 2 = closing on a ship). */
+  mocAlert?: number;
+}
+
+/** Shore surveillance (docs/PLAN-maritime-ops.md). */
+export type StationKind = 'COASTAL_RADAR' | 'CHOKEPOINT_WATCH';
+export interface Station {
+  id: string;
+  kind: StationKind;
+  tier: 1 | 2;
+  /** Site key: HOME, S<sectorId> (coastal radar for a sector) or C<chokepointId> (chokepoint watch). */
+  site: string;
+  position: Vec2;
+  builtTick: number;
 }
 
 /** Roll of honour entry: a warship lost with her crew. */
@@ -159,6 +176,8 @@ export interface WorldDraft {
   politics: PoliticsState;
   /** Civilian shipping: lanes, merchant ships, trade index. */
   shipping: ShippingState;
+  /** Shore surveillance stations of the Maritime Operations Centre. */
+  stations: Station[];
   /** Running statistics for the ledger. */
   stats: { hostilesDestroyed: number; shipsLost: number; incidents: number; seizures: number; lastIncidentTick?: number; fallen?: FallenShip[]; firstBoatTick?: number; subsSunk?: number; boatFamilies?: string[] };
 }

@@ -9,6 +9,7 @@
  * - DOMESTIC SUPPORT (0-100) integrates the navy's record; low support makes lobbying dearer, then refused, drains political
  *   capital, and below 10 triggers a parliamentary inquiry.
  */
+import { stationUpkeep } from './moc';
 import { type ShippingState, tradeFactor, TRADE_SUPPORT_DRAIN } from '../types/shipping';
 import { HULLS } from '../data/catalog';
 import { Rng } from '../generator/prng';
@@ -254,7 +255,7 @@ export function tickPolitics(w: WorldDraft, rng: Rng): void {
 
   // ---- running costs
   const costs = runningCosts(Object.values(w.ships), w.tick);
-  w.resources.budget -= costs.total;
+  w.resources.budget -= costs.total + stationUpkeep(w.stations);
 
   // ---- lock next year's appropriation
   if (doy === FORECAST_LOCK_DAY && p.fiscal.lockedForecast === null) {

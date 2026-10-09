@@ -16,6 +16,7 @@ import type { WorldDraft } from '../types/world';
 import { createShip } from './fleetEngine';
 import { initialPolitics } from './politicsEngine';
 import { initialResearch } from './researchEngine';
+import { homeStation } from './moc';
 
 export const TUTORIAL_SEED = 'BRIEFING-01';
 export const TUTORIAL_TF1_NAME = 'TF 11';
@@ -219,6 +220,11 @@ export function createTutorialWorld(): WorldDraft {
     // Budget 2500 = opening balance + first tranche; the next tranche (day 90) falls after the briefing ends.
     politics: initialPolitics({ support: 55, appropriation: 3000, openingBalance: 2500 - 750, scripted: true }),
     shipping: emptyShipping(),
+    // The home-port radar and a watch on THE NARROWS: the strait mouth is where the briefing's tracks appear.
+    stations: [
+      homeStation({ map }),
+      ...map.chokepoints.slice(0, 1).map((c) => ({ id: `STN-C${c.id}`, kind: 'CHOKEPOINT_WATCH' as const, tier: 1 as const, site: `C${c.id}`, position: { ...c.position }, builtTick: 0 })),
+    ],
     stats: { hostilesDestroyed: 0, shipsLost: 0, incidents: 0, seizures: 0 },
   };
 }

@@ -8,6 +8,7 @@ import { TUTORIAL_SEED } from './sim/tutorialScenario';
 import type { ShipDesign } from './types/hull';
 import type { MapArchetype } from './types/map';
 import { normalizeShipping } from './types/shipping';
+import { normalizeStations } from './sim/moc';
 import type { GameEvent, WorldDraft } from './types/world';
 
 export const SAVE_KEY = 'al.save.v1';
@@ -110,5 +111,6 @@ export function restoreWorld(save: SaveGame): WorldDraft {
   const map = save.world.seed === TUTORIAL_SEED ? createTutorialMap() : generateMap(save.world.seed, save.archetype);
   const w = { ...structuredClone(save.world), map, events: [] } as WorldDraft;
   w.shipping = normalizeShipping(w.shipping);
+  normalizeStations(w);
   return w;
 }

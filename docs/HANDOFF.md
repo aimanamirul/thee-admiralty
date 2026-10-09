@@ -552,6 +552,19 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
 - Still open (optional): Mitsurugi family with its cold-vendor opening; licence revocation as an event; a way for a boat-only task force to carry out ladder orders; richer ASW (helicopters, mines, thermoclines) as
   the plan's non-goals.
 
+## Maritime Operations Centre M1 (docs/PLAN-maritime-ops.md)
+- `lib/sim/moc.ts`: shore stations on the world (`WorldDraft.stations`, saved; `normalizeStations` gives old saves and checkpoints the home-port radar). Sites: HOME (built
+  from the start), one coastal radar per sector (at its anchor), one chokepoint watch per chokepoint. Coastal radar 25/32 tiles, 40 M + 30 M upgrade, 0.15/0.2 M/day;
+  watch 18/24 tiles, 60 M + 40 M, 0.2/0.25 M/day. Upkeep is charged with the running costs (`politicsEngine`) and shown in the budget readout and Home Front.
+- **Fog of war for surface contacts (new):** an unidentified contact is on the plot only while a task force's radar reaches it (`radarReaches`: best working radar km x 0.12 tiles,
+  never under 14) or a station covers it (`tracked`, drawn as a faint "MOC TRK"). Identified contacts and contacts never assessed (placed by a lesson) stay visible; submarines keep
+  the sonar rules. `tickMoc` runs after shipping each day and sets `inRadar` / `tracked`; UI filters with `shownContacts`. The engine itself is unchanged.
+- Advisories: at most one a day, a track closing on a merchant ship (WARNING) before a new track outside radar (ADVISORY); the text never names the intent.
+  Distress inside coverage: relayed at once, one more day to answer (`RELAY_DAYS`).
+- UI: station squares on the plot and a `coverage` layer (on by default); "Shore surveillance" in the sector panel (stations reaching the sector, build / upgrade / close with
+  previews); glossary MOC. The briefing world has the home radar and a watch on THE NARROWS (the escort lesson's track is at the strait mouth).
+- `npm run verify:moc`; `verify:preview` sweeps station previews. Not done: suspicion flags, false alarms, seabed arrays (M2); vendor kit, breakdowns, balance soak (M3).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy
@@ -560,7 +573,7 @@ done, so the contractors plan is complete. Submarines (`docs/PLAN-submarines.md`
 built. The shipping plan and its tutorial lessons are complete; licensed local production / offsets remain optional. The Movement faction (`PLAN-asymmetric-faction.md`) can reuse the interdiction layer.
 
 ## Design backlog (do not build yet)
-- `docs/PLAN-maritime-ops.md` — Maritime Operations Centre: shore radar/AIS stations, early tracks, suspicion flags, chokepoint seabed arrays (decided 2026-10-09, not built; M1-M3).
+- `docs/PLAN-maritime-ops.md` — Maritime Operations Centre: shore radar/AIS stations, early tracks, suspicion flags, chokepoint seabed arrays (decided 2026-10-09; M1 built, M2-M3 not built).
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.
 - `docs/PLAN-asymmetric-faction.md` — the second playable faction and its coalition AI.
 

@@ -15,7 +15,8 @@ import { usePreviewStore } from '@/store/usePreviewStore';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { previewAssign } from '@/lib/sim/preview';
 import { contactTag } from '@/lib/sim/contactEngine';
-import { datumContacts, datumRadius, SONAR_TILES_PER_KM, sonarPlatforms, visibleContacts } from '@/lib/sim/asw';
+import { datumContacts, datumRadius, SONAR_TILES_PER_KM, sonarPlatforms } from '@/lib/sim/asw';
+import { mocOnly, shownContacts, stationRadius } from '@/lib/sim/moc';
 import type { WorldDraft } from '@/lib/types/world';
 import { KIND_TAG } from '@/lib/types/shipping';
 
@@ -129,13 +130,14 @@ interface Toggles {
   threat: boolean;
   shipping: boolean;
   sonar: boolean;
+  coverage: boolean;
 }
 
 export default function TacticalMap() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true, shipping: true, sonar: false });
+  const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true, shipping: true, sonar: false, coverage: true });
   const [toggles, setToggles] = useState<Toggles>(togglesRef.current);
   const showLayers = useUiFlag('LAYERS');
   const hasLanes = useFleetStore((s) => s.shipping.lanes.length > 0);
@@ -247,7 +249,7 @@ export default function TacticalMap() {
       // Contacts first (they sit on top of task forces when close), then task forces, then sectors.
       let contactHit: string | null = null;
       let contactBest = 12;
-      for (const c of visibleContacts(st.contacts)) {
+      for (const c of shownContacts(st.contacts)) {
         const p = toScreen(c.position.x, c.position.y);
         const dd = Math.hypot(p.x - e.offsetX, p.y - e.offsetY);
         if (dd < contactBest) {
@@ -711,6 +713,29 @@ export default function TacticalMap() {
       }
 
       // Contacts: amber = unidentified (blinking until hailed), red = hostile, green = identified neutral. Click to open the ladder.
+      // Shore stations (always) and their coverage (layer toggle)
+      for (const stn of st.stations ?? []) {
+        const p = toScreen(stn.position.x, stn.position.y);
+        if (tg.coverage) {
+          const r = Math.abs(toScreen(stn.position.x + 1, stn.position.y).x - p.x) * stationRadius(stn);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(16,185,129,0.55)';
+          ctx.fillStyle = 'rgba(16,185,129,0.06)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([1, 4]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+        ctx.save();
+        ctx.strokeStyle = 'rgba(16,185,129,0.9)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(p.x - 3.5, p.y - 3.5, 7, 7);
+        ctx.restore();
+        if (tg.coverage) label(stn.kind === 'CHOKEPOINT_WATCH' ? 'WATCH' : 'RADAR', p.x + 6, p.y + 10, 'rgba(16,185,129,0.8)', 'left', 8);
+      }
       // Sonar coverage (layer toggle): how far each listening ship or boat would hold a typical quiet submarine
       if (tg.sonar) {
         const cache = sonarCache.current;
@@ -753,10 +778,23 @@ export default function TacticalMap() {
         ctx.restore();
         label('POSSIBLE SUB', p.x + Math.max(6, px) + 4, p.y + 3, C.amber, 'left', 8);
       }
-      for (const c of visibleContacts(st.contacts)) {
+      for (const c of shownContacts(st.contacts)) {
         const p = toScreen(c.position.x, c.position.y);
         const tag = contactTag(c);
-        if (c.cls === 'UNKNOWN') {
+        if (mocOnly(c)) {
+          // tracked by a shore station only: a faint track, no blink, no detail
+          ctx.save();
+          ctx.globalAlpha = 0.55;
+          diamond(p.x, p.y, 5, C.amber, false);
+          ctx.strokeStyle = C.amber;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + Math.cos(c.heading) * 14, p.y + Math.sin(c.heading) * 14);
+          ctx.stroke();
+          label('MOC TRK', p.x + 8, p.y - 6, C.amber, 'left', 8);
+          ctx.restore();
+        } else if (c.cls === 'UNKNOWN') {
           if (blink || c.hailed) diamond(p.x, p.y, 6, C.amber, !!c.suspicious);
           label(tag, p.x + 9, p.y - 7, C.amber, 'left', 8);
           if (c.fleeing) {
@@ -928,7 +966,7 @@ export default function TacticalMap() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
       <div ref={overlayRef} className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
         {<div aria-hidden={!showLayers || undefined} className={`pointer-events-auto flex gap-1 ${showLayers ? '' : 'invisible'}`}>
-          {(['grid', 'bathy', 'sectors', 'threat', ...(hasLanes ? (['shipping'] as const) : []), ...(hasSonar ? (['sonar'] as const) : [])] as (keyof Toggles)[]).map((k) => (
+          {(['grid', 'bathy', 'sectors', 'threat', ...(hasLanes ? (['shipping'] as const) : []), ...(hasSonar ? (['sonar'] as const) : []), 'coverage'] as (keyof Toggles)[]).map((k) => (
             <button
               key={k}
               onClick={() => flip(k)}

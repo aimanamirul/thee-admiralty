@@ -3,11 +3,13 @@
 import { useMemo } from 'react';
 import { HULLS } from '@/lib/data/catalog';
 import { allTaskForces, taskForceShipIds } from '@/lib/sim/fleetEngine';
-import type { Roe, Sop } from '@/lib/types/world';
+import type { Roe, Sop, Station } from '@/lib/types/world';
 import { contactStatus } from '@/lib/sim/contactEngine';
 import ContactPanel from './ContactPanel';
 import { conditionsText, seaState } from '@/lib/sim/narrative';
-import { datumContacts, visibleContacts } from '@/lib/sim/asw';
+import { datumContacts } from '@/lib/sim/asw';
+import { coveringStation, shownContacts, STATION_SPEC, stationRadius, stationSites } from '@/lib/sim/moc';
+import { previewBuildStation, previewRemoveStation, previewUpgradeStation } from '@/lib/sim/preview';
 import { depthMultiplier, isBoat, isExposed, stanceOf } from '@/lib/sim/submarines';
 import { DETERRENCE_PER_DAY, holdersOf, presenceLabel, sectorPresence } from '@/lib/sim/presence';
 import MerchantPanel from './MerchantPanel';
@@ -49,6 +51,7 @@ export default function SectorPanel() {
   const selectedTf = useFleetStore((s) => s.selectedTaskForceId);
   const selectedContact = useFleetStore((s) => s.selectedContactId);
   const merchants = useFleetStore((s) => s.shipping.ships);
+  const stations = useFleetStore((s) => s.stations);
   const hasLanes = useFleetStore((s) => s.shipping.lanes.length > 0);
   const showInspect = useUiFlag('INSPECT');
   const n = useNames();
@@ -98,7 +101,7 @@ export default function SectorPanel() {
   const st = sectorStates[selected];
   const presence = sectorPresence({ fleets, ships, map }, selected);
   const chokes = map.chokepoints.filter((c) => c.links.includes(selected));
-  const here = visibleContacts(contacts.filter((c) => c.sectorId === selected));
+  const here = shownContacts(contacts.filter((c) => c.sectorId === selected));
   const datums = datumContacts(contacts.filter((c) => c.sectorId === selected));
   const shipsHere = merchants.filter((m) => map.sectorGrid[Math.round(m.position.y) * map.width + Math.round(m.position.x)] === selected);
   const roe = ROES.find((r) => r.id === st.roe)!;
@@ -235,6 +238,7 @@ export default function SectorPanel() {
         <Stat k="Neighbours" v={sec.neighbors.length ? sec.neighbors.map((n) => `S${n + 1}`).join(' ') : '—'} />
         {datums.length > 0 && <Stat k={<Term k="DATUM">Possible submarines</Term>} v={`${datums.length} datum${datums.length === 1 ? '' : 's'} — add sonar to resolve`} tone="text-amber-radar" />}
         <Stat k="Contacts on plot" v={here.length ? `${here.length} (${here.filter((c) => c.cls === 'HOSTILE').length} hostile)` : 'none'} tone={here.some((c) => c.cls === 'HOSTILE') ? 'text-warn' : undefined} />
+        <ShoreSurveillance sectorId={selected} stations={stations} />
         {chokes.length > 0 && (
           <div className="mt-2 border-t border-navy pt-1">
             <div className="text-[0.8125rem] uppercase tracking-widest text-amber-radar">Chokepoints</div>
@@ -267,6 +271,38 @@ export default function SectorPanel() {
           );
         })}
       </Section>
+    </div>
+  );
+}
+
+/** Stations that cover this sector, and what can be built for it: a coastal radar at its anchor, a watch on each of its chokepoints. */
+function ShoreSurveillance({ sectorId, stations }: { sectorId: number; stations: Station[] }) {
+  const map = useFleetStore((s) => s.map);
+  const st = useFleetStore.getState();
+  const sec = map.sectors[sectorId];
+  const covering = stations.filter((x) => Math.hypot(x.position.x - sec.anchor.x, x.position.y - sec.anchor.y) <= stationRadius(x) + 10);
+  const sites = stationSites({ map }).filter((s) => s.site === `S${sectorId}` || (s.site.startsWith('C') && map.chokepoints.find((c) => `C${c.id}` === s.site)?.links.includes(sectorId)));
+  const open = sites.filter((s) => !stations.some((x) => x.site === s.site));
+  const anchorCovered = !!coveringStation({ stations }, sec.anchor);
+  return (
+    <div className="mt-2 border-t border-navy pt-1">
+      <div className="text-[0.8125rem] uppercase tracking-widest text-emerald-accent"><Term k="MOC">Shore surveillance</Term></div>
+      <Stat k="Sector centre" v={anchorCovered ? 'tracked by the MOC' : 'outside shore coverage'} tone={anchorCovered ? 'text-emerald-accent' : 'text-slate-500'} />
+      {covering.map((x) => (
+        <div key={x.id} className="flex items-center justify-between gap-1 text-[0.8125rem]">
+          <span className="text-slate-300">{STATION_SPEC[x.kind].label} · T{x.tier} · {stationRadius(x)} tiles</span>
+          <span className="flex gap-1">
+            {x.tier < 2 && <Btn tone="cyan" preview={(w) => `Upgrade: ${previewUpgradeStation(w, x.id)}`} onClick={() => st.upgradeStation(x.id)}>Upgrade</Btn>}
+            {x.site !== 'HOME' && <Btn tone="dim" preview={(w) => `Close: ${previewRemoveStation(w, x.id)}`} onClick={() => st.removeStation(x.id)}>Close</Btn>}
+          </span>
+        </div>
+      ))}
+      {open.map((s) => (
+        <div key={s.site} className="flex items-center justify-between gap-1 text-[0.8125rem]">
+          <span className="text-slate-500">{STATION_SPEC[s.kind].label} at {s.label}</span>
+          <Btn tone="emerald" preview={(w) => `Build: ${previewBuildStation(w, s.site)}`} onClick={() => st.buildStation(s.site)}>Build {STATION_SPEC[s.kind].build}M</Btn>
+        </div>
+      ))}
     </div>
   );
 }

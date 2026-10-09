@@ -33,6 +33,7 @@ import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess,
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
 import { aswPowerNear, killChance } from './asw';
+import { removeBlocked, STATION_SPEC, stationBlocked, stationSites, upgradeBlocked } from './moc';
 import { boatFigures, depthMultiplier, indiscretionRisk, isBoat, RECHARGE_DAYS, STANCE_AMBUSH, STANCE_DETERRENCE, stanceBlocked, type Stance } from './submarines';
 import { LICENCE_MONEY, LICENCE_PC, LICENSED_DAYS_RATE, licenceBlocked, orderTerms } from './licences';
 import { mergeBlocked, REFIT_DAYS, refitBlocked, refitCandidates, refitCost, splitBlocked } from './fleetOps';
@@ -607,4 +608,29 @@ export function previewLicence(w: WorldDraft, vendorId: VendorId, hullId: HullCl
   if (b) return blocked(b);
   const hull = HULLS[hullId];
   return `−${lobbyCost(w, LICENCE_PC)} PC · −${M(LICENCE_MONEY)} · ${vt(vendorId)} licenses the ${hull.name} to the domestic yards: hull ${M(hull.cost)} → ${M(hull.cost * 0.75)}, ${Math.round((LICENSED_DAYS_RATE - 1) * 100)}% slower to build · immune to ${vt(vendorId)}'s export freeze on the hull, still exposed to revocation, its kit and its hidden sub-suppliers`;
+}
+
+// ------------------------------------------------------------------------------------------ maritime operations centre
+
+export function previewBuildStation(w: WorldDraft, site: string): Preview {
+  const b = stationBlocked(w, site);
+  if (b) return blocked(b);
+  const s = stationSites(w).find((x) => x.site === site)!;
+  const spec = STATION_SPEC[s.kind];
+  return `−${M(spec.build)} · ${spec.label} at ${s.label}: tracks unidentified surface contacts within ${spec.radius[0]} tiles (shown on the plot, intent still unknown), heads-up advisories, distress relayed at once (+1 day to answer) · upkeep ${spec.upkeep[0]} M/day`;
+}
+
+export function previewUpgradeStation(w: WorldDraft, id: string): Preview {
+  const b = upgradeBlocked(w, id);
+  if (b) return blocked(b);
+  const s = w.stations.find((x) => x.id === id)!;
+  const spec = STATION_SPEC[s.kind];
+  return `−${M(spec.upgrade)} · coverage ${spec.radius[0]} → ${spec.radius[1]} tiles · upkeep ${spec.upkeep[0]} → ${spec.upkeep[1]} M/day`;
+}
+
+export function previewRemoveStation(w: WorldDraft, id: string): Preview {
+  const b = removeBlocked(w, id);
+  if (b) return blocked(b);
+  const s = w.stations.find((x) => x.id === id)!;
+  return `Close the station: no refund · saves ${STATION_SPEC[s.kind].upkeep[s.tier - 1]} M/day · contacts there drop off the plot unless a task force's radar reaches them`;
 }

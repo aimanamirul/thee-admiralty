@@ -10,6 +10,7 @@ import { designateHulk } from '../lib/sim/fleetEngine';
 import * as ops from '../lib/sim/fleetOps';
 import { setStance } from '../lib/sim/submarines';
 import { licensableHulls } from '../lib/sim/licences';
+import { stationSites } from '../lib/sim/moc';
 import * as pv from '../lib/sim/preview';
 import { createInitialWorld } from '../lib/sim/scenario';
 import { createTutorialWorld } from '../lib/sim/tutorialScenario';
@@ -84,6 +85,11 @@ function sweep(tag: string, w: WorldDraft) {
     for (const st of ['STEALTH', 'PATROL'] as const) agree(`${tag} stance ${s.id}/${st}`, w, pv.previewStance(w, s.id, st), (c) => setStance(c, s.id, st));
   }
   for (const v of Object.keys(w.vendors) as VendorId[]) for (const h of licensableHulls(v)) agree(`${tag} licence ${v}/${h}`, w, pv.previewLicence(w, v, h), (c) => cmd.negotiateLicenceCmd(c, v, h));
+  for (const site of stationSites(w)) agree(`${tag} station ${site.site}`, w, pv.previewBuildStation(w, site.site), (c) => cmd.buildStationCmd(c, site.site));
+  for (const st of w.stations) {
+    agree(`${tag} upgrade ${st.id}`, w, pv.previewUpgradeStation(w, st.id), (c) => cmd.upgradeStationCmd(c, st.id));
+    agree(`${tag} close ${st.id}`, w, pv.previewRemoveStation(w, st.id), (c) => cmd.removeStationCmd(c, st.id));
+  }
   const tfs = w.fleets.flatMap((f) => f.taskForces);
   for (const a of tfs) {
     const ids = a.squadrons.flatMap((q) => q.shipIds);

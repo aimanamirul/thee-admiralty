@@ -8,6 +8,7 @@ import type { HullClassId } from '../types/hull';
 import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { actionBlocked, INTENT_LABEL } from './contactEngine';
 import { aswPowerNear } from './asw';
+import { buildStation, removeStation, upgradeStation } from './moc';
 import { familyBuilt, isBoatHull, negotiateLicence, orderTerms } from './licences';
 import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { startDiligence } from './supplyChain';
@@ -337,5 +338,18 @@ export function engageMerchantCmd(world: WorldDraft, tfId: string, merchantId: s
 
 export function negotiateLicenceCmd(world: WorldDraft, vendorId: VendorId, hullId: HullClassId): CommandResult {
   const r = negotiateLicence(world, vendorId, hullId);
+  return r.ok ? { ok: true, message: r.message } : { ok: false, reason: r.reason };
+}
+
+export function buildStationCmd(world: WorldDraft, site: string): CommandResult {
+  const r = buildStation(world, site);
+  return r.ok ? { ok: true, message: r.message } : { ok: false, reason: r.reason };
+}
+export function upgradeStationCmd(world: WorldDraft, id: string): CommandResult {
+  const r = upgradeStation(world, id);
+  return r.ok ? { ok: true, message: r.message } : { ok: false, reason: r.reason };
+}
+export function removeStationCmd(world: WorldDraft, id: string): CommandResult {
+  const r = removeStation(world, id);
   return r.ok ? { ok: true, message: r.message } : { ok: false, reason: r.reason };
 }

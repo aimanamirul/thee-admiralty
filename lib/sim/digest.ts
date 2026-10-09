@@ -5,6 +5,7 @@
 import { HULLS } from '../data/catalog';
 import type { GameEvent, WorldDraft } from '../types/world';
 import { runningCosts } from './politicsEngine';
+import { stationUpkeep } from './moc';
 
 export interface DigestSnapshot {
   tick: number;
@@ -98,7 +99,7 @@ export function buildDigest(before: DigestSnapshot, after: WorldDraft, entries: 
 /** What is stalling the navy now, from the world itself. */
 export function bottlenecksOf(w: WorldDraft): string[] {
   const out: string[] = [];
-  const costs = runningCosts(Object.values(w.ships), w.tick).total;
+  const costs = runningCosts(Object.values(w.ships), w.tick).total + stationUpkeep(w.stations);
   if (w.resources.budget < costs * 30) out.push(`Budget ${M(w.resources.budget)} covers under 30 days of running costs (${costs.toFixed(1)}M/day)`);
   const waiting = Object.values(w.ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && s.contract?.awaitingFunds);
   if (waiting.length) out.push(`${waiting.length} hull${waiting.length > 1 ? 's' : ''} under construction awaiting funds`);

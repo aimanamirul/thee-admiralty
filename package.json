@@ -12,6 +12,7 @@
     "verify:tutorial": "tsx scripts/verifyTutorial.ts",
     "verify:narrative": "tsx scripts/verifyNarrative.ts",
     "verify:subs": "tsx scripts/verifySubs.ts",
+    "verify:moc": "tsx scripts/verifyMoc.ts",
     "verify:hulls": "tsx scripts/analyzeHulls.ts",
     "verify:audio": "tsx scripts/verifyAudio.ts",
     "verify:fleetops": "tsx scripts/verifyFleetOps.ts",

@@ -1,5 +1,6 @@
 'use client';
 
+import { stationUpkeep } from '@/lib/sim/moc';
 import { playCue } from '@/lib/audio/synth';
 import { useSoundStore } from '@/store/useSoundStore';
 import { Coins, FastForward, GraduationCap, FlaskConical, Factory, Landmark, Pause, Play, Radar, StepForward, Wrench } from 'lucide-react';
@@ -44,7 +45,8 @@ export default function CommandBar() {
   const skin = useFleetStore((s) => s.skin);
   const { setRunning, setSpeed, step, newTheatre, setDesignerOpen, setUiScale, setSkin } = useFleetStore.getState();
 
-  const costs = useMemo(() => runningCosts(Object.values(ships), tick), [ships, tick]);
+  const stations = useFleetStore((s) => s.stations);
+  const costs = useMemo(() => { const c = runningCosts(Object.values(ships), tick); const shore = stationUpkeep(stations); return { ...c, shore, total: c.total + shore }; }, [ships, tick, stations]);
   const politics = useFleetStore((s) => s.politics);
   const showSupport = useUiFlag('READOUT_SUPPORT');
   const building = useMemo(() => Object.values(ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length, [ships]);

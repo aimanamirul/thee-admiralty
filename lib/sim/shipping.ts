@@ -21,6 +21,7 @@ import { holdersOf, presenceFrom, taskForcePower } from './presence';
 import { findRoute, isWater, snapToWater } from './navigation';
 import { adjustSupport } from './politicsEngine';
 import { afterAttack, aswCoverAt, MAX_ATTACKS, sonarPlatforms } from './asw';
+import { inCoverage, RELAY_DAYS } from './moc';
 
 export const MERCHANT_SPEED = 4;
 export const MAX_MERCHANTS = 20;
@@ -511,10 +512,11 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
     else if (r < 0.5) loss(w, prey, lane, 'SEIZED', secId);
     else {
       prey.status = 'DISTRESS';
-      prey.distressUntil = w.tick + DISTRESS_DAYS;
+      const relay = inCoverage(w, prey.position) ? RELAY_DAYS : 0;
+      prey.distressUntil = w.tick + DISTRESS_DAYS + relay;
       lane.risk = clamp(lane.risk + 15);
       adjustSupport(w, -0.3);
-      w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} damaged by a raider in ${where} — help needed within ${DISTRESS_DAYS} days` });
+      w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} damaged by a raider in ${where} — help needed within ${DISTRESS_DAYS + relay} days${relay ? ' (relayed at once by the MOC)' : ''}` });
     }
   }
 
@@ -540,10 +542,11 @@ export function tickShipping(w: WorldDraft, rng: Rng): void {
       if (prey.status === 'DISTRESS' || r < 0.55) loss(w, prey, lane, 'TORPEDOED', secId);
       else {
         prey.status = 'DISTRESS';
-        prey.distressUntil = w.tick + DISTRESS_DAYS;
+        const relay = inCoverage(w, prey.position) ? RELAY_DAYS : 0;
+        prey.distressUntil = w.tick + DISTRESS_DAYS + relay;
         lane.risk = clamp(lane.risk + 20);
         adjustSupport(w, -0.3);
-        w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} torpedoed in ${w.map.sectors[secId].label} — help needed within ${DISTRESS_DAYS} days` });
+        w.events.push({ severity: 'CRITICAL', text: `DISTRESS CALL: ${merchantTag(prey)} torpedoed in ${w.map.sectors[secId].label} — help needed within ${DISTRESS_DAYS + relay} days${relay ? ' (relayed at once by the MOC)' : ''}` });
       }
     }
   }

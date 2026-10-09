@@ -1,6 +1,6 @@
 # Maritime Operations Centre (MOC) — plan
 
-Status: **decided 2026-10-09 (proposed defaults adopted, see "Decisions"), not built.** Real-world anchors are general knowledge, used for flavour only: coastal
+Status: **decided 2026-10-09 (proposed defaults adopted, see "Decisions"). M1 built 2026-10-09; M2-M3 not built.** Real-world anchors are general knowledge, used for flavour only: coastal
 surveillance radar chains, AIS (ships broadcasting identity and position), vessel traffic services at straits, fixed seabed listening arrays
 at chokepoints, national maritime operations / fusion centres.
 
@@ -96,6 +96,12 @@ ship. Searching a falsely flagged merchant still costs standing (existing inspec
 | commands / previews / store | `buildStation`, `upgradeStation`, `removeStation` with previews (cost, coverage, exposure) |
 | UI | "Shore surveillance" panel (stations, coverage, status) in the Sector tab overview; plot layer `coverage`; faint tracked contacts; flag chips |
 | glossary / tutorial | glossary MOC, AIS, FLAGS; tutorial: one line in the graduation lesson, not a full lesson |
+
+## Deviation in M1
+
+Surface contacts used to be on the plot from the moment they appeared, so "early tracks" had nothing to add. M1 therefore introduces fog of war for
+unidentified surface contacts: they are shown only inside a task force's radar reach or a station's coverage. Identified contacts, and contacts placed
+by a lesson that were never assessed, stay visible. The engine (identification, ladder, raids) is unchanged; only what the plot and lists show.
 
 ## 6. Build phases
 
