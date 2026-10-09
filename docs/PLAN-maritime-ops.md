@@ -1,6 +1,6 @@
 # Maritime Operations Centre (MOC) — plan
 
-Status: **proposed 2026-10-09, not decided, not built.** Real-world anchors are general knowledge, used for flavour only: coastal
+Status: **decided 2026-10-09 (proposed defaults adopted, see "Decisions"), not built.** Real-world anchors are general knowledge, used for flavour only: coastal
 surveillance radar chains, AIS (ships broadcasting identity and position), vessel traffic services at straits, fixed seabed listening arrays
 at chokepoints, national maritime operations / fusion centres.
 
@@ -70,7 +70,7 @@ ship. Searching a falsely flagged merchant still costs standing (existing inspec
 ## 3. Costs and exposure
 
 - **Money:** build cost and daily upkeep, shown in the Home Front running costs and in previews.
-- **Vendor kit (decision 3, proposed yes):** each station kind has a supplier (radar and AIS from a western vendor, seabed arrays from a
+- **Vendor kit (decision 3: yes, built in M3):** each station kind has a supplier (radar and AIS from a western vendor, seabed arrays from a
   submarine builder, with the hidden sub-supplier mechanism available). A sanction degrades the station (radius and quality halve,
   then off after an embargo on parts), exactly as module failures without spares do. The domestic option is cheaper and worse.
 - **Upkeep failures:** a station can break down and needs spares like a ship module (reuse the spares pool), so neglect shows.
@@ -105,9 +105,11 @@ ship. Searching a falsely flagged merchant still costs standing (existing inspec
 3. **M3 exposure:** vendor kit, sanctions and breakdowns degrading stations, spares, domestic option, glossary and graduation line,
    balance soak (does the MOC change losses and incidents by a sensible amount?).
 
-## Decisions needed
+## Decisions (2026-10-09)
 
-| Question | Proposed default |
+The proposed defaults were adopted as they stand.
+
+| Question | Decision |
 |---|---|
 | 1. Where do alerts show up? | Ticker advisories **and** a `coverage` plot layer with faint tracks |
 | 2. Fixed stations only, or also a staffing level trading cost for alert quality? | Fixed stations with two upgrade tiers; no staffing slider |

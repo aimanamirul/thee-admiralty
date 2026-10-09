@@ -560,7 +560,7 @@ done, so the contractors plan is complete. Submarines (`docs/PLAN-submarines.md`
 built. The shipping plan and its tutorial lessons are complete; licensed local production / offsets remain optional. The Movement faction (`PLAN-asymmetric-faction.md`) can reuse the interdiction layer.
 
 ## Design backlog (do not build yet)
-- `docs/PLAN-maritime-ops.md` — Maritime Operations Centre: shore radar/AIS stations, early tracks, suspicion flags, chokepoint seabed arrays (proposed, decisions open).
+- `docs/PLAN-maritime-ops.md` — Maritime Operations Centre: shore radar/AIS stations, early tracks, suspicion flags, chokepoint seabed arrays (decided 2026-10-09, not built; M1-M3).
 - `docs/PLAN-foreign-contractors.md` — relationship ladder, regime profiles, new vendors, submarines, alias toggle.
 - `docs/PLAN-asymmetric-faction.md` — the second playable faction and its coalition AI.
 
