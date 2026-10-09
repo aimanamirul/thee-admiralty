@@ -811,8 +811,45 @@ function hullBlockedFor(w: WorldDraft) {
   return hullBlocked('SUB_DAHAI', w.vendors, new Set(w.research.completed), false);
 }
 
+// =========================================================================================================== S5: no invisible soft-locks
+{
+  const w = copyOf(S3_BASE);
+  w.scripted = false;
+  w.tension = 45;
+  for (const st of Object.values(w.sectors)) st.threat = 60;
+  w.contacts = [];
+  let maxLive = 0;
+  let maxAge = 0;
+  let seenIds = new Set<string>();
+  for (let d = 0; d < 2500; d++) {
+    w.tick = 300 + d;
+    tickContacts(w, new Rng(`soft${d}`), new Set());
+    const subs = w.contacts.filter((c) => c.submerged);
+    maxLive = Math.max(maxLive, subs.length);
+    for (const c of subs) {
+      seenIds.add(c.id);
+      maxAge = Math.max(maxAge, w.tick - c.bornTick);
+    }
+    if (w.contacts.length > 20) w.contacts = w.contacts.filter((c) => c.submerged);
+  }
+  check(seenIds.size > 30, `submarines keep appearing in a long game (${seenIds.size} in 2500 days)`);
+  check(maxLive <= 2, `never more than two at once (${maxLive})`);
+  check(maxAge <= 47, `every submarine leaves on its own: none outlives its patrol (oldest ${maxAge} days)`);
+  console.log(`soft-lock soak: ${seenIds.size} boats over 2500 days, at most ${maxLive} at once, oldest ${maxAge} days`);
+  // an attacking boat is bounded too: two launches and gone
+  const { w: aw } = s3world('S3-END');
+  aw.scripted = true;
+  const c = subContact(aw, { expiresTick: aw.tick + 30 });
+  aw.contacts.push(c);
+  for (let d = 0; d < 40; d++) {
+    aw.tick += 1;
+    tickContacts(aw, new Rng(`end${d}`), new Set());
+  }
+  check(!aw.contacts.some((x) => x.id === c.id), 'a hidden submarine with nothing to attack simply expires');
+}
+
 if (failures) {
   console.log(`\nSUBS FAILED (${failures})`);
   process.exit(1);
 }
-console.log('SUBS OK (S1 data and designer, S2 service, S3 enemy submarines and ASW, S4 packages, training, licences)');
+console.log('SUBS OK (S1 data and designer, S2 service, S3 enemy submarines and ASW, S4 packages, training, licences, S5 soft-lock soak)');

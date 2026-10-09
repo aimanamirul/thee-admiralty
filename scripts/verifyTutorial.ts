@@ -4,6 +4,7 @@
  */
 import { LESSONS, PRESET_FIX_PLANT, TUTORIAL_PRESET, type TutorialView } from '../lib/tutorial/lessons';
 import * as cmd from '../lib/sim/commands';
+import { visibilityOf } from '../lib/sim/asw';
 import { evaluateLoadout } from '../lib/sim/designEngine';
 import { designateHulk, stateCounts } from '../lib/sim/fleetEngine';
 import { bridgeSet } from '../lib/sim/researchEngine';
@@ -130,6 +131,17 @@ const actions: Record<string, () => void> = {
     ok(cmd.inspectMerchantCmd(w, 'TF-1', 'MV-TUT-2'), 'search the suspect ship');
   },
   embargo: () => ok(designateHulk(w, 'SHP-6'), 'designate hulk'),
+  sonar: () => {
+    const sub = () => w.contacts.find((c) => c.id === 'CT-TUT-SUB')!;
+    check(visibilityOf(sub()) === 'DATUM', 'the submarine starts as a datum, not a contact');
+    let d = 0;
+    while (visibilityOf(sub()) !== 'HELD' && d++ < 12) {
+      advanceDay(w);
+      flush();
+    }
+    check(visibilityOf(sub()) === 'HELD', `sonar holds the contact within ${d} days`);
+    ok(cmd.orderContact(w, 'CT-TUT-SUB', 'WARN'), 'ping the submarine');
+  },
   graduation: () => {
     check(!w.scripted, 'graduation must turn scripted off');
     // The briefing warns the FACs cannot defend themselves there: send the frigate group.

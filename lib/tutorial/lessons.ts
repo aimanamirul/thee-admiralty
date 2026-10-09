@@ -12,6 +12,7 @@ import { pointAt, generateLanes } from '../sim/shipping';
 import type { Lane, Merchant, ShippingState } from '../types/shipping';
 import type { Contact, GameEvent, ResearchState, Resources, SectorState, WorldDraft } from '../types/world';
 import { HOME_SECTOR, BEYOND_SECTOR, TUTORIAL_TF1_NAME } from '../sim/tutorialScenario';
+import { createShip } from '../sim/fleetEngine';
 
 export type UiFlag =
   | '*'
@@ -496,6 +497,39 @@ export const LESSONS: Lesson[] = [
       w.events.push({ severity: 'CRITICAL', text: '{v:NAVAL_GROUP_THALES}: PARTS EMBARGO for 60 days — their spares cannot be fitted (cannibalise hulks!)' });
     },
     gate: (v) => !!v.ships['SHP-1'] && v.ships['SHP-1'].modules.every((m) => !m.failed) && Object.values(v.ships).some((s) => s.isPartsHulk),
+  },
+  {
+    id: 'sonar',
+    title: 'Under the surface',
+    body: [
+      'Enemy submarines cannot be seen: only sonar finds them. The listening posts report unusual acoustic activity, and the frigate Hearken (hull sonar, torpedo tubes) has joined TF 11 off the home port. The dashed circle on the plot is a possible submarine, a datum.',
+      'Let the clock run: as the sonar holds the contact the circle shrinks and the track becomes a contact (SUB?). Select it in the sector panel, then hover Warn: active pinging makes most intruders leave. Engage needs torpedoes in reach and, against a boat that has not attacked, WEAPONS FREE; a foreign boat is an incident. Without sonar none of this is possible.',
+    ],
+    objective: 'Hold the submarine on sonar and ping it (Warn).',
+    anchor: 'contact-panel',
+    reveals: [],
+    tab: 'SECTOR',
+    select: HOME_SECTOR,
+    target: HOME_SECTOR,
+    run: { speed: 1 },
+    onEnter: (w) => {
+      const sec = w.map.sectors[HOME_SECTOR];
+      const task = w.fleets.flatMap((f) => f.taskForces).find((t) => t.id === 'TF-1')!;
+      task.position = { ...sec.anchor };
+      task.assignedSectorId = HOME_SECTOR;
+      task.route = [];
+      const listener = createShip({ id: 'SHP-7', name: 'Hearken', pennant: 'F707', hullId: 'FRIGATE', designName: 'Briefing-class ASW Frigate', moduleIds: ['PP_DOM_D12', 'CMS_DOM_OB1', 'SEN_DOM_DSR2', 'SEN_SONAR_HULL', 'ARM_DOM_DSAM8', 'ARM_DOM_TORP'], constructing: false, state: 'ACTIVE_PATROL', readiness: 100, tick: w.tick });
+      w.ships[listener.id] = listener;
+      task.squadrons[0].shipIds.push(listener.id);
+      w.sectors[HOME_SECTOR].sop = 'OBSERVE';
+      w.contacts = w.contacts.filter((c) => c.hostile === false && c.cls !== 'HOSTILE');
+      w.contacts.push({
+        id: 'CT-TUT-SUB', sectorId: HOME_SECTOR, position: { x: sec.anchor.x + 3, y: sec.anchor.y }, heading: 0, cls: 'UNKNOWN', hostile: true, intent: 'SUBMARINE', strength: 60,
+        bornTick: w.tick, expiresTick: w.tick + 400, submerged: true, track: 45, stealth: 50, attacks: 0, nextAttackTick: w.tick + 999,
+      });
+      w.events.push({ severity: 'ADVISORY', text: 'UNUSUAL ACOUSTIC ACTIVITY off the home port — a possible submarine datum is plotted' });
+    },
+    gate: (v) => newLog(v, /pings a submerged contact|HOSTILE SUBMARINE, still closing|SUBMARINE KILLED/),
   },
   {
     id: 'graduation',

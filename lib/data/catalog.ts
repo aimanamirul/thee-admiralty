@@ -76,20 +76,20 @@ export const HULLS: Record<HullClassId, HullBase> = {
   SUB_SEORAK: {
     id: 'SUB_SEORAK', name: 'Patrol Submarine (large)', pennantPrefix: 'S', displacementT: 3000, draftM: 5.5, structuralHP: 380,
     baseGenerationMW: 1.5, hotelLoadMW: 1.2, payloadT: 700, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 4 },
-    cost: 300, buildDays: 130, upkeepPerDay: 0.8, strikeRating: 0,
+    cost: 300, buildDays: 130, upkeepPerDay: 0.5, strikeRating: 0,
     platform: 'SUBSURFACE', vendorId: 'SEORAK', requiredTier: 1, stealth: 50, enduranceDays: 5,
   },
   SUB_KB: {
     id: 'SUB_KB', name: 'Coastal Submarine (quiet)', pennantPrefix: 'S', displacementT: 1800, draftM: 5.2, structuralHP: 280,
     baseGenerationMW: 1.2, hotelLoadMW: 0.9, payloadT: 480, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 3 },
-    cost: 330, buildDays: 200, upkeepPerDay: 0.7, strikeRating: 0,
+    cost: 330, buildDays: 200, upkeepPerDay: 0.45, strikeRating: 0,
     platform: 'SUBSURFACE', vendorId: 'KESSLER_BRANDT', requiredTier: 2, stealth: 70, enduranceDays: 3,
   },
   // Cheap volume builder. Its diesel sets hide Kessler-Brandt engines (the S26T case: a licence refused for a boat built elsewhere).
   SUB_DAHAI: {
     id: 'SUB_DAHAI', name: 'Export Submarine (budget)', pennantPrefix: 'S', displacementT: 2300, draftM: 5.4, structuralHP: 330,
     baseGenerationMW: 1.3, hotelLoadMW: 1.0, payloadT: 600, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 4 },
-    cost: 230, buildDays: 105, upkeepPerDay: 0.6, strikeRating: 0,
+    cost: 230, buildDays: 105, upkeepPerDay: 0.4, strikeRating: 0,
     platform: 'SUBSURFACE', vendorId: 'DAHAI', origins: ['KESSLER_BRANDT'], requiredTier: 1, stealth: 42, enduranceDays: 4,
   },
 };

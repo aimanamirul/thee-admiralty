@@ -1,6 +1,6 @@
 # Handoff — where the project stands
 
-Read this first in a new session. Last updated 2026-09-30 (tutorial: 17 lessons, now also covering shipping, escorts and searches).
+Read this first in a new session. Last updated 2026-10-09 (submarines S1–S5 built; tutorial: 18 lessons incl. sonar).
 
 ## State of the code
 
@@ -43,7 +43,7 @@ How it is built (spec/lesson table: `docs/PLAN-tutorial.md`):
 - **Scenario:** `lib/sim/tutorialScenario.ts` — `generateMap('BRIEFING-01','CHOKEPOINT')` split at the narrow strait into
   sector 0 HOME APPROACHES / sector 1 BEYOND THE STRAIT, one chokepoint THE NARROWS, 5 ships in TF 11 / TF 12. Throws if the split is
   not two connected, mutually reachable sectors.
-- **Lessons:** `lib/tutorial/lessons.ts` (17 lessons, pure data; gates take a plain `TutorialView` so they also run in Node).
+- **Lessons:** `lib/tutorial/lessons.ts` (18 lessons, pure data; gates take a plain `TutorialView` so they also run in Node).
   `lib/tutorial/glossary.ts` + `components/tutorial/Term.tsx` give hover definitions for jargon.
 - **State machine:** `store/useTutorialStore.ts` (imports the game store, never the reverse). `evaluate()` runs on every game-store change
   (subscription in `Cockpit.tsx`); a met gate shows "objective complete" for 1.4 s, pauses the clock, then advances. `run: {speed, when?}`
@@ -214,7 +214,7 @@ The briefing teaches everything added since it was written. 17 lessons (the two 
   (`invisible` / a placeholder) instead of being removed.
 - `TutorialSpotlight` scrolls the lesson's anchor into view once per lesson (vendor cards sit far down the Diplomacy tab).
 - The lobby preview no longer promises a catalogue tier for a vendor with no contract (tiers need FRAMEWORK+).
-- `scripts/e2e-tutorial.mjs` plays all 17 lessons through the UI (hail/board, advance Nordvik, budget hearing, escort, search).
+- `scripts/e2e-tutorial.mjs` plays all 18 lessons through the UI (hail/board, advance Nordvik, budget hearing, escort, search).
 - **Shipping lessons (14-15):** `Lesson.selectMerchant` opens a ship's panel on entry; `TutorialView.shipping`; new UI flags `SHIPPING`
   (lanes section), `INSPECT` (Search buttons, standing search order) and `FORCE` (use of force, exclusion orders) so nothing appears
   before its lesson (graduation reveals all). The briefing world has no lanes until lesson 14 adds one (`tutorialLane`: east to west, the
@@ -540,6 +540,17 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   sub-suppliers (`hullBlocked(..., licensed)`, `syncConstructionFreezes`). Modules and spares stay exposed. `previewOrderShip` / `previewLicence` state all of it.
 - `verify:subs` S4 section covers packages, training, licence rules and shielding, and the S26T chain; `verify:preview` sweeps `previewLicence`.
 - Not done: Mitsurugi family (waits for its cold-vendor opening), licence revocation as an event, S5 (plot toggle, tutorial / advisor lesson, balance soak, `verify:hulls` price review of boats).
+
+## Submarines S5: polish (docs/PLAN-submarines.md) — the plan is complete
+- Plot layer toggle `sonar` (shown once any ship carries sonar): dashed rings for each listening ship or boat at the range it would hold a typical quiet submarine. Datums are always drawn.
+- Lesson 17 `sonar` ("Under the surface", scripted: a hull-sonar frigate joins TF 11, a hostile datum lies 3 tiles off the home port; run the clock, select the held contact, Warn). The briefing is now 18
+  lessons (graduation is 18; checkpoint version 3; `e2e-tutorial.mjs` and `verifyTutorial.ts` updated). Glossary: SONAR, DATUM, STANCE, LICENCE, TRAINING (shown with `<Term>` in the UI).
+- Boat running costs lowered (hull upkeep 0.5 / 0.45 / 0.4, below the frigate's 0.55) now that measurements show boats are a poor way to buy visible presence (about 900-1,400 M per frigate-equivalent against 217);
+  `verify:hulls` fails if a boat is dearer to run than a frigate or buys deterrence cheaper than one. The sonar cue also fires for datums (`CONTACT_WORDS` has SONAR / DATUM).
+- `verify:subs` S5: a 2,500-day soak proves no invisible soft-lock (at most two boats at once, every boat leaves within its 25-45 day patrol, 74 boats over the run) and that a hidden boat with nothing to attack
+  simply expires.
+- Still open (optional): Mitsurugi family with its cold-vendor opening; licence revocation as an event; a way for a boat-only task force to carry out ladder orders; richer ASW (helicopters, mines, thermoclines) as
+  the plan's non-goals.
 
 ## What to build next
 

@@ -233,7 +233,7 @@ export default function SectorPanel() {
         <Stat k="Widest clearance" v={`${sec.maxClearance.toFixed(1)} tiles`} />
         <Stat k="Deep-draft grounding exposure" v={`${deepDraftRisk}%`} tone={deepDraftRisk > 50 ? 'text-warn' : 'text-slate-200'} />
         <Stat k="Neighbours" v={sec.neighbors.length ? sec.neighbors.map((n) => `S${n + 1}`).join(' ') : '—'} />
-        {datums.length > 0 && <Stat k="Possible submarines" v={`${datums.length} datum${datums.length === 1 ? '' : 's'} — add sonar to resolve`} tone="text-amber-radar" />}
+        {datums.length > 0 && <Stat k={<Term k="DATUM">Possible submarines</Term>} v={`${datums.length} datum${datums.length === 1 ? '' : 's'} — add sonar to resolve`} tone="text-amber-radar" />}
         <Stat k="Contacts on plot" v={here.length ? `${here.length} (${here.filter((c) => c.cls === 'HOSTILE').length} hostile)` : 'none'} tone={here.some((c) => c.cls === 'HOSTILE') ? 'text-warn' : undefined} />
         {chokes.length > 0 && (
           <div className="mt-2 border-t border-navy pt-1">

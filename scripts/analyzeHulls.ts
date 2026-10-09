@@ -94,6 +94,8 @@ if (!(table['FAC']?.[0] > 0)) fail('a 300 M budget buys no presence at all');
 // boats deter by uncertainty and ambush, so they must not be a cheaper way to buy deterrence than a frigate
 {
   const frigate = rows.find((r) => r.id === 'FRIGATE');
+  // ...and they must not be dearer to run than the frigate they cannot replace as a visible presence
+  for (const b of rows.filter((r) => r.sub)) if (frigate && b.upkeep > frigate.upkeep) fail(`${b.id} costs more to run than a frigate (${b.upkeep.toFixed(2)} vs ${frigate.upkeep.toFixed(2)} M/day)`);
   for (const b of rows.filter((r) => r.sub)) if (frigate && !(b.cost / b.power > frigate.cost / frigate.power)) fail(`${b.id} buys deterrence cheaper than a frigate (${(b.cost / b.power).toFixed(0)} vs ${(frigate.cost / frigate.power).toFixed(0)} M per frigate-equivalent)`);
 }
 const surface = rows.filter((r) => !r.sub);

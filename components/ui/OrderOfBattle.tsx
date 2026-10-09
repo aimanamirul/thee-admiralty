@@ -108,7 +108,7 @@ function BoatPanel({ ship }: { ship: Ship }) {
   return (
     <div className="space-y-1 border border-navy p-1.5" data-tutorial={`boat-${ship.id}`}>
       <div className="flex flex-wrap items-center gap-1">
-        <span className="text-[0.8125rem] uppercase tracking-widest text-slate-500">Stance</span>
+        <span className="text-[0.8125rem] uppercase tracking-widest text-slate-500"><Term k="STANCE">Stance</Term></span>
         <Btn tone={stance === 'PATROL' ? 'cyan' : 'dim'} preview={(w) => previewStance(w, ship.id, 'PATROL')} onClick={() => st.setStance(ship.id, 'PATROL')}>Patrol</Btn>
         <Btn tone={stance === 'STEALTH' ? 'emerald' : 'dim'} preview={(w) => previewStance(w, ship.id, 'STEALTH')} onClick={() => st.setStance(ship.id, 'STEALTH')}>Stealth</Btn>
         {isExposed(ship) && <Chip tone="red">COUNTER-DETECTED {ship.exposedDays}d</Chip>}

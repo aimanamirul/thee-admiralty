@@ -13,7 +13,7 @@ import { DEFAULT_SEED, useFleetStore } from './useFleetStore';
 const STORAGE_KEY = 'al.tutorial';
 /** Progress checkpoint taken at the start of every lesson, so a reload resumes the briefing instead of restarting it. */
 const CHECKPOINT_KEY = 'al.tutorial.checkpoint';
-const CHECKPOINT_VERSION = 2;
+const CHECKPOINT_VERSION = 3;
 
 export type TutorialStatus = 'new' | 'done' | 'skipped';
 

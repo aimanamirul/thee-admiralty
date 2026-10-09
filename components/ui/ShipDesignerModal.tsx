@@ -262,7 +262,7 @@ export default function ShipDesignerModal() {
 
             <Section title="Commission" tone="emerald">
               <Stat k="Unit cost" v={fmtM(terms.price)} tone={terms.price > budget ? 'text-warn' : 'text-phosphor'} />
-              {terms.trainingDays > 0 && <Stat k="First of class" v={`crew training +${fmtM(terms.trainingCost)}, +${terms.trainingDays} days`} tone="text-amber-radar" />}
+              {terms.trainingDays > 0 && <Stat k={<Term k="TRAINING">First of class</Term>} v={`crew training +${fmtM(terms.trainingCost)}, +${terms.trainingDays} days`} tone="text-amber-radar" />}
               {terms.licensed && <Stat k="Licensed build" v={`domestic yards: hull −${fmtM(terms.hullSaving)}, slower; immune to the builder's freeze`} tone="text-emerald-accent" />}
               <Stat k="Upkeep" v={`${(ev.upkeepPerDay * 2.5).toFixed(2)} M/day`} />
               <Stat k="Build time" v={`${terms.days} days`} />

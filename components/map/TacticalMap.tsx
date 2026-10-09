@@ -15,7 +15,8 @@ import { usePreviewStore } from '@/store/usePreviewStore';
 import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { previewAssign } from '@/lib/sim/preview';
 import { contactTag } from '@/lib/sim/contactEngine';
-import { datumContacts, datumRadius, visibleContacts } from '@/lib/sim/asw';
+import { datumContacts, datumRadius, SONAR_TILES_PER_KM, sonarPlatforms, visibleContacts } from '@/lib/sim/asw';
+import type { WorldDraft } from '@/lib/types/world';
 import { KIND_TAG } from '@/lib/types/shipping';
 
 const C = {
@@ -127,16 +128,19 @@ interface Toggles {
   sectors: boolean;
   threat: boolean;
   shipping: boolean;
+  sonar: boolean;
 }
 
 export default function TacticalMap() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true, shipping: true });
+  const togglesRef = useRef<Toggles>({ grid: true, bathy: true, sectors: true, threat: true, shipping: true, sonar: false });
   const [toggles, setToggles] = useState<Toggles>(togglesRef.current);
   const showLayers = useUiFlag('LAYERS');
   const hasLanes = useFleetStore((s) => s.shipping.lanes.length > 0);
+  const hasSonar = useFleetStore((s) => Object.values(s.ships).some((x) => x.modules.some((m) => m.moduleId.includes('SONAR'))));
+  const sonarCache = useRef<{ key: unknown; tick: number; list: ReturnType<typeof sonarPlatforms> }>({ key: null, tick: -1, list: [] });
   const [fps, setFps] = useState(0);
 
   useEffect(() => {
@@ -707,6 +711,34 @@ export default function TacticalMap() {
       }
 
       // Contacts: amber = unidentified (blinking until hailed), red = hostile, green = identified neutral. Click to open the ladder.
+      // Sonar coverage (layer toggle): how far each listening ship or boat would hold a typical quiet submarine
+      if (tg.sonar) {
+        const cache = sonarCache.current;
+        if (cache.key !== st.ships || cache.tick !== st.tick) {
+          cache.key = st.ships;
+          cache.tick = st.tick;
+          cache.list = sonarPlatforms(st as unknown as WorldDraft);
+        }
+        const seen = new Set<string>();
+        for (const pl of cache.list) {
+          const k = `${pl.tfId}:${pl.sonarKm}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          const p = toScreen(pl.x, pl.y);
+          const r = Math.abs(toScreen(pl.x + 1, pl.y).x - p.x) * pl.sonarKm * SONAR_TILES_PER_KM * 0.64 * (pl.boat ? 0.9 : 1);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(0,240,255,0.55)';
+          ctx.fillStyle = 'rgba(0,240,255,0.05)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 5]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.max(8, r), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+          label(`SONAR ${pl.sonarKm} KM`, p.x, p.y - Math.max(8, r) - 4, 'rgba(0,240,255,0.7)', 'center', 8);
+        }
+      }
       // Possible submarines: a dashed circle that shrinks as sonar holds the contact
       for (const c of datumContacts(st.contacts)) {
         const p = toScreen(c.position.x, c.position.y);
@@ -896,7 +928,7 @@ export default function TacticalMap() {
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full cursor-crosshair touch-none" />
       <div ref={overlayRef} className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1 font-mono text-[0.8125rem] uppercase tracking-widest">
         {<div aria-hidden={!showLayers || undefined} className={`pointer-events-auto flex gap-1 ${showLayers ? '' : 'invisible'}`}>
-          {(['grid', 'bathy', 'sectors', 'threat', ...(hasLanes ? (['shipping'] as const) : [])] as (keyof Toggles)[]).map((k) => (
+          {(['grid', 'bathy', 'sectors', 'threat', ...(hasLanes ? (['shipping'] as const) : []), ...(hasSonar ? (['sonar'] as const) : [])] as (keyof Toggles)[]).map((k) => (
             <button
               key={k}
               onClick={() => flip(k)}

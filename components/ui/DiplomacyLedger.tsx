@@ -121,7 +121,7 @@ function VendorCard({ v }: { v: Vendor }) {
       {open && <Catalogue v={v} />}
       {!domestic && licensableHulls(v.id).length > 0 && (
         <div className="mt-1.5 space-y-1">
-          <div className="text-[0.75rem] uppercase tracking-widest text-slate-500">Licensed production</div>
+          <div className="text-[0.75rem] uppercase tracking-widest text-slate-500"><Term k="LICENCE">Licensed production</Term></div>
           {licensableHulls(v.id).map((h) => (
             <div key={h} className="flex items-center justify-between gap-2 text-[0.8125rem]">
               <span className="text-slate-300">{HULLS[h].name}{v.licences?.includes(h) ? <Chip tone="emerald">LICENSED</Chip> : null}</span>

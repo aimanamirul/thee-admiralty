@@ -1,6 +1,6 @@
 # Submarines — plan
 
-Status: **decided 2026-09-30, revised 2026-10-08 (see "Revision"). S1 (data, designer), S2 (service) and S3 (enemy submarines, ASW) and S4 (acquisition) built 2026-10-08/09; S5 not built. See HANDOFF.md.** Follows `PLAN-foreign-contractors.md` §8.2 ("submarines: yes, a new hull
+Status: **decided 2026-09-30, revised 2026-10-08 (see "Revision"). S1 (data, designer), S2 (service) and S3 (enemy submarines, ASW) and S4 (acquisition) and S5 (polish) built 2026-10-08/09: the plan is complete. See HANDOFF.md.** Follows `PLAN-foreign-contractors.md` §8.2 ("submarines: yes, a new hull
 class"). Claims about real navies below are *general knowledge*, not source-checked; use them for flavour only.
 
 ## Decisions (2026-09-30)

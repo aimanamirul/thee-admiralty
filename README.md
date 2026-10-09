@@ -41,7 +41,7 @@ UI: Share Tech Mono font; use **A− / A+** in the top bar to scale the whole in
 
 ## Playing
 
-The title screen offers the **Admiral's Briefing** (a guided two-sector scenario, 17 lessons, ~20 minutes, replayable from the top bar) or **Free play**.
+The title screen offers the **Admiral's Briefing** (a guided two-sector scenario, 18 lessons, ~20 minutes, replayable from the top bar) or **Free play**.
 
 | Control | Action |
 |---|---|

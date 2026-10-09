@@ -10,7 +10,7 @@ export type CueKind = 'LOSS' | 'ALARM' | 'BATTLE' | 'ALERT' | 'SONAR' | 'TELETYP
 export const CUE_PRIORITY: CueKind[] = ['LOSS', 'ALARM', 'BATTLE', 'ALERT', 'SONAR', 'TELETYPE'];
 export const MAX_CUES = 2;
 
-const CONTACT_WORDS = /\b(DISTRESS|RAIDER|HOSTILE|CONTACT|DETECTED|SHADOW|SURFACED|SIGHTED)\b/;
+const CONTACT_WORDS = /\b(DISTRESS|RAIDER|HOSTILE|CONTACT|DETECTED|SHADOW|SURFACED|SIGHTED|SONAR|DATUM)\b/;
 
 export function cueOf(e: { severity: EventSeverity; text: string }): CueKind | null {
   if (e.text.startsWith('  ')) return null; // technical and story lines under an engagement header
