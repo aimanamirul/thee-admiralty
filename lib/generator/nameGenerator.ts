@@ -51,7 +51,7 @@ export function generateShipName(rng: Rng, tradition: NamingTradition, used: Rea
   return `${rng.pick(pool)} ${used.size}`;
 }
 
-const PREFIX: Record<HullClassId, string> = { FAC: 'P', CORVETTE: 'K', FRIGATE: 'F', DESTROYER: 'D', CARRIER: 'R', SUB_SEORAK: 'S', SUB_KB: 'S' };
+const PREFIX: Record<HullClassId, string> = { FAC: 'P', CORVETTE: 'K', FRIGATE: 'F', DESTROYER: 'D', CARRIER: 'R', SUB_SEORAK: 'S', SUB_KB: 'S', SUB_DAHAI: 'S' };
 
 export function generatePennant(rng: Rng, hull: HullClassId, used: ReadonlySet<string>): string {
   for (let i = 0; i < 200; i++) {
@@ -73,7 +73,7 @@ export function taskForceName(index: number): string {
 
 export function squadronName(index: number, hull: HullClassId | 'MIXED'): string {
   const kind: Record<HullClassId | 'MIXED', string> = {
-    FAC: 'FAC', CORVETTE: 'Corvette', FRIGATE: 'Frigate', DESTROYER: 'Destroyer', CARRIER: 'Carrier', SUB_SEORAK: 'Submarine', SUB_KB: 'Submarine', MIXED: 'Escort',
+    FAC: 'FAC', CORVETTE: 'Corvette', FRIGATE: 'Frigate', DESTROYER: 'Destroyer', CARRIER: 'Carrier', SUB_SEORAK: 'Submarine', SUB_KB: 'Submarine', SUB_DAHAI: 'Submarine', MIXED: 'Escort',
   };
   return `${ordinal(index + 1)} ${kind[hull]} Squadron`;
 }

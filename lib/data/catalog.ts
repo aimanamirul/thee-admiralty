@@ -85,7 +85,21 @@ export const HULLS: Record<HullClassId, HullBase> = {
     cost: 330, buildDays: 200, upkeepPerDay: 0.7, strikeRating: 0,
     platform: 'SUBSURFACE', vendorId: 'KESSLER_BRANDT', requiredTier: 2, stealth: 70, enduranceDays: 3,
   },
+  // Cheap volume builder. Its diesel sets hide Kessler-Brandt engines (the S26T case: a licence refused for a boat built elsewhere).
+  SUB_DAHAI: {
+    id: 'SUB_DAHAI', name: 'Export Submarine (budget)', pennantPrefix: 'S', displacementT: 2300, draftM: 5.4, structuralHP: 330,
+    baseGenerationMW: 1.3, hotelLoadMW: 1.0, payloadT: 600, sockets: { POWERPLANT: 2, CMS: 1, SENSOR: 2, ARMAMENT: 4 },
+    cost: 230, buildDays: 105, upkeepPerDay: 0.6, strikeRating: 0,
+    platform: 'SUBSURFACE', vendorId: 'DAHAI', origins: ['KESSLER_BRANDT'], requiredTier: 1, stealth: 42, enduranceDays: 4,
+  },
 };
+
+/** Vendor submarine packages: a hull with its builder's plant, sonar and tubes, ready to load in the designer. */
+export const SUB_PACKAGES: ShipDesign[] = [
+  { id: 'DES_SUB_SK', name: 'Marlin-class patrol submarine', hullId: 'SUB_SEORAK', moduleIds: ['PP_SUB_SK_DE', 'PP_SUB_SK_AIP', 'CMS_SK_SHIELD', 'SEN_SONAR_SUB_SK', 'SEN_SONAR_SUB_DOM', 'ARM_SUB_DOM_HWT', 'ARM_SUB_SK_TASM'] },
+  { id: 'DES_SUB_KB', name: 'Kestrel-class quiet submarine', hullId: 'SUB_KB', moduleIds: ['PP_SUB_KB_DE', 'PP_SUB_KB_AIP', 'CMS_NG_TACTICOS', 'SEN_SONAR_SUB_KB', 'ARM_SUB_KB_HWT', 'ARM_SUB_KB_HWT'] },
+  { id: 'DES_SUB_DH', name: 'Dragonfly-class export submarine', hullId: 'SUB_DAHAI', moduleIds: ['PP_SUB_DH_DE', 'CMS_DH_H11', 'SEN_SONAR_SUB_DH', 'ARM_SUB_DH_HWT', 'ARM_SUB_DH_HWT'] },
+];
 
 export const hullPlatform = (h: HullBase) => h.platform ?? 'SURFACE';
 export const hullVendor = (id: HullClassId): VendorId => HULLS[id].vendorId ?? 'DOMESTIC_YARDS';
@@ -240,6 +254,9 @@ export const MODULES: EquipmentModule[] = [
   subArm('ARM_SUB_DOM_HWT', '533mm Heavyweight Tubes', 'DOMESTIC_YARDS', 'DOMESTIC_OPEN', 0.4, 40, 14, 0, 0.92, 'ASW', 6, 55, 30, 'Wire-guided heavyweight torpedoes.'),
   subArm('ARM_SUB_KB_HWT', 'Kessler-Brandt DM-class Torpedo Tubes', 'KESSLER_BRANDT', 'TACTICOS_ETHERNET', 0.4, 42, 26, 2, 0.95, 'ASW', 6, 70, 38, 'Heavyweight torpedoes with a fibre-optic guidance link.'),
   subArm('ARM_SUB_SK_TASM', 'Seorak Tube-Launched SSM', 'SEORAK', 'DOMESTIC_OPEN', 0.4, 26, 22, 1, 0.9, 'SSM', 4, 70, 120, 'Capsule-launched anti-ship missiles fired from the torpedo tubes.'),
+  subPlant('PP_SUB_DH_DE', 'Dahai DD-6 Submarine Diesel', 'DAHAI', 4.5, 85, 7, 0, 0.82, -4, 0, 'Cheap export diesel set; reliable enough, and quiet for its price.'),
+  sonar('SEN_SONAR_SUB_DH', 'Dahai DS-9 Sonar Suite', 'DAHAI', 'EASTERN_ANALOG', 1, 14, 9, 0, 0.84, 26, 9, 'SUBSURFACE', 'Export sonar suite on an analog-compatible bus.'),
+  subArm('ARM_SUB_DH_HWT', 'Dahai Heavyweight Tubes', 'DAHAI', 'EASTERN_ANALOG', 0.4, 42, 12, 0, 0.86, 'ASW', 6, 52, 28, 'Export heavyweight torpedoes.'),
 ];
 
 /**
@@ -255,6 +272,7 @@ const ORIGINS: Record<string, VendorId[]> = {
   // Joint venture: the Eastern parent's components are in every Seawind (public, see Vendor.jvPartners).
   ARM_VS_SEAWIND: ['ZVEZDA_NORD'],
   ARM_VS_SEAWIND8: ['ZVEZDA_NORD'],
+  PP_SUB_DH_DE: ['KESSLER_BRANDT'], // the diesel is a licence-built KB engine (the S26T case)
 };
 for (const m of MODULES) if (ORIGINS[m.id]) m.origins = ORIGINS[m.id];
 

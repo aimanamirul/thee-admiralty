@@ -17,7 +17,7 @@ import * as ops from '../lib/sim/fleetOps';
 import { setStance as setStanceCmd, type Stance } from '../lib/sim/submarines';
 import type { ModuleSlot } from '../lib/types/equipment';
 import type { Fleet, HierarchyKind, Ship, Tempo } from '../lib/types/fleet';
-import type { ShipDesign } from '../lib/types/hull';
+import type { HullClassId, ShipDesign } from '../lib/types/hull';
 import type { MapArchetype, MapData } from '../lib/types/map';
 import type { Contact, GameEvent, LadderAction, ResearchState, Resources, Roe, SectorState, Sop, WorldDraft } from '../lib/types/world';
 import type { NamingTradition } from '../lib/types/fleet';
@@ -152,6 +152,7 @@ interface Actions {
   splitTaskForce: (shipIds: string[], name?: string) => CommandResult;
   mergeTaskForces: (fromId: string, intoId: string) => CommandResult;
   setStance: (shipId: string, stance: Stance) => CommandResult;
+  negotiateLicence: (vendorId: VendorId, hullId: HullClassId) => CommandResult;
   setStanceMany: (shipIds: string[], stance: Stance) => CommandResult;
 }
 
@@ -359,6 +360,7 @@ export const useFleetStore = create<GameState>((set, get) => {
     splitTaskForce: (shipIds, name) => run((w) => ops.splitTaskForce(w, shipIds, name)),
     mergeTaskForces: (fromId, intoId) => run((w) => ops.mergeTaskForces(w, fromId, intoId)),
     setStance: (shipId, stance) => run((w) => setStanceCmd(w, shipId, stance)),
+    negotiateLicence: (vendorId, hullId) => run((w) => cmd.negotiateLicenceCmd(w, vendorId, hullId)),
     setStanceMany: (shipIds, stance) => run((w) => ops.setStanceMany(w, shipIds, stance)),
   };
 });

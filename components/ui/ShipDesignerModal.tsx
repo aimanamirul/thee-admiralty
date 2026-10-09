@@ -2,7 +2,9 @@
 
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { hullPlatform, HULL_LIST, HULLS, MODULE_BY_ID, MODULES, modulePlatform } from '@/lib/data/catalog';
+import { hullPlatform, HULL_LIST, HULLS, MODULE_BY_ID, MODULES, modulePlatform, SUB_PACKAGES } from '@/lib/data/catalog';
+import { orderTerms } from '@/lib/sim/licences';
+import { hullOriginView } from '@/lib/sim/supplyChain';
 import { TRADITIONS, TRADITION_LABEL } from '@/lib/generator/nameGenerator';
 import { evaluateLoadout, hullBlocked, procurability, SLOT_LABEL } from '@/lib/sim/designEngine';
 import { bridgeSet } from '@/lib/sim/researchEngine';
@@ -68,7 +70,10 @@ export default function ShipDesignerModal() {
   }, [moduleIds, vendors]);
 
   const isSub = hullPlatform(hull) === 'SUBSURFACE';
-  const hullWhy = useMemo(() => hullBlocked(hullId, vendors, done), [hullId, vendors, done]);
+  const stats = useFleetStore((s) => s.stats);
+  const terms = useMemo(() => orderTerms({ stats, vendors }, hullId, ev.cost), [stats, vendors, hullId, ev.cost]);
+  const hullWhy = useMemo(() => hullBlocked(hullId, vendors, done, terms.licensed), [hullId, vendors, done, terms.licensed]);
+  const hullVia = useMemo(() => (hull.vendorId && !terms.licensed ? hullOriginView({ vendors }, hullId) : { verified: true, known: [] as string[] }), [hull.vendorId, terms.licensed, vendors, hullId]);
   const blocked = useMemo(
     () =>
       moduleIds
@@ -149,6 +154,19 @@ export default function ShipDesignerModal() {
               </Section>
             ))}
 
+            {isSub && (
+              <Section title="Vendor packages">
+                <ul className="space-y-1">
+                  {SUB_PACKAGES.filter((d) => d.hullId === hullId).map((d) => (
+                    <li key={d.id} className="flex items-center justify-between text-[0.875rem]">
+                      <span className="text-slate-300">{d.name} <span className="text-slate-600">· hull + the builder&apos;s plant, sonar and tubes</span></span>
+                      <Btn tone="cyan" onClick={() => { setName(d.name); setSel(selFromDesign(d)); setMsg(null); }}>Load package</Btn>
+                    </li>
+                  ))}
+                </ul>
+              </Section>
+            )}
+
             <Section title="Saved designs">
               <ul className="space-y-1">
                 {designs.map((d) => (
@@ -228,6 +246,9 @@ export default function ShipDesignerModal() {
                 {ev.vendors.map((v) => (
                   <Chip key={v} tone={vendors[v as keyof typeof vendors].status === 'ACTIVE' ? 'dim' : 'red'}>{n.vs(v)}{vendors[v as keyof typeof vendors].status === 'ACTIVE' ? '' : ` ${vendors[v as keyof typeof vendors].status}`}</Chip>
                 ))}
+                {hullVia.known.filter((v) => !ev.vendors.includes(v)).map((v) => (
+                  <Chip key={`hull-via-${v}`} tone={vendors[v as keyof typeof vendors].status === 'ACTIVE' ? 'amber' : 'red'}>+{n.vs(v)} hull parts</Chip>
+                ))}
                 {chain.via.filter((v) => !ev.vendors.includes(v)).map((v) => (
                   <Chip key={`via-${v}`} tone={vendors[v].status === 'ACTIVE' ? 'amber' : 'red'}>+{n.vs(v)} parts{vendors[v].status === 'ACTIVE' ? '' : ` ${vendors[v].status}`}</Chip>
                 ))}
@@ -240,9 +261,11 @@ export default function ShipDesignerModal() {
             </Section>
 
             <Section title="Commission" tone="emerald">
-              <Stat k="Unit cost" v={fmtM(ev.cost)} tone={ev.cost > budget ? 'text-warn' : 'text-phosphor'} />
+              <Stat k="Unit cost" v={fmtM(terms.price)} tone={terms.price > budget ? 'text-warn' : 'text-phosphor'} />
+              {terms.trainingDays > 0 && <Stat k="First of class" v={`crew training +${fmtM(terms.trainingCost)}, +${terms.trainingDays} days`} tone="text-amber-radar" />}
+              {terms.licensed && <Stat k="Licensed build" v={`domestic yards: hull −${fmtM(terms.hullSaving)}, slower; immune to the builder's freeze`} tone="text-emerald-accent" />}
               <Stat k="Upkeep" v={`${(ev.upkeepPerDay * 2.5).toFixed(2)} M/day`} />
-              <Stat k="Build time" v={`${hull.buildDays} days`} />
+              <Stat k="Build time" v={`${terms.days} days`} />
               <div className="mt-2 grid grid-cols-2 gap-1">
                 <select value={tradition} onChange={(e) => setTradition(e.target.value as NamingTradition)} className="px-1 py-1 text-[0.8125rem]" aria-label="Naming tradition">
                   {TRADITIONS.map((t) => (

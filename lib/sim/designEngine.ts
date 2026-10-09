@@ -224,10 +224,16 @@ export const SLOT_LABEL: Record<ModuleSlot, string> = {
 export const SUBMARINE_SERVICE = true;
 
 /** Why this hull cannot be laid down right now (service not established, or its builder will not sell), or null. */
-export function hullBlocked(hullId: HullClassId, vendors: Record<string, Vendor>, done: ReadonlySet<string>): string | null {
+export function hullBlocked(hullId: HullClassId, vendors: Record<string, Vendor>, done: ReadonlySet<string>, licensed = false): string | null {
   const hull = HULLS[hullId];
   if (hullPlatform(hull) === 'SUBSURFACE' && !SUBMARINE_SERVICE) return 'NO SUBMARINE SERVICE YET: BOATS CAN BE DESIGNED BUT NOT LAID DOWN';
   if (!hull.vendorId) return null;
+  // Licensed: the domestic yards build it; only a revoked licence stops the order (and the hull's hidden sub-suppliers still count)
+  if (licensed) {
+    if (vendors[hull.vendorId]?.status === 'REVOKED') return `LICENCE REVOKED ({vs:${hull.vendorId}})`;
+    const comp = (hull.origins ?? []).find((id) => vendors[id]?.status === 'FROZEN' || vendors[id]?.status === 'REVOKED');
+    return comp ? `COMPONENT ${vendors[comp].status === 'FROZEN' ? 'FREEZE' : 'LICENCE REVOKED'} ({vs:${comp}})` : null;
+  }
   const p = procurability({ vendorId: hull.vendorId, requiredTier: hull.requiredTier ?? 0, origins: hull.origins }, vendors, done);
   return p.ok ? null : `HULL FROM {v:${hull.vendorId}}: ${p.reason}`;
 }

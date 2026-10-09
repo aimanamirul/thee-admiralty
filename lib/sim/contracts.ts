@@ -16,6 +16,7 @@ import type { HullClassId } from '../types/hull';
 import type { BuildContract, Ship } from '../types/fleet';
 import type { WorldDraft } from '../types/world';
 import { adjustSupport } from './politicsEngine';
+import { LICENSED_HULL_RATE } from './licences';
 import { REGIMES } from './relationsEngine';
 import { exposure } from './supplyChain';
 
@@ -29,8 +30,9 @@ export const RESALE_RATE = 0.7;
 export const RESALE_MIN_PROGRESS = 0.4;
 
 /** Each vendor's share of the price: modules by their prime vendor, the hull by its builder (the domestic yards unless it is a vendor hull). */
-export function contractShares(hullId: HullClassId, moduleIds: readonly string[]): Partial<Record<VendorId, number>> {
-  const raw: Partial<Record<VendorId, number>> = { [hullVendor(hullId)]: HULLS[hullId].cost };
+export function contractShares(hullId: HullClassId, moduleIds: readonly string[], licensed = false): Partial<Record<VendorId, number>> {
+  // A licensed hull is built and paid for by the domestic yards, at a discount
+  const raw: Partial<Record<VendorId, number>> = licensed ? { DOMESTIC_YARDS: HULLS[hullId].cost * LICENSED_HULL_RATE } : { [hullVendor(hullId)]: HULLS[hullId].cost };
   for (const id of moduleIds) {
     const m = MODULE_BY_ID[id];
     if (m) raw[m.vendorId] = (raw[m.vendorId] ?? 0) + m.cost;
@@ -40,10 +42,10 @@ export function contractShares(hullId: HullClassId, moduleIds: readonly string[]
   return raw;
 }
 
-export function newContract(hullId: HullClassId, moduleIds: readonly string[], price: number): BuildContract {
+export function newContract(hullId: HullClassId, moduleIds: readonly string[], price: number, licensed = false): BuildContract {
   const deposit = price * DEPOSIT_RATE;
   const paidByVendor: Partial<Record<VendorId, number>> = {};
-  for (const [v, share] of Object.entries(contractShares(hullId, moduleIds))) paidByVendor[v as VendorId] = deposit * (share ?? 0);
+  for (const [v, share] of Object.entries(contractShares(hullId, moduleIds, licensed))) paidByVendor[v as VendorId] = deposit * (share ?? 0);
   return { price, paid: deposit, paidByVendor, awaitingFunds: false };
 }
 
@@ -70,7 +72,7 @@ export function payInstalment(w: WorldDraft, s: Ship): boolean {
   c.awaitingFunds = false;
   w.resources.budget -= due;
   c.paid += due;
-  const shares = contractShares(s.hullId, s.modules.map((m) => m.moduleId));
+  const shares = contractShares(s.hullId, s.modules.map((m) => m.moduleId), s.licensed);
   for (const [v, share] of Object.entries(shares)) c.paidByVendor[v as VendorId] = (c.paidByVendor[v as VendorId] ?? 0) + due * (share ?? 0);
   return true;
 }
@@ -79,7 +81,7 @@ export function payInstalment(w: WorldDraft, s: Ship): boolean {
 export function cannotDeliver(w: WorldDraft, s: Ship, vendorId: VendorId): boolean {
   if (vendorId === 'DOMESTIC_YARDS') return false;
   const h = HULLS[s.hullId];
-  if (h.vendorId === vendorId && [vendorId, ...(h.origins ?? [])].some((x) => w.vendors[x].status === 'FROZEN' || w.vendors[x].status === 'REVOKED')) return true;
+  if (h.vendorId === vendorId && !s.licensed && [vendorId, ...(h.origins ?? [])].some((x) => w.vendors[x].status === 'FROZEN' || w.vendors[x].status === 'REVOKED')) return true;
   return s.modules.some((im) => {
     const m = MODULE_BY_ID[im.moduleId];
     return m?.vendorId === vendorId && exposure(m).some((x) => w.vendors[x].status === 'FROZEN' || w.vendors[x].status === 'REVOKED');

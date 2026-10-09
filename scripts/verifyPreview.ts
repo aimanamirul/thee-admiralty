@@ -9,6 +9,7 @@ import * as cmd from '../lib/sim/commands';
 import { designateHulk } from '../lib/sim/fleetEngine';
 import * as ops from '../lib/sim/fleetOps';
 import { setStance } from '../lib/sim/submarines';
+import { licensableHulls } from '../lib/sim/licences';
 import * as pv from '../lib/sim/preview';
 import { createInitialWorld } from '../lib/sim/scenario';
 import { createTutorialWorld } from '../lib/sim/tutorialScenario';
@@ -82,6 +83,7 @@ function sweep(tag: string, w: WorldDraft) {
     if (s.buildStatus !== 'COMMISSIONED' || s.isPartsHulk) continue;
     for (const st of ['STEALTH', 'PATROL'] as const) agree(`${tag} stance ${s.id}/${st}`, w, pv.previewStance(w, s.id, st), (c) => setStance(c, s.id, st));
   }
+  for (const v of Object.keys(w.vendors) as VendorId[]) for (const h of licensableHulls(v)) agree(`${tag} licence ${v}/${h}`, w, pv.previewLicence(w, v, h), (c) => cmd.negotiateLicenceCmd(c, v, h));
   const tfs = w.fleets.flatMap((f) => f.taskForces);
   for (const a of tfs) {
     const ids = a.squadrons.flatMap((q) => q.shipIds);

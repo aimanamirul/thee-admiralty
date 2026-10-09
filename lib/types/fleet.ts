@@ -56,6 +56,8 @@ export interface Ship {
   submergedLeft?: number;
   exposedDays?: number;
   rechargeDays?: number;
+  /** Built by the domestic yards under a vendor's licence (cheaper hull, slower, immune to the vendor's export freeze on the hull). */
+  licensed?: boolean;
 }
 
 export interface Squadron {

@@ -3,7 +3,7 @@ import type { ModuleSlot, Protocol, BridgeKey } from './equipment';
 import type { VendorId } from './diplomacy';
 
 export type Draft = 'Shallow' | 'Medium' | 'Deep';
-export type HullClassId = 'FAC' | 'CORVETTE' | 'FRIGATE' | 'DESTROYER' | 'CARRIER' | 'SUB_SEORAK' | 'SUB_KB';
+export type HullClassId = 'FAC' | 'CORVETTE' | 'FRIGATE' | 'DESTROYER' | 'CARRIER' | 'SUB_SEORAK' | 'SUB_KB' | 'SUB_DAHAI';
 export type HullPlatform = 'SURFACE' | 'SUBSURFACE';
 
 export interface HullBase {

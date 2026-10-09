@@ -15,11 +15,11 @@ import type { EngagementResult, Outcome } from './combatSim';
 // ------------------------------------------------------------------------------------------ what a loss means
 
 /** Domestic support lost with a warship, by class: a FAC is a tragedy, a carrier is a national disaster. */
-export const LOSS_SUPPORT: Record<HullClassId, number> = { FAC: 3, CORVETTE: 5, FRIGATE: 8, DESTROYER: 13, CARRIER: 22, SUB_SEORAK: 12, SUB_KB: 12 };
+export const LOSS_SUPPORT: Record<HullClassId, number> = { FAC: 3, CORVETTE: 5, FRIGATE: 8, DESTROYER: 13, CARRIER: 22, SUB_SEORAK: 12, SUB_KB: 12, SUB_DAHAI: 12 };
 /** Political capital lost with a capital ship (the cabinet wants answers). */
-export const LOSS_PC: Record<HullClassId, number> = { FAC: 0, CORVETTE: 0, FRIGATE: 0, DESTROYER: 4, CARRIER: 10, SUB_SEORAK: 2, SUB_KB: 2 };
+export const LOSS_PC: Record<HullClassId, number> = { FAC: 0, CORVETTE: 0, FRIGATE: 0, DESTROYER: 4, CARRIER: 10, SUB_SEORAK: 2, SUB_KB: 2, SUB_DAHAI: 2 };
 /** Crew aboard, for the casualty figure. */
-export const CREW: Record<HullClassId, number> = { FAC: 30, CORVETTE: 90, FRIGATE: 190, DESTROYER: 300, CARRIER: 1400, SUB_SEORAK: 45, SUB_KB: 35 };
+export const CREW: Record<HullClassId, number> = { FAC: 30, CORVETTE: 90, FRIGATE: 190, DESTROYER: 300, CARRIER: 1400, SUB_SEORAK: 45, SUB_KB: 35, SUB_DAHAI: 40 };
 export const ROLL_CAP = 30;
 export const isCapital = (h: HullClassId) => h === 'DESTROYER' || h === 'CARRIER';
 
@@ -96,7 +96,7 @@ export interface StoryContext {
 }
 
 const pick = <T,>(rng: Rng, xs: T[]) => xs[rng.int(0, xs.length - 1)];
-const CLASS: Record<HullClassId, string> = { FAC: 'fast attack craft', CORVETTE: 'corvette', FRIGATE: 'frigate', DESTROYER: 'destroyer', CARRIER: 'carrier', SUB_SEORAK: 'submarine', SUB_KB: 'submarine' };
+const CLASS: Record<HullClassId, string> = { FAC: 'fast attack craft', CORVETTE: 'corvette', FRIGATE: 'frigate', DESTROYER: 'destroyer', CARRIER: 'carrier', SUB_SEORAK: 'submarine', SUB_KB: 'submarine', SUB_DAHAI: 'submarine' };
 
 /** Three to six lines, each short enough for the ticker. Pure and deterministic given the context. */
 export function battleStory(c: StoryContext): string[] {

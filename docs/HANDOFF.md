@@ -529,6 +529,18 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
 - Known limits: a boat-only task force cannot carry out ladder orders (it supplies sonar and torpedoes to a surface force); no sonar cue/event when a launch creates a datum; no tutorial lesson.
 - Not done: S4 (vendor packages, first-of-class training, Dahai / S26T, licences), S5 polish (plot toggle, tutorial / advisor lesson, balance soak).
 
+## Submarines S4: packages, training, licences, the S26T case (docs/PLAN-submarines.md)
+- Third family `SUB_DAHAI` (2,300 t, cheap, stealth 42) with `origins: ['KESSLER_BRANDT']`; Dahai submarine diesel `PP_SUB_DH_DE` hides a Kessler-Brandt engine (`origins`), plus a sonar and heavyweight tubes.
+  A sanction on Kessler-Brandt stalls Dahai-built boats (`syncConstructionFreezes` checks hull `origins`), the builder refunds as the party that cannot deliver, and `embeddedInFleet`
+  lets Kessler-Brandt sanction the navy even if it never dealt with it. `hullOriginView` / `fleetExposure` show the hidden supplier once due diligence on the builder is done.
+- Vendor packages: `SUB_PACKAGES` (one per family: the builder's plant, sonar and tubes) load from a "Vendor packages" list in the designer.
+- `lib/sim/licences.ts`: `orderTerms` = price, days, training, licence. First of class: the first boat of each family (recorded in `stats.boatFamilies` at lay-down) costs +15% and +40 days; later boats
+  of that family do not (surface ships never). Licensed production: a vendor at STRATEGIC licenses its hull for 14 PC + 180 M (`Vendor.licences`, "Negotiate licence" in the Diplomacy ledger); a licensed
+  hull is built and paid for by the domestic yards (`Ship.licensed`, hull price x0.75, build x1.3), is immune to the vendor's own export freeze on the hull, but not to a revoked licence or to the hull's hidden
+  sub-suppliers (`hullBlocked(..., licensed)`, `syncConstructionFreezes`). Modules and spares stay exposed. `previewOrderShip` / `previewLicence` state all of it.
+- `verify:subs` S4 section covers packages, training, licence rules and shielding, and the S26T chain; `verify:preview` sweeps `previewLicence`.
+- Not done: Mitsurugi family (waits for its cold-vendor opening), licence revocation as an event, S5 (plot toggle, tutorial / advisor lesson, balance soak, `verify:hulls` price review of boats).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

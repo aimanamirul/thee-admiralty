@@ -5,7 +5,9 @@ import { useMemo, useState } from 'react';
 import { MINISTRIES, MODULES } from '@/lib/data/catalog';
 import { procurability } from '@/lib/sim/designEngine';
 import { lobbyCost, ministriesRefuse } from '@/lib/sim/politicsEngine';
-import { previewAdvance, previewDiligence, previewLobby, previewScout } from '@/lib/sim/preview';
+import { previewAdvance, previewDiligence, previewLicence, previewLobby, previewScout } from '@/lib/sim/preview';
+import { licensableHulls } from '@/lib/sim/licences';
+import { HULLS } from '@/lib/data/catalog';
 import { DILIGENCE_DAYS, diligenceBlocked, fleetExposure, originView } from '@/lib/sim/supplyChain';
 import { advanceBlocked, BLOC_LABEL, nextStep, REGIMES, RUNG_LABEL, rungAccess, sanctionRiskPerDay, scoutable, scoutBlocked, sellableTier } from '@/lib/sim/relationsEngine';
 import { marketWatch } from '@/lib/sim/coldVendors';
@@ -72,7 +74,7 @@ function VendorCard({ v }: { v: Vendor }) {
   const tension = useFleetStore((s) => s.tension);
   const pc = useFleetStore((s) => s.resources.politicalCapital);
   const tick = useFleetStore((s) => s.tick);
-  const { lobby, advanceRelationship, dueDiligence } = useFleetStore.getState();
+  const { lobby, advanceRelationship, dueDiligence, negotiateLicence } = useFleetStore.getState();
   const [open, setOpen] = useState(false);
   const view = { politics };
   const refuse = ministriesRefuse(view);
@@ -117,6 +119,21 @@ function VendorCard({ v }: { v: Vendor }) {
         )}
       </div>
       {open && <Catalogue v={v} />}
+      {!domestic && licensableHulls(v.id).length > 0 && (
+        <div className="mt-1.5 space-y-1">
+          <div className="text-[0.75rem] uppercase tracking-widest text-slate-500">Licensed production</div>
+          {licensableHulls(v.id).map((h) => (
+            <div key={h} className="flex items-center justify-between gap-2 text-[0.8125rem]">
+              <span className="text-slate-300">{HULLS[h].name}{v.licences?.includes(h) ? <Chip tone="emerald">LICENSED</Chip> : null}</span>
+              {!v.licences?.includes(h) && (
+                <Btn tone="amber" preview={(w) => `Licence: ${previewLicence(w, v.id, h)}`} onClick={() => negotiateLicence(v.id, h)}>
+                  Negotiate licence
+                </Btn>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {v.rungProgress && (
         <div className="mt-1.5">

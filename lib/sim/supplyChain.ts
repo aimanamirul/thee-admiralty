@@ -8,10 +8,11 @@
  *   during the warning period, before anything lands.
  * - No leak by absence: an unverified module looks the same whether or not it hides anything.
  */
-import { MODULE_BY_ID, MODULES } from '../data/catalog';
+import { HULLS, MODULE_BY_ID, MODULES } from '../data/catalog';
 import { mt, vt } from '../data/tokens';
 import type { Vendor, VendorId } from '../types/diplomacy';
 import type { EquipmentModule } from '../types/equipment';
+import type { HullClassId } from '../types/hull';
 import type { WorldDraft } from '../types/world';
 
 export const DILIGENCE_COST = 12;
@@ -30,12 +31,18 @@ export interface OriginView {
 }
 
 /** What the player knows about a module's sub-suppliers. */
-export function originView(w: Pick<WorldDraft, 'vendors'>, m: EquipmentModule): OriginView {
+export function originView(w: Pick<WorldDraft, 'vendors'>, m: Pick<EquipmentModule, 'vendorId' | 'origins'>): OriginView {
   if (m.vendorId === 'DOMESTIC_YARDS') return { verified: true, known: [] };
   const verified = !!w.vendors[m.vendorId]?.diligence?.done;
   // Joint-venture partners are public knowledge: no due diligence needed to see them.
   const jv = w.vendors[m.vendorId]?.jvPartners ?? [];
   return { verified, known: (m.origins ?? []).filter((o) => verified || jv.includes(o) || !!w.vendors[o]?.chainExposed) };
+}
+
+/** What the player knows about a vendor hull's sub-suppliers (the hull is a product like a module). */
+export function hullOriginView(w: Pick<WorldDraft, 'vendors'>, hullId: HullClassId): OriginView {
+  const h = HULLS[hullId];
+  return h.vendorId ? originView(w, { vendorId: h.vendorId, origins: h.origins }) : { verified: true, known: [] };
 }
 
 /** Modules whose products carry this vendor's components (not counting its own catalogue). */
@@ -46,6 +53,7 @@ export function embeddingModules(vendorId: VendorId): EquipmentModule[] {
 /** Does any hull in the navy (built or building) carry this vendor's components inside another vendor's product? */
 export function embeddedInFleet(w: WorldDraft, vendorId: VendorId): boolean {
   for (const s of Object.values(w.ships)) {
+    if (HULLS[s.hullId].origins?.includes(vendorId)) return true;
     for (const im of s.modules) if (MODULE_BY_ID[im.moduleId]?.origins?.includes(vendorId)) return true;
   }
   return false;
@@ -60,6 +68,13 @@ export function fleetExposure(w: Pick<WorldDraft, 'ships' | 'vendors'>): { byVen
     const direct = new Set<VendorId>();
     const via = new Set<VendorId>();
     let unverified = false;
+    const hull = HULLS[s.hullId];
+    if (hull.vendorId && !s.licensed) {
+      direct.add(hull.vendorId);
+      const o = hullOriginView(w, s.hullId);
+      for (const k of o.known) via.add(k);
+      if (!o.verified) unverified = true;
+    }
     for (const im of s.modules) {
       const m = MODULE_BY_ID[im.moduleId];
       if (!m) continue;

@@ -8,6 +8,7 @@ import type { HullClassId } from '../types/hull';
 import type { LadderAction, Roe, Sop, WorldDraft } from '../types/world';
 import { actionBlocked, INTENT_LABEL } from './contactEngine';
 import { aswPowerNear } from './asw';
+import { familyBuilt, isBoatHull, negotiateLicence, orderTerms } from './licences';
 import { advanceRelationship, scoutSuppliers } from './relationsEngine';
 import { startDiligence } from './supplyChain';
 import { cancelContract, newContract, resellHull } from './contracts';
@@ -43,14 +44,15 @@ export function orderShip(
   const ev = evaluateLoadout(a.hullId, a.moduleIds, bridgeSet(world.research.completed));
   if (!ev.valid) return fail(ev.errors[0]);
   const done_ = new Set(world.research.completed);
-  const hullWhy = hullBlocked(a.hullId, vendorMap(world), done_);
+  const terms = orderTerms(world, a.hullId, ev.cost);
+  const hullWhy = hullBlocked(a.hullId, vendorMap(world), done_, terms.licensed);
   if (hullWhy) return fail(hullWhy);
   for (const id of a.moduleIds) {
     const m = MODULE_BY_ID[id];
     const p = procurability(m, vendorMap(world), done_);
     if (!p.ok) return fail(`${mt(m.id)}: ${p.reason}`);
   }
-  const contract = newContract(a.hullId, a.moduleIds, ev.cost);
+  const contract = newContract(a.hullId, a.moduleIds, terms.price, terms.licensed);
   if (world.resources.budget < contract.paid) return fail(`INSUFFICIENT BUDGET: ${contract.paid.toFixed(0)} M DEPOSIT REQUIRED`);
   world.resources.budget -= contract.paid;
 
@@ -65,12 +67,15 @@ export function orderShip(
     designName: a.designName, moduleIds: a.moduleIds, constructing: true, tick: world.tick,
   });
   ship.contract = contract;
+  if (terms.licensed) ship.licensed = true;
+  ship.buildTotalDays = terms.days;
+  if (isBoatHull(a.hullId) && !familyBuilt(world, a.hullId)) world.stats.boatFamilies = [...(world.stats.boatFamilies ?? []), a.hullId];
   world.ships[id] = ship;
   sq.shipIds.push(id);
   syncConstructionFreezes(world);
   world.events.push({
     severity: 'INFO',
-    text: `LAID DOWN: ${ship.pennant} ${name.toUpperCase()} (${HULLS[a.hullId].name}) — ${ev.cost.toFixed(0)} M contract, ${contract.paid.toFixed(0)} M deposit, balance paid over ${ship.buildTotalDays} days`,
+    text: `LAID DOWN: ${ship.pennant} ${name.toUpperCase()} (${HULLS[a.hullId].name}${terms.licensed ? ', licensed build' : ''}) — ${terms.price.toFixed(0)} M contract${terms.trainingDays ? ` incl. ${terms.trainingCost.toFixed(0)} M first-of-class crew training (+${terms.trainingDays} days)` : ''}, ${contract.paid.toFixed(0)} M deposit, balance paid over ${ship.buildTotalDays} days`,
   });
   return done(`${name} laid down`);
 }
@@ -328,4 +333,9 @@ export function setZonePolicyCmd(world: WorldDraft, zoneId: string, policy: Inte
 export function engageMerchantCmd(world: WorldDraft, tfId: string, merchantId: string): CommandResult {
   const r = engageMerchant(world, tfId, merchantId);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+export function negotiateLicenceCmd(world: WorldDraft, vendorId: VendorId, hullId: HullClassId): CommandResult {
+  const r = negotiateLicence(world, vendorId, hullId);
+  return r.ok ? { ok: true, message: r.message } : { ok: false, reason: r.reason };
 }

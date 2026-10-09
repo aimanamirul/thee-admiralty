@@ -65,6 +65,9 @@ const REAL_MODULE: Record<string, string> = {
   SEN_SONAR_SUB_KB: 'ISUS 90 Sonar Suite',
   ARM_SUB_KB_HWT: 'DM2A4 Heavyweight Torpedo Tubes',
   ARM_SUB_SK_TASM: 'Tube-Launched SSM (Hae Sung-class)',
+  PP_SUB_DH_DE: 'MTU 396 Licence-Built Diesel (S26T-type)',
+  SEN_SONAR_SUB_DH: 'H/SQG-205 Export Sonar Suite',
+  ARM_SUB_DH_HWT: 'Yu-6 Heavyweight Torpedo Tubes',
 };
 
 const REAL_PROJECT: Record<string, string> = {

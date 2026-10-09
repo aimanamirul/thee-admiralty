@@ -54,6 +54,8 @@ export interface Vendor {
   opening?: { announcedTick: number; tick: number; incidentsAtAnnounce: number } | null;
   /** Joint-venture partners: public co-owners whose state's sanctions reach this vendor's products. */
   jvPartners?: VendorId[];
+  /** Submarine hull families this vendor has licensed to the domestic yards (licensed production, S4). */
+  licences?: string[];
 }
 
 export interface Ministry {

@@ -28,12 +28,13 @@ import {
   SEIZURE_SHARE, strikeLegal, zoneBlocked, zoneInForce, zonePolicyBlocked, ZONE_PC, CREW,
 } from './interdiction';
 import { targetIndex } from './shipping';
-import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, originView } from './supplyChain';
+import { DILIGENCE_COST, DILIGENCE_DAYS, diligenceBlocked, hullOriginView, originView } from './supplyChain';
 import { advanceBlocked, blocFallout, nextStep, REGIMES, RUNG_LABEL, rungAccess, scoutable, scoutBlocked, SCOUT_PC, sellableTier } from './relationsEngine';
 import { ACTION_RANGE, actionBlocked, contactStatus, nearestActiveTf, OUTCOMES, SOP_RANGES } from './contactEngine';
 import type { LadderAction, Sop } from '../types/world';
 import { aswPowerNear, killChance } from './asw';
 import { boatFigures, depthMultiplier, indiscretionRisk, isBoat, RECHARGE_DAYS, STANCE_AMBUSH, STANCE_DETERRENCE, stanceBlocked, type Stance } from './submarines';
+import { LICENCE_MONEY, LICENCE_PC, LICENSED_DAYS_RATE, licenceBlocked, orderTerms } from './licences';
 import { mergeBlocked, REFIT_DAYS, refitBlocked, refitCandidates, refitCost, splitBlocked } from './fleetOps';
 import type { ModuleSlot } from '../types/equipment';
 
@@ -233,25 +234,28 @@ export function previewOrderShip(w: WorldDraft, a: { hullId: HullClassId; module
   if (!ev.valid) return blocked(ev.errors[0]);
   const vendors = w.vendors as unknown as Record<string, WorldDraft['vendors'][VendorId]>;
   const done = new Set(w.research.completed);
-  const hullWhy = hullBlocked(a.hullId, vendors, done);
+  const terms = orderTerms(w, a.hullId, ev.cost);
+  const hullWhy = hullBlocked(a.hullId, vendors, done, terms.licensed);
   if (hullWhy) return blocked(hullWhy);
   for (const id of a.moduleIds) {
     const p = procurability(MODULE_BY_ID[id], vendors, done);
     if (!p.ok) return blocked(`${mt(id)}: ${p.reason}`);
   }
-  const deposit = ev.cost * DEPOSIT_RATE;
+  const deposit = terms.price * DEPOSIT_RATE;
   if (w.resources.budget < deposit) return blocked(`deposit ${M(deposit)} needed, have ${M(w.resources.budget)}`);
   const building = Object.values(w.ships).filter((s) => s.buildStatus === 'CONSTRUCTING' && !s.frozenBy).length;
   const hull = HULLS[a.hullId];
   const wait = building >= w.resources.industrialCapacity ? ` · all ${w.resources.industrialCapacity} slipways busy: queued behind ${building - w.resources.industrialCapacity + 1}` : '';
   const foreign = [...new Set(a.moduleIds.map((id) => MODULE_BY_ID[id].vendorId))].filter((v) => v !== 'DOMESTIC_YARDS' && w.vendors[v].status !== 'ACTIVE');
-  const views = a.moduleIds.map((id) => originView(w, MODULE_BY_ID[id]));
+  const views = [...(hull.vendorId && !terms.licensed ? [hullOriginView(w, a.hullId)] : []), ...a.moduleIds.map((id) => originView(w, MODULE_BY_ID[id]))];
   const via = [...new Set(views.flatMap((o) => o.known))];
   const unverified = views.filter((o) => !o.verified).length;
   return [
-    `${M(ev.cost)} contract: −${M(deposit)} deposit now (budget ${M(w.resources.budget)} → ${M(w.resources.budget - deposit)})`,
-    `balance ${M(ev.cost - deposit)} at ${M((ev.cost - deposit) / hull.buildDays)}/day while building`,
-    `commissions in ${hull.buildDays} days${wait}`,
+    `${M(terms.price)} contract: −${M(deposit)} deposit now (budget ${M(w.resources.budget)} → ${M(w.resources.budget - deposit)})`,
+    `balance ${M(terms.price - deposit)} at ${M((terms.price - deposit) / terms.days)}/day while building`,
+    `commissions in ${terms.days} days${wait}`,
+    ...(terms.trainingDays ? [`first of class: crew training +${M(terms.trainingCost)}, +${terms.trainingDays} days (later boats of this family skip it)`] : []),
+    ...(terms.licensed ? [`licensed build at the domestic yards: hull −${M(terms.hullSaving)}, ${Math.round((LICENSED_DAYS_RATE - 1) * 100)}% slower · immune to the builder's export freeze on the hull`] : []),
     `running cost +${hullDailyCost(a.hullId, 'TRANSIT_WORKUP').toFixed(2)}–${hullDailyCost(a.hullId, 'ACTIVE_PATROL').toFixed(2)}M/day once commissioned`,
     ...(ev.frictionIndex > 0 ? [`integration friction ${ev.frictionIndex.toFixed(2)}`] : []),
     ...(foreign.length ? [`sanction exposure: ${foreign.map(vt).join(', ')}`] : []),
@@ -596,4 +600,11 @@ export function previewStanceMany(w: WorldDraft, shipIds: string[], stance: Stan
   const ready = boats.filter((id) => !stanceBlocked(w, id, stance));
   if (ready.length === 0) return blocked(`all ${boats.length} selected boat${boats.length === 1 ? ' is' : 's are'} already on ${stance}`);
   return `${ready.length} of ${boats.length} boat${boats.length === 1 ? '' : 's'} → ${stance} · deterrence ×${STANCE_DETERRENCE[stance]} · ambush ×${STANCE_AMBUSH[stance]}`;
+}
+
+export function previewLicence(w: WorldDraft, vendorId: VendorId, hullId: HullClassId): Preview {
+  const b = licenceBlocked(w, vendorId, hullId);
+  if (b) return blocked(b);
+  const hull = HULLS[hullId];
+  return `−${lobbyCost(w, LICENCE_PC)} PC · −${M(LICENCE_MONEY)} · ${vt(vendorId)} licenses the ${hull.name} to the domestic yards: hull ${M(hull.cost)} → ${M(hull.cost * 0.75)}, ${Math.round((LICENSED_DAYS_RATE - 1) * 100)}% slower to build · immune to ${vt(vendorId)}'s export freeze on the hull, still exposed to revocation, its kit and its hidden sub-suppliers`;
 }

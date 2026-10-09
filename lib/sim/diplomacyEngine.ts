@@ -167,7 +167,9 @@ export function syncConstructionFreezes(world: WorldDraft): void {
     const hull = HULLS[ship.hullId];
     for (const vid of hull.vendorId ? [hull.vendorId, ...(hull.origins ?? [])] : []) {
       const v = world.vendors[vid];
-      if (v.status === 'REVOKED' || (v.status === 'FROZEN' && !!activeSanction(world, vid, 'EXPORT_FREEZE'))) {
+      // A licensed hull is immune to its own vendor's export freeze (but not to a revocation, nor to its hidden sub-suppliers)
+      const shielded = !!ship.licensed && vid === hull.vendorId;
+      if (v.status === 'REVOKED' || (v.status === 'FROZEN' && !shielded && !!activeSanction(world, vid, 'EXPORT_FREEZE'))) {
         culprit = vid;
         break;
       }

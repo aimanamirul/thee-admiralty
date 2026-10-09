@@ -34,8 +34,8 @@ const ev = (hull: HullClassId, ids: string[]) => evaluateLoadout(hull, ids, brid
 const SUBS = HULL_LIST.filter((h) => hullPlatform(h) === 'SUBSURFACE');
 
 // ---- data
-check(SUBS.length === 2 && SUBS.every((h) => h.vendorId && h.stealth !== undefined && h.enduranceDays !== undefined), 'two vendor submarine hulls with stealth and endurance');
-check(SUBS.map((h) => h.vendorId).sort().join() === 'KESSLER_BRANDT,SEORAK', 'launch families: Seorak and Kessler-Brandt');
+check(SUBS.length === 3 && SUBS.every((h) => h.vendorId && h.stealth !== undefined && h.enduranceDays !== undefined), 'three vendor submarine hulls with stealth and endurance');
+check(SUBS.map((h) => h.vendorId).sort().join() === 'DAHAI,KESSLER_BRANDT,SEORAK', 'families: Seorak, Kessler-Brandt and Dahai');
 check(HULL_LIST.filter((h) => hullPlatform(h) === 'SURFACE').every((h) => !h.vendorId && hullVendor(h.id) === 'DOMESTIC_YARDS'), 'surface hulls are still built by the domestic yards');
 for (const m of MODULES) check(['SURFACE', 'SUBSURFACE', 'ANY'].includes(modulePlatform(m)), `${m.id} has a platform`);
 check(MODULES.filter((m) => modulePlatform(m) === 'SUBSURFACE').length >= 10, 'enough submarine kit');
@@ -671,8 +671,148 @@ function s3world(_seed: string, sonar = false) {
   check(copy.submerged === true && copy.track === c.track && copy.stealth === c.stealth, 'submarine contacts survive a save round trip');
 }
 
+// =========================================================================================================== S4: packages, training, licences, S26T
+import { SUB_PACKAGES } from '../lib/data/catalog';
+import { diligenceBlocked, embeddedInFleet, fleetExposure, hullOriginView } from '../lib/sim/supplyChain';
+import { LICENSED_DAYS_RATE, LICENSED_HULL_RATE, LICENCE_MONEY, TRAINING_DAYS, TRAINING_RATE, isLicensed, licenceBlocked, negotiateLicence, orderTerms } from '../lib/sim/licences';
+
+const DOM_BOAT = ['PP_SUB_DOM_DE', 'CMS_DOM_OB1', 'SEN_SONAR_SUB_DOM', 'ARM_SUB_DOM_HWT'];
+const S4_BASE = createInitialWorld('S4-BASE', 'CORRIDOR');
+const s4 = () => {
+  const w = copyOf(S4_BASE);
+  w.scripted = true;
+  w.resources.budget = 9000;
+  w.resources.politicalCapital = 50;
+  w.resources.industrialCapacity = 6;
+  for (const id of ['SEORAK', 'KESSLER_BRANDT', 'DAHAI'] as const) {
+    w.vendors[id].rung = 'STRATEGIC';
+    w.vendors[id].standing = 95;
+    w.vendors[id].status = 'ACTIVE';
+    w.vendors[id].closed = false;
+  }
+  return w;
+};
+const order = (w: WorldDraft, hull: HullClassId, ids: string[]) => cmd.orderShip(w, { designName: 'T', hullId: hull, moduleIds: ids, squadronId: 'SQ-1-1', tradition: 'VIRTUES' });
+const lastShip = (w: WorldDraft) => Object.values(w.ships).filter((x) => x.contract).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })).pop()!;
+
+// ---- vendor packages are valid designs from the builder
+for (const d of SUB_PACKAGES) {
+  const e = ev(d.hullId, d.moduleIds);
+  check(e.valid && e.powerMarginMW >= 0, `package ${d.name} is valid (${e.errors.join('; ')})`);
+  check(e.sonarKm > 0 && e.stealth > 30, `package ${d.name} has sonar and some stealth`);
+  const builder = HULLS[d.hullId].vendorId;
+  check(d.moduleIds.filter((m) => MODULES.find((x) => x.id === m)!.vendorId === builder).length >= 3, `package ${d.name} is mostly the builder's kit`);
+}
+check(SUB_PACKAGES.length === 3 && new Set(SUB_PACKAGES.map((d) => d.hullId)).size === 3, 'one package per family');
+
+// ---- first-of-class crew training
+{
+  const w = s4();
+  const base = ev('SUB_KB', KB_AIP).cost;
+  const t1 = orderTerms(w, 'SUB_KB', base);
+  check(Math.abs(t1.trainingCost - base * TRAINING_RATE) < 1e-6 && t1.trainingDays === TRAINING_DAYS && t1.days === HULLS.SUB_KB.buildDays + TRAINING_DAYS && !t1.licensed, 'the first boat of a family carries a training package');
+  const b0 = w.resources.budget;
+  const r = order(w, 'SUB_KB', KB_AIP);
+  check(r.ok, `first KB boat laid down (${r.reason})`);
+  const s = lastShip(w);
+  check(Math.abs((s.contract?.price ?? 0) - t1.price) < 1e-6 && s.buildTotalDays === t1.days, 'the contract carries the training cost and days');
+  check(Math.abs(b0 - w.resources.budget - t1.price * 0.3) < 1e-6, 'the deposit is on the full price');
+  check(w.stats.boatFamilies?.includes('SUB_KB') === true, 'the family is recorded');
+  const t2 = orderTerms(w, 'SUB_KB', base);
+  check(t2.trainingDays === 0 && t2.price === base && t2.days === HULLS.SUB_KB.buildDays, 'later boats of the family skip training');
+  check(order(w, 'SUB_KB', KB_AIP).ok && lastShip(w).buildTotalDays === HULLS.SUB_KB.buildDays, 'a second boat is built in the normal time');
+  check(orderTerms(w, 'SUB_SEORAK', 400).trainingDays === TRAINING_DAYS, 'another family still needs its own training');
+  check(orderTerms(w, 'FRIGATE', 300).trainingDays === 0 && orderTerms(w, 'FRIGATE', 300).price === 300, 'surface ships have no training package');
+  const p = pv.previewOrderShip(w, { hullId: 'SUB_SEORAK', moduleIds: SEORAK_AIP, squadronId: 'SQ-1-1' });
+  check(/first of class/.test(p), 'the preview names the training package');
+}
+
+// ---- licensed production
+{
+  const w = s4();
+  w.vendors.SEORAK.rung = 'SIGNED';
+  check(/STRATEGIC/.test(licenceBlocked(w, 'SEORAK', 'SUB_SEORAK') ?? ''), 'only a strategic partner licenses a hull');
+  w.vendors.SEORAK.rung = 'STRATEGIC';
+  check(!!licenceBlocked(w, 'KESSLER_BRANDT', 'SUB_SEORAK'), 'a vendor licenses only its own hulls');
+  w.resources.politicalCapital = 1;
+  check(/POLITICAL CAPITAL/.test(licenceBlocked(w, 'SEORAK', 'SUB_SEORAK') ?? ''), 'a licence costs political capital');
+  w.resources.politicalCapital = 50;
+  w.resources.budget = LICENCE_MONEY - 1;
+  check(/M/.test(licenceBlocked(w, 'SEORAK', 'SUB_SEORAK') ?? ''), 'and money');
+  w.resources.budget = 9000;
+  w.vendors.SEORAK.status = 'FROZEN';
+  check(!!licenceBlocked(w, 'SEORAK', 'SUB_SEORAK'), 'no licence while the vendor is sanctioned');
+  w.vendors.SEORAK.status = 'ACTIVE';
+  const pc0 = w.resources.politicalCapital;
+  check(negotiateLicence(w, 'SEORAK', 'SUB_SEORAK').ok && isLicensed(w, 'SUB_SEORAK') && w.resources.politicalCapital < pc0 && w.resources.budget === 9000 - LICENCE_MONEY, 'a licence is signed and paid for');
+  check(licenceBlocked(w, 'SEORAK', 'SUB_SEORAK') === 'ALREADY LICENSED', 'once');
+  const base = ev('SUB_SEORAK', SEORAK_AIP).cost;
+  const t = orderTerms(w, 'SUB_SEORAK', base);
+  check(t.licensed && Math.abs(t.hullSaving - HULLS.SUB_SEORAK.cost * (1 - LICENSED_HULL_RATE)) < 1e-6 && t.price < base * (1 + TRAINING_RATE), 'a licensed hull is cheaper');
+  check(t.days === Math.round(HULLS.SUB_SEORAK.buildDays * LICENSED_DAYS_RATE) + TRAINING_DAYS, 'and slower');
+  const shares = contractShares('SUB_SEORAK', DOM_BOAT, true);
+  check((shares.DOMESTIC_YARDS ?? 0) > 0.8 && !shares.SEORAK, 'the domestic yards are paid for a licensed hull');
+
+  // the vendor going cold does not stop the licensed order; the unlicensed one is stopped
+  w.vendors.SEORAK.rung = 'CONTACT';
+  const lic = order(w, 'SUB_SEORAK', DOM_BOAT);
+  check(lic.ok, `a licensed hull can be ordered with all-domestic kit even after the relationship cools (${lic.reason})`);
+  const ship = lastShip(w);
+  check(ship.licensed === true && ship.buildTotalDays === t.days, 'the ship is marked licensed and takes the licensed build time');
+
+  // freeze immunity: the vendor's export freeze does not stall a licensed hull, a revocation does
+  w.vendors.SEORAK.status = 'FROZEN';
+  w.sanctions.push({ id: 'S4', vendorId: 'SEORAK', kind: 'EXPORT_FREEZE', startTick: w.tick, endTick: w.tick + 90 });
+  syncConstructionFreezes(w);
+  check(ship.frozenBy === null, 'a licensed hull is immune to its vendor\'s export freeze');
+  w.vendors.SEORAK.status = 'REVOKED';
+  syncConstructionFreezes(w);
+  check(ship.frozenBy === 'SEORAK', 'but not to a revoked licence');
+  const wu = s4();
+  order(wu, 'SUB_SEORAK', DOM_BOAT);
+  const unl = lastShip(wu);
+  wu.vendors.SEORAK.status = 'FROZEN';
+  wu.sanctions.push({ id: 'S4u', vendorId: 'SEORAK', kind: 'EXPORT_FREEZE', startTick: wu.tick, endTick: wu.tick + 90 });
+  syncConstructionFreezes(wu);
+  check(unl.frozenBy === 'SEORAK' && !unl.licensed, 'an unlicensed boat is stalled by the same freeze');
+}
+
+// ---- the S26T case: a cheap hull with a hidden engine supplier
+{
+  const w = s4();
+  const DH = SUB_PACKAGES.find((d) => d.hullId === 'SUB_DAHAI')!.moduleIds;
+  check(hullOriginView(w, 'SUB_DAHAI').known.length === 0 && !hullOriginView(w, 'SUB_DAHAI').verified, 'the Dahai hull shows no hidden supplier before due diligence');
+  const r = order(w, 'SUB_DAHAI', DH);
+  check(r.ok, `a Dahai boat can be bought (${r.reason})`);
+  const ship = lastShip(w);
+  check(embeddedInFleet(w, 'KESSLER_BRANDT'), 'Kessler-Brandt is embedded in the fleet through the Dahai hull and engine');
+  syncConstructionFreezes(w);
+  check(ship.frozenBy === null, 'no stall while Kessler-Brandt is active');
+  w.vendors.KESSLER_BRANDT.status = 'FROZEN';
+  w.sanctions.push({ id: 'S26', vendorId: 'KESSLER_BRANDT', kind: 'EXPORT_FREEZE', startTick: w.tick, endTick: w.tick + 120 });
+  syncConstructionFreezes(w);
+  check(ship.frozenBy === 'KESSLER_BRANDT', 'a sanction on Kessler-Brandt stalls the Dahai-built boat (S26T)');
+  const t = cancellationTerms(w, ship);
+  check(t.lines.some((l) => l.vendorId === 'DAHAI' && l.basis === 'FAULT'), 'the builder refunds as the party that cannot deliver');
+  check(!!hullBlockedFor(w), 'a new unlicensed Dahai order is refused while the engine supplier is frozen');
+  // the licence shields only the builder, not its engine supplier
+  w.vendors.DAHAI.licences = ['SUB_DAHAI'];
+  check(/COMPONENT/.test(hullBlocked('SUB_DAHAI', w.vendors, new Set(w.research.completed), true) ?? ''), 'a licensed Dahai hull is still stopped by the engine supplier');
+  // diligence reveals the hidden supplier
+  const w2 = s4();
+  w2.vendors.DAHAI.diligence = { startTick: 0, readyTick: 1, done: true };
+  const hv = hullOriginView(w2, 'SUB_DAHAI');
+  check(hv.verified && hv.known.join() === 'KESSLER_BRANDT', 'due diligence on the builder reveals the hidden engine supplier');
+  w2.ships.X = createShip({ id: 'X', name: 'X', pennant: 'S1', hullId: 'SUB_DAHAI', designName: 'T', moduleIds: DH, constructing: false, tick: 0 });
+  check((fleetExposure(w2).byVendor.KESSLER_BRANDT?.via ?? 0) >= 1, 'fleet exposure counts the hidden dependency once it is known');
+  void diligenceBlocked;
+}
+function hullBlockedFor(w: WorldDraft) {
+  return hullBlocked('SUB_DAHAI', w.vendors, new Set(w.research.completed), false);
+}
+
 if (failures) {
   console.log(`\nSUBS FAILED (${failures})`);
   process.exit(1);
 }
-console.log('SUBS OK (S1 data and designer, S2 service, S3 enemy submarines and ASW)');
+console.log('SUBS OK (S1 data and designer, S2 service, S3 enemy submarines and ASW, S4 packages, training, licences)');
