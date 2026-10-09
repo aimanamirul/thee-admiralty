@@ -182,6 +182,13 @@ for (const lesson of LESSONS) {
 }
 
 check(w.stats.shipsLost === 0, `no ships may be lost (lost ${w.stats.shipsLost})`);
+{
+  // every ship sits in exactly one squadron, and every squadron entry is a real ship
+  const listed = w.fleets.flatMap((f) => f.taskForces.flatMap((t) => t.squadrons.flatMap((q) => q.shipIds)));
+  const dup = listed.filter((id, i) => listed.indexOf(id) !== i);
+  check(dup.length === 0, `no ship is listed twice in the order of battle (${dup.join(',')})`);
+  check(listed.every((id) => !!w.ships[id]) && Object.keys(w.ships).every((id) => listed.includes(id)), 'order of battle and ship registry agree');
+}
 check(w.stats.hostilesDestroyed >= 0, 'stats');
 for (let d = 0; d < 120; d++) {
   advanceDay(w);

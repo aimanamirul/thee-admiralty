@@ -12,7 +12,7 @@ import { pointAt, generateLanes } from '../sim/shipping';
 import type { Lane, Merchant, ShippingState } from '../types/shipping';
 import type { Contact, GameEvent, ResearchState, Resources, SectorState, WorldDraft } from '../types/world';
 import { HOME_SECTOR, BEYOND_SECTOR, TUTORIAL_TF1_NAME } from '../sim/tutorialScenario';
-import { createShip } from '../sim/fleetEngine';
+import { createShip, nextShipId } from '../sim/fleetEngine';
 
 export type UiFlag =
   | '*'
@@ -518,7 +518,8 @@ export const LESSONS: Lesson[] = [
       task.position = { ...sec.anchor };
       task.assignedSectorId = HOME_SECTOR;
       task.route = [];
-      const listener = createShip({ id: 'SHP-7', name: 'Hearken', pennant: 'F707', hullId: 'FRIGATE', designName: 'Briefing-class ASW Frigate', moduleIds: ['PP_DOM_D12', 'CMS_DOM_OB1', 'SEN_DOM_DSR2', 'SEN_SONAR_HULL', 'ARM_DOM_DSAM8', 'ARM_DOM_TORP'], constructing: false, state: 'ACTIVE_PATROL', readiness: 100, tick: w.tick });
+      // A fresh id: the corvette ordered in the design lesson already took SHP-7, and reusing it would list one hull in two squadrons
+      const listener = createShip({ id: nextShipId(w), name: 'Hearken', pennant: 'F707', hullId: 'FRIGATE', designName: 'Briefing-class ASW Frigate', moduleIds: ['PP_DOM_D12', 'CMS_DOM_OB1', 'SEN_DOM_DSR2', 'SEN_SONAR_HULL', 'ARM_DOM_DSAM8', 'ARM_DOM_TORP'], constructing: false, state: 'ACTIVE_PATROL', readiness: 100, tick: w.tick });
       w.ships[listener.id] = listener;
       task.squadrons[0].shipIds.push(listener.id);
       w.sectors[HOME_SECTOR].sop = 'OBSERVE';
