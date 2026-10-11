@@ -17,6 +17,8 @@ import { previewAssign } from '@/lib/sim/preview';
 import { contactTag } from '@/lib/sim/contactEngine';
 import { datumContacts, datumRadius, SONAR_TILES_PER_KM, sonarPlatforms } from '@/lib/sim/asw';
 import { mocOnly, shownContacts, stationRadius } from '@/lib/sim/moc';
+import { actionItems } from '@/lib/sim/actions';
+import { useFocusStore } from '@/store/useFocusStore';
 import type { WorldDraft } from '@/lib/types/world';
 import { KIND_TAG } from '@/lib/types/shipping';
 
@@ -320,6 +322,20 @@ export default function TacticalMap() {
       if (s >= 0 && st.selectedTaskForceId) st.assignTaskForce(st.selectedTaskForceId, s);
     };
     const onDbl = () => fitView();
+    // Pan requests from the action queue: centre the point and zoom in a little (never out).
+    let panSeq = useFocusStore.getState().pan?.seq ?? 0;
+    const applyPan = () => {
+      const pan = useFocusStore.getState().pan;
+      if (!pan || pan.seq === panSeq || !layers) return;
+      panSeq = pan.seq;
+      view.scale = Math.max(view.scale, view.fit * 1.8);
+      view.tx = cw / 2 - pan.at.x * view.scale;
+      view.ty = ch / 2 - pan.at.y * view.scale;
+      userMoved = true;
+    };
+    // Decisions with a place on the plot, recomputed once per day.
+    let ringKey: unknown[] = [];
+    let rings: { pos: { x: number; y: number }; critical: boolean }[] = [];
     canvas.addEventListener('pointerdown', onDown);
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerup', onUp);
@@ -472,6 +488,7 @@ export default function TacticalMap() {
       }
       const map = layers.map;
       const tg = togglesRef.current;
+      applyPan();
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalCompositeOperation = 'source-over';
@@ -903,6 +920,26 @@ export default function TacticalMap() {
         }
       }
 
+      // Pulsing rings on open decisions (red: critical, amber: the rest).
+      const dismissed = useFocusStore.getState().dismissed;
+      const key = [st.tick, st.contacts, st.shipping, st.vendors, st.ships, st.fleets, dismissed, useTutorialStore.getState().active];
+      if (key.some((k, i) => k !== ringKey[i])) {
+        ringKey = key;
+        rings = useTutorialStore.getState().active ? [] : actionItems(st as unknown as WorldDraft).filter((i) => i.pos && !dismissed.includes(i.id)).map((i) => ({ pos: i.pos!, critical: i.critical }));
+      }
+      for (const r of rings) {
+        const p = toScreen(r.pos.x, r.pos.y);
+        const phase = reducedMotion ? 0.5 : (now / 1400) % 1;
+        ctx.save();
+        ctx.strokeStyle = r.critical ? C.red : C.amber;
+        ctx.globalAlpha = 0.85 * (1 - phase);
+        ctx.lineWidth = r.critical ? 2 : 1.25;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10 + phase * 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       // Cursor readout HUD.
       if (cursor.inside) {
         const w = toWorld(cursor.x, cursor.y);
@@ -976,7 +1013,7 @@ export default function TacticalMap() {
             </button>
           ))}
         </div>}
-        <div className="text-phosphor/50">{fps} FPS · WHEEL ZOOM · DRAG PAN · DBL-CLICK FIT · RMB = ORDER TF TO SECTOR · KEYS 1 RUN/PAUSE 2 STEP 3 4X 4 16X</div>
+        <div className="text-phosphor/50">{fps} FPS · WHEEL ZOOM · DRAG PAN · DBL-CLICK FIT · RMB = ORDER TF TO SECTOR · KEYS 1 RUN/PAUSE 2 STEP 3 4X 4 16X · TAB/J NEXT DECISION · ESC CLOSE</div>
       </div>
     </div>
   );

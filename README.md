@@ -25,6 +25,7 @@ npm run verify:audio       # event -> sound cue mapping (pure): quiet INFO, capp
 npm run verify:hulls       # hull diversity: cost per presence, running cost, swarm vs capital ship
 npm run verify:subs        # submarines: hull/module data, platform rules, stealth and endurance, hull vendor contracts, service gate
 npm run verify:moc         # maritime operations centre: stations, coverage, fog of war, advisories, distress relay, costs, saves
+npm run verify:actions     # action queue and auto-pause: decision kinds, ordering, no intent leak, pause rate
 npm run verify:save       # save / load round trip is bit-identical, bad saves rejected, catch-up digest
 npm run verify:presence   # hull class decides deterrence: threat reduction, raider spawns and behaviour, shipping cover
 npm run verify:combat     # raids cripple and send ships to repair instead of deleting them; only heavy overkill sinks

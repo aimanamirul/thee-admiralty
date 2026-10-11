@@ -19,7 +19,7 @@ import { INTERDICTION_FLAGS } from '@/lib/sim/interdiction';
 import { flagText } from '@/lib/sim/shipping';
 import type { FlagFilter } from '@/lib/types/shipping';
 import { useNames } from '@/store/useNames';
-import { useUiFlag } from '@/store/useTutorialStore';
+import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { useFleetStore } from '@/store/useFleetStore';
 import { Term } from '@/components/tutorial/Term';
 import { Btn, Chip, Meter, Section, Stat } from './kit';
@@ -56,6 +56,7 @@ export default function SectorPanel() {
   const showInspect = useUiFlag('INSPECT');
   const n = useNames();
   const selectedMerchant = useFleetStore((s) => s.selectedMerchantId);
+  const tutorialActive = useTutorialStore((s) => s.active);
   const { selectSector, setRoe, assignTaskForce, setSop, selectContact, selectMerchant, setSectorInspect } = useFleetStore.getState();
 
   const tfs = useMemo(() => allTaskForces(fleets), [fleets]);
@@ -107,6 +108,23 @@ export default function SectorPanel() {
   const roe = ROES.find((r) => r.id === st.roe)!;
   const boatsHere = holdersOf({ fleets, ships, map }, selected).flatMap((tf) => taskForceShipIds(tf)).map((id) => ships[id]).filter((s) => s && s.buildStatus === 'COMMISSIONED' && isBoat(s) && s.state === 'ACTIVE_PATROL');
   const deepDraftRisk = Math.round(sec.littoralFraction * 100 * 2.5);
+
+  // Focus mode: an open contact or merchant gets the whole panel, with a way back to the sector (Esc does the same).
+  if ((selectedContact || selectedMerchant) && !tutorialActive) {
+    return (
+      <div className="space-y-2">
+        <button
+          className="text-[0.8125rem] uppercase tracking-widest text-slate-400 hover:text-phosphor"
+          onClick={() => (selectedContact ? selectContact(null) : selectMerchant(null))}
+          title="Esc"
+        >
+          ◂ Back to {sec.name}
+        </button>
+        <ContactPanel />
+        <MerchantPanel />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">

@@ -569,6 +569,19 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
 - `Cockpit.useClockKeys`: 1 run / pause at the current speed, 2 step one day (pauses first if running), 3 run at 4x, 4 run at 16x. Ignored while typing in an input / select,
   with modifier keys, and while the briefing still hides the clock. Buttons carry the key in their tooltip; the plot's hint line lists them.
 
+## Focus: action queue and auto-pause
+- `lib/sim/actions.ts` (pure): `actionItems(w)` gathers open decisions: distress calls, held submarines without orders, MOC tracks closing on shipping, sanction warnings
+  (critical); hostile tracks, frozen builds, docks stalled without spares, idle task forces in port, budget under 30 days of costs (not critical). Ids are stable while the
+  situation lasts (`KIND:id`); text uses name tokens and never names a contact's intent. `freshPause(seen, items, kinds)` picks the first unseen critical item of an enabled kind.
+- `store/useFocusStore.ts`: auto-pause on/off and kinds (localStorage `al.autopause`, default on for the four critical kinds), dismissed items (session only), pause reason,
+  map pan requests, queue cursor.
+- `components/ui/ActionQueue.tsx`: the strip under the command bar (hidden while the briefing locks the UI); clicking an item selects it, opens its panel and pans the plot
+  (`focusAction`). `Cockpit.useAutoPause`: items open at start or load count as seen; a fresh one while running stops the clock and focuses it; resuming clears the banner.
+  Off during the briefing. `Cockpit.useFocusKeys`: Tab / Shift+Tab cycle items (only when nothing has keyboard focus), J the most urgent, Esc closes contact / merchant / ship.
+- Plot: pulsing rings on items with a position (red critical, amber other), cached by world identity; pan centres and zooms to at least 1.8x fit.
+- Sector panel focus mode: an open contact or merchant takes the whole panel with "◂ Back to <sector>" (not during the briefing, whose lessons point at sector controls).
+- `npm run verify:actions` (kinds, ordering, no intent leak, purity, soak: about 1.4 auto-pauses per 100 days in three 240-day runs).
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

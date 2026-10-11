@@ -130,7 +130,7 @@ await waitLesson(18, 60000); await shot('18-graduation');
 // select the outer sector from the overview list (the plot shrinks as the briefing text grows, so a fixed click spot is fragile)
 await page.getByRole('button', { name: 'Overview' }).click();
 await page.getByRole('button', { name: /SECTOR 2/ }).click();
-await page.getByRole('button', { name: 'Assign' }).first().click();
+await page.locator('[data-tutorial="panel"]').getByRole('button', { name: 'Assign' }).first().click();
 await waitLesson(19, 20000); await shot('19-final');
 await page.getByRole('button', { name: 'Keep this scenario' }).click();
 await page.waitForTimeout(500); await shot('19-free');

@@ -24,6 +24,10 @@ import { useTutorialStore, useUiFlag } from '@/store/useTutorialStore';
 import { SKIN_STORAGE_KEY } from '@/lib/data/names';
 import { makeSave, writeSave } from '@/lib/save';
 import DigestModal from '@/components/ui/DigestModal';
+import ActionQueue, { focusAction } from '@/components/ui/ActionQueue';
+import { actionItems, freshPause } from '@/lib/sim/actions';
+import type { WorldDraft } from '@/lib/types/world';
+import { useFocusStore } from '@/store/useFocusStore';
 
 const TABS: { id: PanelTab; label: string; flag: UiFlag }[] = [
   { id: 'FLEET', label: 'Order of battle', flag: 'TAB_FLEET' },
@@ -118,6 +122,79 @@ function useClockKeys(playing: boolean) {
   }, [playing]);
 }
 
+const itemsNow = () => actionItems(useFleetStore.getState() as unknown as WorldDraft).filter((i) => !useFocusStore.getState().dismissed.includes(i.id));
+
+/**
+ * Auto-pause: when a new critical decision of an enabled kind appears while the clock runs, stop the clock and bring it into view.
+ * Items already open when the game starts or loads count as seen, so loading never pauses. Off during the briefing.
+ */
+function useAutoPause(playing: boolean) {
+  useEffect(() => {
+    useFocusStore.getState().hydrate();
+  }, []);
+  useEffect(() => {
+    if (!playing) return;
+    const seen = new Set(itemsNow().map((i) => i.id));
+    let lastTick = useFleetStore.getState().tick;
+    let lastRunning = useFleetStore.getState().running;
+    return useFleetStore.subscribe((s) => {
+      if (s.running && !lastRunning) useFocusStore.getState().setPausedFor(null);
+      lastRunning = s.running;
+      if (s.tick === lastTick) return;
+      const jumped = Math.abs(s.tick - lastTick) > 1 && !s.running; // a loaded game or a catch-up batch
+      lastTick = s.tick;
+      const items = itemsNow();
+      const f = useFocusStore.getState();
+      const hit = !jumped && s.running && f.autoPause && !useTutorialStore.getState().active ? freshPause(seen, items, new Set(f.pauseKinds)) : null;
+      items.forEach((i) => seen.add(i.id));
+      if (!hit) return;
+      s.setRunning(false);
+      f.setPausedFor(hit.text);
+      f.setCursor(items.findIndex((i) => i.id === hit.id));
+      focusAction(hit);
+    });
+  }, [playing]);
+}
+
+/** Focus keys: Tab / Shift+Tab cycle the open decisions, J jumps to the most urgent, Esc closes the open contact, merchant or ship. */
+function useFocusKeys(playing: boolean) {
+  useEffect(() => {
+    if (!playing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (typing(e) || useTutorialStore.getState().active) return;
+      const g = useFleetStore.getState();
+      if (g.designerOpen) return;
+      const f = useFocusStore.getState();
+      const key = e.key.toLowerCase();
+      if (e.key === 'Tab') {
+        // Only when nothing has keyboard focus, so Tab still walks through buttons and fields once the player is in them.
+        const el = document.activeElement;
+        if (el && el !== document.body && el.tagName !== 'CANVAS') return;
+        const items = itemsNow();
+        if (!items.length) return;
+        e.preventDefault();
+        const i = ((f.cursor < 0 ? (e.shiftKey ? 0 : -1) : f.cursor) + (e.shiftKey ? -1 : 1) + items.length) % items.length;
+        f.setCursor(i);
+        focusAction(items[i]);
+      } else if (key === 'j' && !e.shiftKey) {
+        const items = itemsNow();
+        if (!items.length) return;
+        e.preventDefault();
+        f.setCursor(0);
+        focusAction(items[0]);
+      } else if (e.key === 'Escape') {
+        if (g.selectedContactId) g.selectContact(null);
+        else if (g.selectedMerchantId) g.selectMerchant(null);
+        else if (g.selectedShipId) g.selectShip(null);
+        else return;
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [playing]);
+}
+
 /**
  * Autosave to the browser: every few simulated days, whenever the clock is paused, and when the tab is hidden or closed.
  * Never during the briefing (it has its own checkpoints) and never while the title screen is up, so a save is not overwritten
@@ -200,10 +277,13 @@ export default function Cockpit() {
   useAutosave(screen === 'game');
   useSoundCues(screen === 'game');
   useClockKeys(screen === 'game');
+  useAutoPause(screen === 'game');
+  useFocusKeys(screen === 'game');
 
   return (
     <main className="flex h-screen flex-col bg-void">
       <CommandBar />
+      {screen === 'game' && <ActionQueue />}
       <div className="relative flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="relative min-h-[240px] flex-1">
