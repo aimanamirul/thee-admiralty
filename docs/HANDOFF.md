@@ -565,6 +565,10 @@ Source: a self-evaluation against an immersion / QoL / loop rubric (see the conv
   previews); glossary MOC. The briefing world has the home radar and a watch on THE NARROWS (the escort lesson's track is at the strait mouth).
 - `npm run verify:moc`; `verify:preview` sweeps station previews. Not done: suspicion flags, false alarms, seabed arrays (M2); vendor kit, breakdowns, balance soak (M3).
 
+## Clock keys
+- `Cockpit.useClockKeys`: 1 run / pause at the current speed, 2 step one day (pauses first if running), 3 run at 4x, 4 run at 16x. Ignored while typing in an input / select,
+  with modifier keys, and while the briefing still hides the clock. Buttons carry the key in their tooltip; the plot's hint line lists them.
+
 ## What to build next
 
 Per `docs/PLAN-command-and-economy.md`: steps 1–3 are done. Contractors phases 1–3 and the tutorial pass are done. Plan phase 4 (economy

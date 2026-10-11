@@ -976,7 +976,7 @@ export default function TacticalMap() {
             </button>
           ))}
         </div>}
-        <div className="text-phosphor/50">{fps} FPS · WHEEL ZOOM · DRAG PAN · DBL-CLICK FIT · RMB = ORDER TF TO SECTOR</div>
+        <div className="text-phosphor/50">{fps} FPS · WHEEL ZOOM · DRAG PAN · DBL-CLICK FIT · RMB = ORDER TF TO SECTOR · KEYS 1 RUN/PAUSE 2 STEP 3 4X 4 16X</div>
       </div>
     </div>
   );

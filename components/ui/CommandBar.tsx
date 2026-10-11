@@ -96,14 +96,14 @@ export default function CommandBar() {
           </div>
         )}
         {<div data-tutorial="clock" aria-hidden={!showClock || undefined} className={`flex items-center gap-1 ${showClock ? '' : 'invisible'}`}>
-          <Btn onClick={() => setRunning(!running)} aria-label={running ? 'Pause' : 'Run'} tone={running ? 'amber' : 'emerald'}>
+          <Btn onClick={() => setRunning(!running)} aria-label={running ? 'Pause' : 'Run'} title={`${running ? 'Pause' : 'Run'} (key 1)`} tone={running ? 'amber' : 'emerald'}>
             {running ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
           </Btn>
-          <Btn onClick={() => step(1)} aria-label="Step one day" disabled={running}>
+          <Btn onClick={() => step(1)} aria-label="Step one day" title="Step one day (key 2)" disabled={running}>
             <StepForward className="h-3 w-3" />
           </Btn>
           {([1, 4, 16] as SimSpeed[]).map((s) => (
-            <Btn key={s} tone={speed === s ? 'cyan' : 'dim'} onClick={() => setSpeed(s)}>
+            <Btn key={s} tone={speed === s ? 'cyan' : 'dim'} title={s === 4 ? 'Run at 4x (key 3)' : s === 16 ? 'Run at 16x (key 4)' : '1x'} onClick={() => setSpeed(s)}>
               {s === 16 ? <FastForward className="inline h-3 w-3" /> : null}
               {s}x
             </Btn>

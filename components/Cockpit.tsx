@@ -88,6 +88,36 @@ function useSoundCues(playing: boolean) {
   }, [playing]);
 }
 
+/** Is the keyboard busy with text entry (or a modifier chord)? Then the clock keys do nothing. */
+const typing = (e: KeyboardEvent) => {
+  const t = e.target as HTMLElement | null;
+  return e.ctrlKey || e.metaKey || e.altKey || !!t?.closest('input, textarea, select, [contenteditable="true"]');
+};
+
+/** Clock keys: 1 play / pause at the current speed, 2 step one day, 3 run at 4x, 4 run at 16x. Locked while the briefing hides the clock. */
+function useClockKeys(playing: boolean) {
+  useEffect(() => {
+    if (!playing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (typing(e) || e.repeat || !['1', '2', '3', '4'].includes(e.key)) return;
+      const t = useTutorialStore.getState();
+      if (t.active && !t.flags.includes('*') && !t.flags.includes('CLOCK')) return;
+      const g = useFleetStore.getState();
+      e.preventDefault();
+      if (e.key === '1') g.setRunning(!g.running);
+      else if (e.key === '2') {
+        if (g.running) g.setRunning(false);
+        g.step(1);
+      } else {
+        g.setSpeed(e.key === '3' ? 4 : 16);
+        g.setRunning(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [playing]);
+}
+
 /**
  * Autosave to the browser: every few simulated days, whenever the clock is paused, and when the tab is hidden or closed.
  * Never during the briefing (it has its own checkpoints) and never while the title screen is up, so a save is not overwritten
@@ -169,6 +199,7 @@ export default function Cockpit() {
   const [screen, setScreen] = useState<'title' | 'game'>('title');
   useAutosave(screen === 'game');
   useSoundCues(screen === 'game');
+  useClockKeys(screen === 'game');
 
   return (
     <main className="flex h-screen flex-col bg-void">
